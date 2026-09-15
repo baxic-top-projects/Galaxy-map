@@ -73,14 +73,19 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          REPOSITORY: ${{ github.repository }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          envs: DEPLOY_PATH
+          envs: DEPLOY_PATH,REPOSITORY
           script_stop: true
           script: |
+            if [ ! -d "$DEPLOY_PATH/.git" ]; then
+              mkdir -p "$(dirname "$DEPLOY_PATH")"
+              git clone --branch main --single-branch "https://github.com/$REPOSITORY.git" "$DEPLOY_PATH"
+            fi
             cd "$DEPLOY_PATH"
             git pull --ff-only origin main
             docker compose up -d --build --remove-orphans
