@@ -26,6 +26,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Create client environment file
+        env:
+          CLIENT_ENV: ${{ secrets.CLIENT_ENV }}
+        run: printf '%s\n' "$CLIENT_ENV" > client/.env
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -72,6 +77,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Create client environment file
+        env:
+          CLIENT_ENV: ${{ secrets.CLIENT_ENV }}
+        run: printf '%s\n' "$CLIENT_ENV" > client/.env
+
       - name: Copy project to server
         uses: appleboy/scp-action@v1.0.0
         with:
@@ -96,4 +106,6 @@ jobs:
           script_stop: true
           script: |
             cd "$DEPLOY_PATH"
-            docker compose up -d --build --remove-orphans
+            docker compose build
+            docker compose down --remove-orphans
+            docker compose up -d --remove-orphans
