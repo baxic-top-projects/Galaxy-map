@@ -3,4 +3,10 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [svelte()],
+  resolve: {
+    conditions: ['browser'],
+  },
+  test: {
+    environment: 'jsdom',
+  },
 })
