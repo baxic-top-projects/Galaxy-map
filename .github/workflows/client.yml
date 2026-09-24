@@ -1,12 +1,6 @@
 name: Client CI/CD
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "client/**"
-      - "docker-compose.yml"
-      - ".github/workflows/client.yml"
   pull_request:
     paths:
       - "client/**"
