@@ -28,10 +28,14 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const controls = new OrbitControls(camera, canvas)
   controls.enableDamping = true
   controls.dampingFactor = 0.08
+  controls.enableZoom = true
+  controls.zoomSpeed = 1.15
   controls.minDistance = 4
-  controls.maxDistance = 120
+  controls.maxDistance = 110
   controls.maxPolarAngle = Math.PI * 0.495
   controls.target.set(0, 0, 0)
+  const overviewPosition = new THREE.Vector3(0, -58, 34)
+  const overviewTarget = new THREE.Vector3(0, 0, 0)
 
   const root = new THREE.Group()
   scene.add(root)
@@ -56,14 +60,22 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     positions[i] = system.x * GALAXY_SCALE
     positions[i + 1] = system.y * GALAXY_SCALE
     positions[i + 2] = system.z * GALAXY_SCALE
-    color.setHex(starColor(system.starTypeKey))
-    if (system.stem && galaxy.polityByStem.has(system.stem) && system.kind === 'black_hole') {
+
+    const polity = system.stem ? galaxy.polityByStem.get(system.stem) : null
+    if (system.kind === 'black_hole' || system.kind === 'well') {
       color.setHex(0xff66aa)
+    } else if (polity?.color) {
+      color.set(polity.color)
+      if (system.capital) color.offsetHSL(0, 0.05, 0.18)
+    } else {
+      color.setHex(starColor(system.starTypeKey))
     }
+
     colors[i] = color.r
     colors[i + 1] = color.g
     colors[i + 2] = color.b
-    sizes[index] = system.capital ? 4.2 : system.kind === 'well' ? 5.5 : system.kind === 'black_hole' ? 2.4 : 1.8 + Math.min(system.worldCount || 0, 4) * 0.18
+    sizes[index] =
+      system.capital ? 5.2 : system.kind === 'well' ? 6.2 : system.kind === 'black_hole' ? 3.4 : 2.35 + Math.min(system.worldCount || 0, 4) * 0.22
   })
 
   const geometry = new THREE.BufferGeometry()
@@ -139,6 +151,9 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   let frameCount = 0
   let disposed = false
   let focusTween = null
+  let lastClickAt = 0
+  let lastClickId = null
+  let pointerDown = null
 
   function resize() {
     const width = canvas.clientWidth || canvas.parentElement?.clientWidth || window.innerWidth
@@ -193,17 +208,22 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1
     pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1
     pickHelper.setFromCamera(pointer, camera)
+
+    // Prefer plane+spatial picking so every star and black hole is hittable,
+    // not the decorative dots baked into the background texture.
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
+    const hit = new THREE.Vector3()
+    if (pickHelper.ray.intersectPlane(plane, hit)) {
+      const maxDist = THREE.MathUtils.clamp(cameraDistance() * 0.00135, 0.03, 0.11)
+      const nearest = spatial.queryNearest(hit.x / GALAXY_SCALE, hit.y / GALAXY_SCALE, maxDist)
+      if (nearest) return nearest
+    }
+
+    pickHelper.params.Points.threshold = THREE.MathUtils.clamp(cameraDistance() * 0.05, 1.5, 5)
     const hits = pickHelper.intersectObject(points, false)
     if (hits.length) {
       const index = hits[0].index
       return galaxy.systems[index] || null
-    }
-
-    // Fallback plane pick at z≈0 using spatial index.
-    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
-    const hit = new THREE.Vector3()
-    if (pickHelper.ray.intersectPlane(plane, hit)) {
-      return spatial.queryNearest(hit.x / GALAXY_SCALE, hit.y / GALAXY_SCALE, 0.05)
     }
     return null
   }
@@ -216,6 +236,12 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 
   function focusSystem(system, { enterSystem = false } = {}) {
     if (!system) return
+    setSelected(system.id)
+    if (enterSystem) {
+      // Enter immediately so the system view can load all planets without waiting on orbit tween.
+      callbacks.onEnterSystem?.(system)
+      return
+    }
     const target = new THREE.Vector3(
       system.x * GALAXY_SCALE,
       system.y * GALAXY_SCALE,
@@ -230,12 +256,8 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
       const e = 1 - Math.pow(1 - t, 3)
       controls.target.lerpVectors(startTarget, target, e)
       camera.position.lerpVectors(startPos, endPos, e)
-      if (t >= 1) {
-        focusTween = null
-        if (enterSystem) callbacks.onEnterSystem?.(system)
-      }
+      if (t >= 1) focusTween = null
     }
-    setSelected(system.id)
   }
 
   function onPointerMove(event) {
@@ -249,17 +271,35 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     }
   }
 
-  function onPointerDown() {
+  function onPointerDown(event) {
+    if (event.button !== 0) return
+    pointerDown = { x: event.clientX, y: event.clientY, at: performance.now() }
     canvas.style.cursor = 'grabbing'
   }
 
   function onPointerUp(event) {
     canvas.style.cursor = hoveredId ? 'pointer' : 'grab'
-    if (event.button !== 0) return
+    if (event.button !== 0 || !pointerDown) return
+    const dx = event.clientX - pointerDown.x
+    const dy = event.clientY - pointerDown.y
+    const dragged = Math.hypot(dx, dy) > 6
+    pointerDown = null
+    if (dragged) return
+
     const system = pickSystem(event.clientX, event.clientY)
-    if (system) {
-      focusSystem(system, { enterSystem: event.detail === 2 })
-    }
+    if (!system) return
+
+    const now = performance.now()
+    const isDouble = lastClickId === system.id && now - lastClickAt < 350
+    lastClickAt = now
+    lastClickId = system.id
+    focusSystem(system, { enterSystem: isDouble })
+  }
+
+  function onDblClick(event) {
+    event.preventDefault()
+    const system = pickSystem(event.clientX, event.clientY)
+    if (system) focusSystem(system, { enterSystem: true })
   }
 
   function frame() {
@@ -268,7 +308,7 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     frameCount += 1
     if (focusTween) focusTween()
     controls.update()
-    material.uniforms.uScale.value = THREE.MathUtils.clamp(18 / cameraDistance(), 0.55, 2.4)
+    material.uniforms.uScale.value = THREE.MathUtils.clamp(22 / cameraDistance(), 0.7, 3.0)
     renderer.render(scene, camera)
     if (frameCount % 2 === 0) emitLabels()
   }
@@ -280,6 +320,8 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     canvas.removeEventListener('pointermove', onPointerMove)
     canvas.removeEventListener('pointerdown', onPointerDown)
     canvas.removeEventListener('pointerup', onPointerUp)
+    canvas.removeEventListener('dblclick', onDblClick)
+    canvas.removeEventListener('wheel', onWheel)
     controls.dispose()
     geometry.dispose()
     material.dispose()
@@ -291,38 +333,111 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     renderer.dispose()
   }
 
+  function resetView(animate = false) {
+    selectedId = null
+    focusTween = null
+    if (!animate) {
+      controls.target.copy(overviewTarget)
+      camera.position.copy(overviewPosition)
+      callbacks.onSelect?.(null)
+      emitLabels()
+      return
+    }
+    const startTarget = controls.target.clone()
+    const startPos = camera.position.clone()
+    const started = performance.now()
+    focusTween = () => {
+      const t = Math.min(1, (performance.now() - started) / 700)
+      const e = 1 - Math.pow(1 - t, 3)
+      controls.target.lerpVectors(startTarget, overviewTarget, e)
+      camera.position.lerpVectors(startPos, overviewPosition, e)
+      if (t >= 1) focusTween = null
+    }
+    callbacks.onSelect?.(null)
+    emitLabels()
+  }
+
+  function onWheel(event) {
+    if (event.deltaY <= 0) return
+    const distance = cameraDistance()
+    const awayFromCenter = controls.target.length() > 2.5
+    if (distance >= 72 || awayFromCenter) {
+      const pull = THREE.MathUtils.clamp((distance - 55) / 40, 0.08, 0.35)
+      controls.target.lerp(overviewTarget, pull)
+      if (distance >= 95 || (awayFromCenter && distance >= 80)) {
+        resetView(true)
+      }
+    }
+  }
+
   window.addEventListener('resize', resize)
   canvas.addEventListener('pointermove', onPointerMove)
   canvas.addEventListener('pointerdown', onPointerDown)
   canvas.addEventListener('pointerup', onPointerUp)
+  canvas.addEventListener('dblclick', onDblClick)
+  canvas.addEventListener('wheel', onWheel, { passive: true })
   resize()
   raf = requestAnimationFrame(frame)
 
   return {
     focusSystem,
     setSelected,
-    resetView() {
-      selectedId = null
-      focusTween = null
-      controls.target.set(0, 0, 0)
-      camera.position.set(0, -58, 34)
-      callbacks.onSelect?.(null)
-      emitLabels()
-    },
+    resetView,
     dispose,
   }
 }
 
 function createPoliticalPlate() {
-  const texture = new THREE.TextureLoader().load('/textures/galaxy_political_map.png')
+  const size = 1024
+  const canvas2d = document.createElement('canvas')
+  canvas2d.width = size
+  canvas2d.height = size
+  const ctx = canvas2d.getContext('2d')
+  ctx.fillStyle = '#05070f'
+  ctx.fillRect(0, 0, size, size)
+
+  const cx = size / 2
+  const cy = size / 2
+  const radius = size * 0.48
+
+  const arms = ctx.createRadialGradient(cx, cy, radius * 0.05, cx, cy, radius)
+  arms.addColorStop(0, 'rgba(255, 210, 140, 0.28)')
+  arms.addColorStop(0.18, 'rgba(180, 120, 170, 0.16)')
+  arms.addColorStop(0.45, 'rgba(70, 100, 170, 0.12)')
+  arms.addColorStop(0.78, 'rgba(30, 50, 90, 0.06)')
+  arms.addColorStop(1, 'rgba(5, 7, 15, 0)')
+  ctx.fillStyle = arms
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.globalCompositeOperation = 'lighter'
+  for (let i = 0; i < 4; i += 1) {
+    const grad = ctx.createRadialGradient(
+      cx + Math.cos((i * Math.PI) / 2) * radius * 0.28,
+      cy + Math.sin((i * Math.PI) / 2) * radius * 0.18,
+      0,
+      cx,
+      cy,
+      radius * 0.85,
+    )
+    grad.addColorStop(0, 'rgba(90, 130, 200, 0.05)')
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, size, size)
+  }
+  ctx.globalCompositeOperation = 'source-over'
+
+  const texture = new THREE.CanvasTexture(canvas2d)
   texture.colorSpace = THREE.SRGBColorSpace
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     transparent: true,
-    opacity: 0.42,
+    opacity: 0.9,
     depthWrite: false,
   })
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(GALAXY_SCALE * 2.12, GALAXY_SCALE * 2.12), material)
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(GALAXY_SCALE * 2.0, GALAXY_SCALE * 2.0), material)
   mesh.position.z = -0.8
+  mesh.raycast = () => {}
   return mesh
 }

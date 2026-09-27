@@ -72,16 +72,16 @@
     selected = system
   }
 
-  function handleSearchSelect(entry) {
+  function handleEnterSystem(system) {
+    selected = system
+    mode = 'system'
+  }
+
+  async function handleSearchSelect(entry) {
     const system = galaxy?.byId.get(entry.id)
     if (!system) return
     selected = system
-    focusRequest = { id: system.id, enterSystem: entry.kind === 'world' }
-    if (entry.kind === 'world') mode = 'system'
-  }
-
-  function handleEnterSystem(system) {
-    selected = system
+    focusRequest = { id: system.id, enterSystem: true }
     mode = 'system'
   }
 
@@ -126,7 +126,14 @@
       </div>
     {:else}
       <section class="system-mode">
-        <SystemDetailView {detail} />
+        <SystemDetailView
+          {detail}
+          {locale}
+          onZoomOut={() => {
+            mode = 'galaxy'
+            resetToken += 1
+          }}
+        />
       </section>
     {/if}
 
@@ -199,7 +206,7 @@
   }
 
   .system-mode {
-    padding: 6.5rem 1rem 1rem;
+    padding: 0;
     box-sizing: border-box;
   }
 

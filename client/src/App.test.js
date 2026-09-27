@@ -53,7 +53,9 @@ describe('spatial index', () => {
 describe('model catalog', () => {
   test('maps star type keys to asset paths', () => {
     expect(resolveStarTypeKey('class_g')).toBe('class_g')
-    expect(starModelPath('class_g')).toBe('/models/stars/star_type_class_g.glb')
+    expect(resolveStarTypeKey('class_g', 'black_hole')).toBe('black_hole')
+    expect(resolveStarTypeKey('class_g', 'well')).toBe('supermassive_black_hole')
+    expect(starModelPath('black_hole')).toBe('/models/stars/star_type_black_hole.glb')
     expect(starColor('class_g')).toBe(0xffe08a)
   })
 })

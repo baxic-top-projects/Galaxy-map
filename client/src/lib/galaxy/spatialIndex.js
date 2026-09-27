@@ -1,7 +1,7 @@
 /** Simple flat spatial index for 2D picking against galaxy x/y. */
 export function buildSpatialIndex(systems) {
   const cells = new Map()
-  const cellSize = 0.08
+  const cellSize = 0.06
 
   const keyFor = (x, y) => `${Math.floor(x / cellSize)}:${Math.floor(y / cellSize)}`
 
@@ -15,10 +15,11 @@ export function buildSpatialIndex(systems) {
     queryNearest(x, y, maxDist = 0.04) {
       const cx = Math.floor(x / cellSize)
       const cy = Math.floor(y / cellSize)
+      const radius = Math.max(1, Math.ceil(maxDist / cellSize))
       let best = null
       let bestDist = maxDist
-      for (let dx = -1; dx <= 1; dx += 1) {
-        for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        for (let dy = -radius; dy <= radius; dy += 1) {
           const bucket = cells.get(`${cx + dx}:${cy + dy}`)
           if (!bucket) continue
           for (const system of bucket) {

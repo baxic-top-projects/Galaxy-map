@@ -94,7 +94,19 @@
     {#if detail}
       <dl>
         <div>
-          <dt>{locale === 'en' ? 'Star type' : 'Тип звезды'}</dt>
+          <dt>{locale === 'en' ? 'Object' : 'Объект'}</dt>
+          <dd>
+            {#if detail.kind === 'black_hole'}
+              {locale === 'en' ? 'Black hole system' : 'Система чёрной дыры'}
+            {:else if detail.kind === 'well'}
+              {locale === 'en' ? 'Galactic core' : 'Галактическое ядро'}
+            {:else}
+              {locale === 'en' ? 'Star system' : 'Звёздная система'}
+            {/if}
+          </dd>
+        </div>
+        <div>
+          <dt>{locale === 'en' ? 'Star / hole type' : 'Тип звезды / дыры'}</dt>
           <dd>{detail.starType}</dd>
         </div>
         {#if detail.sectorNameEn}
@@ -104,8 +116,12 @@
           </div>
         {/if}
         <div>
-          <dt>{locale === 'en' ? 'Worlds' : 'Миры'}</dt>
+          <dt>{locale === 'en' ? 'Inhabited worlds' : 'Обитаемые миры'}</dt>
           <dd>{detail.worlds?.length || 0}</dd>
+        </div>
+        <div>
+          <dt>{locale === 'en' ? 'Uninhabited bodies' : 'Необитаемые тела'}</dt>
+          <dd>{detail.uninhabited?.length || 0}</dd>
         </div>
       </dl>
 
@@ -120,13 +136,45 @@
           {/each}
         </ul>
       {/if}
+
+      {#if detail.uninhabited?.length}
+        <h3>{locale === 'en' ? 'Uninhabited planets' : 'Необитаемые планеты'}</h3>
+        <ul class="worlds">
+          {#each detail.uninhabited as body}
+            <li>
+              <strong>{locale === 'en' ? body.nameEn : body.nameRu}</strong>
+              <span>{body.planetType}</span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+
+      {#if detail.features?.length}
+        <h3>{locale === 'en' ? 'System features' : 'Особенности системы'}</h3>
+        <ul class="worlds">
+          {#each detail.features as feature}
+            <li>
+              <strong>{locale === 'en' ? feature.nameEn : feature.nameRu}</strong>
+              <span>{feature.feature}</span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+
+      {#if detail.kind === 'black_hole' || detail.kind === 'well'}
+        <p class="hint">
+          {locale === 'en'
+            ? 'This system has no counted worlds — only the black hole itself.'
+            : 'В этой системе нет учтённых миров — только сама чёрная дыра.'}
+        </p>
+      {/if}
     {:else}
       <p class="hint">{locale === 'en' ? 'Loading system dossier…' : 'Загрузка карточки системы…'}</p>
     {/if}
     <p class="hint">
       {locale === 'en'
-        ? 'Double-click a star to enter its system.'
-        : 'Двойной клик по звезде открывает систему.'}
+        ? 'Double-click a star or black hole to enter its system.'
+        : 'Двойной клик по звезде или чёрной дыре открывает систему.'}
     </p>
   {:else}
     <h2>{locale === 'en' ? 'Galaxy overview' : 'Обзор галактики'}</h2>

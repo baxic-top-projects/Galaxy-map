@@ -4,7 +4,6 @@ const STAR_FALLBACK = {
   binary_class_g: 'class_g',
   class_m_giant: 'class_m',
   neutron_star: 'pulsar',
-  supermassive_black_hole: 'black_hole',
 }
 
 const PLANET_FALLBACK = {
@@ -36,7 +35,9 @@ export function planetTypeArtPath(typeKey) {
   return `/textures/planet_types/planet_type_${typeKey}.png`
 }
 
-export function resolveStarTypeKey(typeKey) {
+export function resolveStarTypeKey(typeKey, kind = 'star') {
+  if (kind === 'well') return 'supermassive_black_hole'
+  if (kind === 'black_hole') return 'black_hole'
   return typeKey || 'class_g'
 }
 
@@ -45,6 +46,7 @@ export function resolvePlanetTypeKey(typeKey) {
 }
 
 export function starFallbackKey(typeKey) {
+  if (typeKey === 'black_hole' || typeKey === 'supermassive_black_hole') return typeKey
   return STAR_FALLBACK[typeKey] || 'class_g'
 }
 
