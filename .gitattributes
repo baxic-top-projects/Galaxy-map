@@ -1,0 +1,2 @@
+# Track 3D models with Git LFS
+client/public/models/**/*.glb filter=lfs diff=lfs merge=lfs -text

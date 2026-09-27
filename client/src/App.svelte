@@ -1,91 +1,236 @@
 <script>
-  let count = 0
+  import { onMount } from 'svelte'
+  import GalaxyScene from './components/GalaxyScene.svelte'
+  import MapHud from './components/MapHud.svelte'
+  import SystemDetailView from './components/SystemDetailView.svelte'
+  import { loadGalaxy, loadSystemDetail, systemLabel } from './lib/galaxy/loadGalaxy.js'
+  import { estimateZoom } from './lib/galaxy/labelLod.js'
+
+  let galaxy = $state(null)
+  let error = $state('')
+  let loading = $state(true)
+  let locale = $state('ru')
+  let selected = $state(null)
+  let detail = $state(null)
+  let polityFilter = $state('')
+  let mode = $state('galaxy')
+  let labels = $state([])
+  let focusRequest = $state(null)
+  let resetToken = $state(0)
+  let zoom = $state(1)
+
+  onMount(async () => {
+    try {
+      galaxy = await loadGalaxy()
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err)
+    } finally {
+      loading = false
+    }
+  })
+
+  $effect(() => {
+    const current = selected
+    if (!current) {
+      detail = null
+      return
+    }
+    let cancelled = false
+    loadSystemDetail(current.shard)
+      .then((data) => {
+        if (!cancelled) detail = data
+      })
+      .catch(() => {
+        if (!cancelled) detail = null
+      })
+    return () => {
+      cancelled = true
+    }
+  })
+
+  const visibleSystems = $derived.by(() => {
+    if (!galaxy) return []
+    if (!polityFilter) return galaxy.systems
+    return galaxy.systems.filter((system) => system.stem === polityFilter)
+  })
+
+  const filteredGalaxy = $derived.by(() => {
+    if (!galaxy) return null
+    if (!polityFilter) return galaxy
+    const systems = visibleSystems
+    const ids = new Set(systems.map((system) => system.id))
+    return {
+      ...galaxy,
+      systems,
+      byId: new Map(systems.map((system) => [system.id, system])),
+      edgesDisplay: galaxy.edgesDisplay.filter((edge) => ids.has(edge.a) && ids.has(edge.b)),
+      edgesCanon: galaxy.edgesCanon.filter((edge) => ids.has(edge.a) && ids.has(edge.b)),
+    }
+  })
+
+  function handleSelect(system) {
+    selected = system
+  }
+
+  function handleSearchSelect(entry) {
+    const system = galaxy?.byId.get(entry.id)
+    if (!system) return
+    selected = system
+    focusRequest = { id: system.id, enterSystem: entry.kind === 'world' }
+    if (entry.kind === 'world') mode = 'system'
+  }
+
+  function handleEnterSystem(system) {
+    selected = system
+    mode = 'system'
+  }
+
+  function handleLabels(nextLabels, nextZoom) {
+    labels = nextLabels
+    zoom = nextZoom ?? estimateZoom(8)
+  }
 </script>
 
-<main>
-  <a href="https://svelte.dev" target="_blank" rel="noreferrer" aria-label="Svelte">
-    <svg class="logo" viewBox="0 0 256 308" aria-hidden="true">
-      <path
-        fill="#ff3e00"
-        d="M239.7 40.7C211.1-.2 154.7-12.3 113.9 13.7L42.2 59.4A82.2 82.2 0 0 0 5.1 114.4a86.6 86.6 0 0 0 8.5 55.6A82.4 82.4 0 0 0 1.4 200.7a87.6 87.6 0 0 0 15 66.2c28.6 40.9 85 53 125.8 27l71.6-45.6a82.2 82.2 0 0 0 37.1-55.1 86.6 86.6 0 0 0-8.5-55.5 82.4 82.4 0 0 0 12.3-30.7 87.6 87.6 0 0 0-15-66.3"
-      />
-    </svg>
-  </a>
+{#if loading}
+  <main class="boot">Загрузка галактики…</main>
+{:else if error}
+  <main class="boot error">{error}</main>
+{:else if filteredGalaxy}
+  <main class="app-shell">
+    {#if mode === 'galaxy'}
+      {#key polityFilter}
+        <GalaxyScene
+          galaxy={filteredGalaxy}
+          selectedId={selected?.id || null}
+          {focusRequest}
+          {resetToken}
+          onSelect={handleSelect}
+          onEnterSystem={handleEnterSystem}
+          onLabels={handleLabels}
+        />
+      {/key}
 
-  <h1>Svelte</h1>
+      <div class="labels" aria-hidden="true">
+        {#each labels as label}
+          {#if label.visible}
+            <div
+              class="label"
+              class:capital={label.system.capital}
+              class:selected={label.id === selected?.id}
+              style={`left:${label.x}px;top:${label.y}px`}
+            >
+              {systemLabel(label.system, locale)}
+            </div>
+          {/if}
+        {/each}
+      </div>
+    {:else}
+      <section class="system-mode">
+        <SystemDetailView {detail} />
+      </section>
+    {/if}
 
-  <section class="card">
-    <button onclick={() => count += 1}>count is {count}</button>
-    <p>Edit <code>src/App.svelte</code> to get started</p>
-  </section>
-
-  <p class="hint">Click on the Svelte logo to learn more</p>
-</main>
+    <MapHud
+      galaxy={filteredGalaxy}
+      {locale}
+      {selected}
+      {detail}
+      {polityFilter}
+      {mode}
+      onLocale={(value) => (locale = value)}
+      onPolityFilter={(value) => {
+        polityFilter = value
+        selected = null
+        mode = 'galaxy'
+      }}
+      onSearchSelect={handleSearchSelect}
+      onReset={() => {
+        mode = 'galaxy'
+        selected = null
+        resetToken += 1
+      }}
+      onBackToGalaxy={() => {
+        mode = 'galaxy'
+      }}
+    />
+  </main>
+{/if}
 
 <style>
   :global(:root) {
-    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-    line-height: 1.5;
-    color: rgba(255, 255, 255, 0.87);
-    background: #242424;
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
+    color-scheme: dark;
+    font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
+    background: #05070f;
+    color: #e8eef8;
   }
 
-  :global(body) {
+  :global(html),
+  :global(body),
+  :global(#app) {
     margin: 0;
-    min-width: 320px;
-    min-height: 100vh;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #05070f;
   }
 
-  main {
-    max-width: 1280px;
-    margin: 0 auto;
+  .boot {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    letter-spacing: 0.04em;
+  }
+
+  .boot.error {
+    color: #ff8f8f;
     padding: 2rem;
     text-align: center;
   }
 
-  .logo {
-    width: 6em;
-    height: 6em;
-    padding: 1.5em;
-    transition: filter 300ms;
+  .app-shell,
+  .system-mode {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 45%, rgba(40, 70, 140, 0.28), transparent 42%),
+      #05070f;
   }
 
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
+  .system-mode {
+    padding: 6.5rem 1rem 1rem;
+    box-sizing: border-box;
   }
 
-  .card {
-    padding: 2em;
+  .labels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
   }
 
-  button {
-    border: 1px solid transparent;
-    border-radius: 8px;
-    padding: 0.6em 1.2em;
-    font: inherit;
-    font-weight: 500;
-    background: #1a1a1a;
-    cursor: pointer;
+  .label {
+    position: absolute;
+    transform: translate(-50%, -140%);
+    padding: 0.15rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(5, 10, 20, 0.55);
+    border: 1px solid rgba(180, 210, 255, 0.18);
+    font-size: 0.72rem;
+    white-space: nowrap;
+    color: #d5e4ff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   }
 
-  button:hover {
-    border-color: #ff3e00;
+  .label.capital {
+    color: #ffe29a;
+    border-color: rgba(255, 210, 120, 0.45);
   }
 
-  .hint {
-    color: #888;
-  }
-
-  @media (prefers-color-scheme: light) {
-    :global(:root) {
-      color: #213547;
-      background: #fff;
-    }
-
-    button {
-      background: #f9f9f9;
-    }
+  .label.selected {
+    color: #ffffff;
+    border-color: rgba(120, 180, 255, 0.8);
+    background: rgba(30, 70, 140, 0.55);
   }
 </style>

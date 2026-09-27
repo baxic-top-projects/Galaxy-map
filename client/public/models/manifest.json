@@ -1,0 +1,22 @@
+{
+  "politicalMap": true,
+  "basePlate": true,
+  "starGlb": {
+    "copied": 12,
+    "skipped": 0
+  },
+  "planetGlb": {
+    "copied": 14,
+    "skipped": 2
+  },
+  "starPreview": 12,
+  "planetPreview": 16,
+  "starTypes": {
+    "copied": 17,
+    "skipped": 0
+  },
+  "planetTypes": {
+    "copied": 16,
+    "skipped": 0
+  }
+}
