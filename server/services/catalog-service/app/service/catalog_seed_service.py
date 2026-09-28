@@ -23,14 +23,39 @@ class CatalogSeedService:
             return int(session.scalar(select(func.count()).select_from(SystemRow)) or 0)
 
     def sync_on_startup(self) -> dict:
-        """Upsert all JSON systems and refresh index tables. Safe to run every boot."""
-        return self.sync()
+        """Refresh index tables; upsert new/missing systems (full rewrite if configured)."""
+        return self.sync(full=bool(getattr(self.settings, "seed_full_sync", False)))
 
     def seed_if_empty(self, *, force: bool = False) -> dict:
-        # Backward-compatible entrypoint; always syncs (force wipes first).
-        return self.sync(wipe_first=force)
+        return self.sync(wipe_first=force, full=True)
 
-    def sync(self, *, wipe_first: bool = False) -> dict:
+    def _system_row(
+        self,
+        *,
+        system_id: str,
+        detail: dict,
+        index_row: dict,
+        shard: str,
+    ) -> SystemRow:
+        return SystemRow(
+            id=system_id,
+            token=detail.get("token") or index_row.get("token") or "",
+            stem=detail.get("stem") if detail.get("stem") is not None else index_row.get("stem"),
+            kind=detail.get("kind") or index_row.get("kind") or "star",
+            name_en=detail.get("nameEn") or index_row.get("nameEn") or "",
+            name_ru=detail.get("nameRu") or index_row.get("nameRu") or "",
+            star_type_key=detail.get("starTypeKey") or index_row.get("starTypeKey") or "",
+            sector_id=detail.get("sectorId") or index_row.get("sectorId") or "",
+            capital=bool(detail.get("capital", index_row.get("capital", False))),
+            x=float(detail.get("x", index_row.get("x", 0.0)) or 0.0),
+            y=float(detail.get("y", index_row.get("y", 0.0)) or 0.0),
+            z=float(detail.get("z", index_row.get("z", 0.0)) or 0.0),
+            world_count=int(index_row.get("worldCount") or len(detail.get("worlds") or []) or 0),
+            shard=shard,
+            detail=detail,
+        )
+
+    def sync(self, *, wipe_first: bool = False, full: bool = False) -> dict:
         index_path = Path(self.settings.galaxy_index_path)
         systems_dir = Path(self.settings.systems_dir)
         if not index_path.is_file():
@@ -53,6 +78,7 @@ class CatalogSeedService:
         seen_polity_stems: set[str] = set()
         upserted = 0
         removed = 0
+        skipped = 0
 
         with SessionLocal() as session:
             if wipe_first:
@@ -62,6 +88,7 @@ class CatalogSeedService:
                 session.execute(delete(SystemRow))
                 session.execute(delete(GalaxyMetaRow))
                 session.commit()
+                full = True
 
             session.merge(GalaxyMetaRow(id=1, payload=index.get("meta") or {}))
 
@@ -72,7 +99,6 @@ class CatalogSeedService:
                 seen_polity_stems.add(stem)
                 session.merge(PolityRow(stem=stem, payload=polity))
 
-            # Edges have no natural unique key — replace wholesale on each sync.
             session.execute(delete(EdgeRow))
             for edge in index.get("edgesCanon") or []:
                 a, b = edge.get("a"), edge.get("b")
@@ -93,7 +119,9 @@ class CatalogSeedService:
 
             session.commit()
 
+            existing_ids = set(session.scalars(select(SystemRow.id)).all())
             batch: list[SystemRow] = []
+
             for path in json_files:
                 detail = json.loads(path.read_text(encoding="utf-8"))
                 shard = f"systems/{path.name}"
@@ -102,27 +130,18 @@ class CatalogSeedService:
                     logger.warning("Skip system JSON without id: %s", path.name)
                     continue
 
-                index_row = index_by_id.get(system_id) or index_by_shard.get(shard) or {}
                 seen_system_ids.add(system_id)
+                if not full and system_id in existing_ids:
+                    skipped += 1
+                    continue
+
+                index_row = index_by_id.get(system_id) or index_by_shard.get(shard) or {}
                 batch.append(
-                    SystemRow(
-                        id=system_id,
-                        token=detail.get("token") or index_row.get("token") or "",
-                        stem=detail.get("stem") if detail.get("stem") is not None else index_row.get("stem"),
-                        kind=detail.get("kind") or index_row.get("kind") or "star",
-                        name_en=detail.get("nameEn") or index_row.get("nameEn") or "",
-                        name_ru=detail.get("nameRu") or index_row.get("nameRu") or "",
-                        star_type_key=detail.get("starTypeKey") or index_row.get("starTypeKey") or "",
-                        sector_id=detail.get("sectorId") or index_row.get("sectorId") or "",
-                        capital=bool(detail.get("capital", index_row.get("capital", False))),
-                        x=float(detail.get("x", index_row.get("x", 0.0)) or 0.0),
-                        y=float(detail.get("y", index_row.get("y", 0.0)) or 0.0),
-                        z=float(detail.get("z", index_row.get("z", 0.0)) or 0.0),
-                        world_count=int(
-                            index_row.get("worldCount") or len(detail.get("worlds") or []) or 0
-                        ),
-                        shard=shard,
+                    self._system_row(
+                        system_id=system_id,
                         detail=detail,
+                        index_row=index_row,
+                        shard=shard,
                     )
                 )
                 upserted += 1
@@ -131,14 +150,17 @@ class CatalogSeedService:
                         session.merge(row)
                     session.commit()
                     batch.clear()
-                    logger.info("Catalog sync progress: %s/%s", upserted, len(json_files))
+                    logger.info("Catalog sync progress: %s upserted / %s files", upserted, len(json_files))
 
             for row in batch:
                 session.merge(row)
-            session.commit()
+            if batch:
+                session.commit()
 
-            existing_ids = set(session.scalars(select(SystemRow.id)).all())
             stale_ids = existing_ids - seen_system_ids
+            # After upserts, also drop ids that disappeared from JSON.
+            current_ids = set(session.scalars(select(SystemRow.id)).all())
+            stale_ids = current_ids - seen_system_ids
             if stale_ids:
                 removed = len(stale_ids)
                 session.execute(delete(SystemRow).where(SystemRow.id.in_(stale_ids)))
@@ -157,15 +179,18 @@ class CatalogSeedService:
             "systemsBefore": before,
             "systemsAfter": after,
             "upserted": upserted,
+            "skippedExisting": skipped,
             "jsonFiles": len(json_files),
             "removed": removed,
             "wipeFirst": wipe_first,
+            "full": full,
         }
         logger.info(
-            "Catalog sync complete: %s systems (was %s), upserted %s, removed %s",
+            "Catalog sync complete: %s systems (was %s), upserted %s, skipped %s, removed %s",
             after,
             before,
             upserted,
+            skipped,
             removed,
         )
         return result

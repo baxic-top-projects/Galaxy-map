@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     galaxy_index_path: str = "/data/galaxy-index.json"
     systems_dir: str = "/data/systems"
     seed_on_startup: bool = True
+    # When false (default), only insert missing systems + refresh index tables.
+    # Set true to rewrite every system row from JSON on each boot.
+    seed_full_sync: bool = False
 
     @field_validator("database_url", mode="before")
     @classmethod

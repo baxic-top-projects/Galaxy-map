@@ -10,12 +10,22 @@ class CatalogQueryService:
     """Read galaxy catalog from Postgres."""
 
     def health(self) -> dict:
-        with SessionLocal() as session:
-            systems = session.scalar(select(SystemRow.id).limit(1))
+        try:
+            with SessionLocal() as session:
+                systems = session.scalar(select(SystemRow.id).limit(1))
+                return {
+                    "status": "ok" if systems is not None else "empty",
+                    "service": "catalog-service",
+                    "hasSystems": systems is not None,
+                    "db": "ok",
+                }
+        except Exception as exc:  # noqa: BLE001
             return {
-                "status": "ok" if systems is not None else "empty",
+                "status": "error",
                 "service": "catalog-service",
-                "hasSystems": systems is not None,
+                "hasSystems": False,
+                "db": "error",
+                "error": str(exc),
             }
 
     def get_galaxy_index(self) -> dict:

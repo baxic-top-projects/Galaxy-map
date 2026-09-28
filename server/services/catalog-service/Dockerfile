@@ -13,7 +13,7 @@ ENV CATALOG_PORT=8003
 
 EXPOSE 8003
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=180s --retries=5 \
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=10 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/health')"
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8003"]
