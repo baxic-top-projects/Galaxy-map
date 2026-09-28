@@ -6,7 +6,7 @@ from app.db.models import (
     SearchEntryRow,
     SessionLocal,
     SystemRow,
-    engine,
+    get_engine,
     init_db,
 )
 
@@ -18,6 +18,6 @@ __all__ = [
     "SearchEntryRow",
     "SessionLocal",
     "SystemRow",
-    "engine",
+    "get_engine",
     "init_db",
 ]

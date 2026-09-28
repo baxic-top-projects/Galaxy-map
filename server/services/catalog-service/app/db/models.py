@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Float, Integer, String, Text, create_engine
+import threading
+
+from sqlalchemy import Boolean, Engine, Float, Integer, String, Text, create_engine
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app.config.settings import settings
 
@@ -64,15 +66,36 @@ class GalaxyMetaRow(Base):
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
 
-engine = create_engine(
-    settings.database_url,
-    pool_pre_ping=True,
-    future=True,
-    # Fail fast instead of hanging startup/health checks on an unreachable DB.
-    connect_args={"connect_timeout": 10},
-)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+_engine: Engine | None = None
+_engine_lock = threading.Lock()
+
+
+def get_engine() -> Engine:
+    """Create the engine on first use so a bad CATALOG_DATABASE_URL can't crash app import.
+
+    A crash at import keeps uvicorn from ever serving /health, and the container never
+    becomes healthy. Created lazily, the error comes up through the background sync
+    and /health reports it instead.
+    """
+    global _engine
+    with _engine_lock:
+        if _engine is None:
+            _engine = create_engine(
+                settings.database_url,
+                pool_pre_ping=True,
+                future=True,
+                # Fail fast instead of hanging startup/health checks on an unreachable DB.
+                connect_args={"connect_timeout": 10},
+            )
+        return _engine
+
+
+_sessionmaker = sessionmaker(autoflush=False, autocommit=False, future=True)
+
+
+def SessionLocal() -> Session:  # noqa: N802 - keeps the sessionmaker-style call sites
+    return _sessionmaker(bind=get_engine())
 
 
 def init_db() -> None:
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=get_engine())
