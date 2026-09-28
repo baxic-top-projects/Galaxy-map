@@ -11,6 +11,7 @@ const STAR_FALLBACK = {
 const PLANET_FALLBACK = {
   ecumenopolis: 'continental',
   alpine: 'tundra',
+  moon: 'barren',
 }
 
 export function starModelPath(typeKey) {

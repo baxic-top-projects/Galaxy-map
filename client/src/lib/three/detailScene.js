@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import {
   featureModelPath,
+  planetModelPath,
   planetPreviewPath,
   planetTypeArtPath,
   resolveFeatureKey,
@@ -619,6 +620,26 @@ async function createBodyMesh({ kind, typeKey, radius, lightColor }) {
   if (kind === 'star' && (key === 'triple_class_g' || key === 'trinary_class_g')) {
     return createMultipleStarVisual(radius, lightColor, 3)
   }
+  if (kind === 'planet' && key === 'moon') {
+    const scene = await loadGlb(planetModelPath(key))
+    if (scene) {
+      const root = scene.clone(true)
+      const box = new THREE.Box3().setFromObject(root)
+      const center = box.getCenter(new THREE.Vector3())
+      const size = box.getSize(new THREE.Vector3())
+      const maxDim = Math.max(size.x, size.y, size.z) || 1
+      root.scale.setScalar((radius * 2) / maxDim)
+      root.updateMatrixWorld(true)
+      new THREE.Box3().setFromObject(root).getCenter(center)
+      root.position.sub(center)
+      root.traverse((child) => {
+        if (!child.isMesh) return
+        child.castShadow = true
+        child.receiveShadow = true
+      })
+      return root
+    }
+  }
 
   return createTexturedSphere({ typeKey: key, radius, kind, lightColor })
 }
@@ -635,6 +656,7 @@ function collectBodies(detail) {
       planetType: world.planetType,
       planetTypeKey: world.planetTypeKey || 'continental',
       role: world.role || '',
+      satellites: world.satellites || [],
     })
   }
   for (const body of detail.uninhabited || []) {
@@ -647,6 +669,7 @@ function collectBodies(detail) {
       planetType: body.planetType,
       planetTypeKey: body.planetTypeKey || 'barren',
       role: '',
+      satellites: body.satellites || [],
     })
   }
   return bodies
@@ -719,8 +742,8 @@ function createHyperlaneArrowMesh() {
  * Create a detail scene for one star / black-hole system.
  */
 export function createSystemDetailScene(canvas, detail, callbacks = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
-  renderer.setClearColor(0x03050c, 1)
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+  renderer.setClearColor(0x000000, 0)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75))
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -856,7 +879,10 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   canvas.addEventListener('pointerdown', onPointerDown)
   canvas.addEventListener('pointerup', onPointerUp)
 
-  const hostKind = detail.kind === 'black_hole' || detail.kind === 'well' ? detail.kind : 'star'
+  const hostKind =
+    detail.kind === 'black_hole' || detail.kind === 'well' || detail.kind === 'junction'
+      ? detail.kind
+      : 'star'
   const hostDescription = String(detail.starType || '').toLowerCase()
   const resolvedHostTypeKey = resolveStarTypeKey(detail.starTypeKey, hostKind)
   const hostTypeKey =
@@ -864,12 +890,18 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
       ? 'triple_class_g'
       : resolvedHostTypeKey
   const systemLightColor = new THREE.Color(
-    hostKind === 'star' ? starColor(hostTypeKey) : hostKind === 'well' ? 0xffb06a : 0xff7a62,
+    hostKind === 'star'
+      ? starColor(hostTypeKey)
+      : hostKind === 'well'
+        ? 0xffb06a
+        : hostKind === 'junction'
+          ? 0x9fc9d8
+          : 0xff7a62,
   )
   scene.add(new THREE.AmbientLight(0xffffff, 0.18))
   const light = new THREE.PointLight(
     systemLightColor,
-    hostKind === 'black_hole' || hostKind === 'well' ? 1.2 : 3.2,
+    hostKind === 'junction' ? 0 : hostKind === 'black_hole' || hostKind === 'well' ? 1.2 : 3.2,
     100,
   )
   light.position.set(0, 0, 0)
@@ -888,26 +920,37 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   const zAxis = new THREE.Vector3(0, 0, 1)
 
   async function build() {
+    let host
     const hostRadius = hostKind === 'well' ? 2.1 : hostKind === 'black_hole' ? 1.55 : 1.35
-    const host = await createBodyMesh({
-      kind: hostKind,
-      typeKey: hostTypeKey,
-      radius: hostRadius,
-      lightColor: systemLightColor,
-    })
-    root.add(host)
-    animated.push({ mesh: host, orbit: 0, speed: 0 })
-    labelAnchors.push({
-      id: `host:${detail.token}`,
-      mesh: host,
-      nameEn: detail.nameEn,
-      nameRu: detail.nameRu,
-      kind: hostKind,
-      inhabited: false,
-      planetType: detail.starType,
-    })
+    if (hostKind === 'junction') {
+      // Intentionally empty center: a junction is a location where corridors
+      // meet, not a hidden star or black hole.
+      host = new THREE.Object3D()
+      root.add(host)
+    } else {
+      host = await createBodyMesh({
+        kind: hostKind,
+        typeKey: hostTypeKey,
+        radius: hostRadius,
+        lightColor: systemLightColor,
+      })
+      root.add(host)
+      animated.push({ mesh: host, orbit: 0, speed: 0 })
+    }
+    if (hostKind !== 'junction') {
+      labelAnchors.push({
+        id: `host:${detail.token}`,
+        mesh: host,
+        nameEn: detail.nameEn,
+        nameRu: detail.nameRu,
+        kind: hostKind,
+        inhabited: false,
+        planetType: detail.starType,
+      })
+    }
 
-    // Textured host star/black hole; planets keep visible orbit rings.
+    // Junctions deliberately have no host and no planets; optional feature
+    // belts are still rendered below when present in canon.
 
     const planets = collectBodies(detail)
     const featureBelts = detail.features || []
@@ -915,12 +958,94 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     const ORBIT_STEP = 1.5
     const PLANET_CLEARANCE = 0.9
     const BELT_GAP = 0.65
-    const planetOrbits = planets.map((_, index) => ORBIT_START + index * ORBIT_STEP)
+    const innerBelts = featureBelts.filter((feature) => feature.placement === 'inner')
+    const middleBelts =
+      planets.length >= 2
+        ? featureBelts.filter((feature) => feature.placement === 'middle')
+        : []
+    const outerBelts = featureBelts.filter(
+      (feature) =>
+        feature.placement === 'outer' ||
+        (feature.placement === 'middle' && planets.length < 2),
+    )
+
+    async function addFeatureBelt(feature, index, minInner) {
+      const featureKey = resolveFeatureKey(feature.feature || feature.nameEn)
+      const belt = await createAsteroidBelt(featureKey, { minInner })
+      if (disposed) return null
+      root.add(belt)
+      if (belt.userData.beltSpin) {
+        animated.push({ beltSpin: belt.userData.beltSpin })
+      }
+
+      const beltOrbit = belt.userData.beltOrbit || minInner + 0.4
+      const beltOuter = belt.userData.beltOuter || beltOrbit + 0.5
+      const labelPivot = new THREE.Object3D()
+      const labelAngle = Math.PI * 0.25 + index * 0.55
+      labelPivot.position.set(Math.cos(labelAngle) * beltOrbit, 0.08, Math.sin(labelAngle) * beltOrbit)
+      root.add(labelPivot)
+      labelAnchors.push({
+        id: `feature:${feature.nameEn}`,
+        mesh: labelPivot,
+        nameEn: feature.nameEn,
+        nameRu: feature.nameRu,
+        kind: 'feature',
+        inhabited: false,
+        planetType: feature.feature,
+      })
+      return { beltOuter }
+    }
+
+    const planetRadii = planets.map((planet) =>
+      planet.planetTypeKey === 'gas_giant' ? 0.62 : planet.inhabited ? 0.4 : 0.3,
+    )
+    const satelliteExtents = planets.map((planet, index) => {
+      const satellites = planet.satellites || []
+      if (!satellites.length) return planetRadii[index]
+      const outerIndex = satellites.length - 1
+      const outerOrbit = planetRadii[index] * 1.65 + outerIndex * planetRadii[index] * 0.72
+      const outerRadius = Math.max(
+        0.075,
+        planetRadii[index] *
+          (satellites[outerIndex].planetTypeKey === 'gas_giant' ? 0.34 : 0.26),
+      )
+      return outerOrbit + outerRadius
+    })
+
+    let innerClearAfter = hostKind === 'junction' ? 0.55 : hostRadius + 0.45
+    for (let index = 0; index < innerBelts.length; index += 1) {
+      const result = await addFeatureBelt(innerBelts[index], index, innerClearAfter)
+      if (!result) return
+      innerClearAfter = result.beltOuter + BELT_GAP
+    }
+
+    const planetOrbits = []
+    const middleInsertIndex = Math.max(1, Math.floor(planets.length / 2))
+    let planetaryOuterEdge = innerClearAfter
+    for (let index = 0; index < planets.length; index += 1) {
+      if (index === middleInsertIndex) {
+        for (let beltIndex = 0; beltIndex < middleBelts.length; beltIndex += 1) {
+          const result = await addFeatureBelt(
+            middleBelts[beltIndex],
+            innerBelts.length + beltIndex,
+            planetaryOuterEdge + BELT_GAP,
+          )
+          if (!result) return
+          planetaryOuterEdge = result.beltOuter
+        }
+      }
+      const orbit = Math.max(
+        ORBIT_START + index * ORBIT_STEP,
+        planetaryOuterEdge + satelliteExtents[index] + PLANET_CLEARANCE,
+      )
+      planetOrbits.push(orbit)
+      planetaryOuterEdge = orbit + satelliteExtents[index]
+    }
 
     await Promise.all(
       planets.map(async (planet, index) => {
         const orbit = planetOrbits[index]
-        const radius = planet.planetTypeKey === 'gas_giant' ? 0.62 : planet.inhabited ? 0.4 : 0.3
+        const radius = planetRadii[index]
         const mesh = await createBodyMesh({
           kind: 'planet',
           typeKey: planet.planetTypeKey,
@@ -960,49 +1085,84 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
           inhabited: planet.inhabited,
           planetType: planet.planetType,
         })
+
+        await Promise.all(
+          (planet.satellites || []).map(async (satellite, satelliteIndex) => {
+            const satelliteRadius = Math.max(
+              0.075,
+              radius * (satellite.planetTypeKey === 'gas_giant' ? 0.34 : 0.26),
+            )
+            const satelliteOrbit = radius * 1.65 + satelliteIndex * radius * 0.72
+            const satelliteMesh = await createBodyMesh({
+              kind: 'planet',
+              typeKey: satellite.planetTypeKey || 'moon',
+              radius: satelliteRadius,
+              lightColor: systemLightColor,
+            })
+            if (disposed) return
+            const satelliteAngle =
+              (satelliteIndex / Math.max(planet.satellites.length, 1)) * Math.PI * 2 + 0.65
+            satelliteMesh.position.set(
+              Math.cos(satelliteAngle) * satelliteOrbit,
+              0,
+              Math.sin(satelliteAngle) * satelliteOrbit,
+            )
+            mesh.add(satelliteMesh)
+
+            const satelliteRing = new THREE.Mesh(
+              new THREE.RingGeometry(satelliteOrbit - 0.006, satelliteOrbit + 0.006, 96),
+              new THREE.MeshBasicMaterial({
+                color: 0x7891ac,
+                transparent: true,
+                opacity: 0.24,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+              }),
+            )
+            satelliteRing.rotation.x = -Math.PI / 2
+            satelliteRing.raycast = () => {}
+            mesh.add(satelliteRing)
+
+            animated.push({
+              mesh: satelliteMesh,
+              orbit: satelliteOrbit,
+              speed: 0.9 / Math.sqrt(satelliteIndex + 1),
+              angle: satelliteAngle,
+            })
+            labelAnchors.push({
+              id: `${planet.id}:satellite:${satellite.nameEn}`,
+              mesh: satelliteMesh,
+              nameEn: satellite.nameEn,
+              nameRu: satellite.nameRu,
+              kind: 'satellite',
+              inhabited: false,
+              planetType: satellite.planetType,
+            })
+          }),
+        )
       }),
     )
 
     // Place belts sequentially outside planet orbits (and outside previous belts).
     let clearAfter =
       planetOrbits.length > 0
-        ? planetOrbits[planetOrbits.length - 1] + PLANET_CLEARANCE
-        : ORBIT_START + PLANET_CLEARANCE
-    let farthest = clearAfter
+        ? planetaryOuterEdge + PLANET_CLEARANCE
+        : Math.max(innerClearAfter, hostKind === 'junction' ? 0.55 : ORBIT_START + PLANET_CLEARANCE)
+    let farthest = Math.max(clearAfter, innerClearAfter)
 
-    for (let index = 0; index < featureBelts.length; index += 1) {
-      const feature = featureBelts[index]
-      const featureKey = resolveFeatureKey(feature.feature || feature.nameEn)
-      const belt = await createAsteroidBelt(featureKey, { minInner: clearAfter })
-      if (disposed) return
-      root.add(belt)
-      if (belt.userData.beltSpin) {
-        animated.push({ beltSpin: belt.userData.beltSpin })
-      }
-
-      const beltOrbit = belt.userData.beltOrbit || clearAfter + 0.4
-      const beltOuter = belt.userData.beltOuter || beltOrbit + 0.5
-      farthest = Math.max(farthest, beltOuter)
-
-      const labelPivot = new THREE.Object3D()
-      const labelAngle = Math.PI * 0.25 + index * 0.55
-      labelPivot.position.set(Math.cos(labelAngle) * beltOrbit, 0.08, Math.sin(labelAngle) * beltOrbit)
-      root.add(labelPivot)
-      labelAnchors.push({
-        id: `feature:${feature.nameEn}`,
-        mesh: labelPivot,
-        nameEn: feature.nameEn,
-        nameRu: feature.nameRu,
-        kind: 'feature',
-        inhabited: false,
-        planetType: feature.feature,
-      })
-
-      clearAfter = beltOuter + BELT_GAP
+    for (let index = 0; index < outerBelts.length; index += 1) {
+      const result = await addFeatureBelt(
+        outerBelts[index],
+        innerBelts.length + middleBelts.length + index,
+        clearAfter,
+      )
+      if (!result) return
+      farthest = Math.max(farthest, result.beltOuter)
+      clearAfter = result.beltOuter + BELT_GAP
     }
 
     // Look down onto the orbital plane (XZ).
-    const span = Math.max(8, farthest + 2.4)
+    const span = Math.max(hostKind === 'junction' ? 4.2 : 8, farthest + 2.4)
     camera.position.set(0, span * 0.95, span * 0.35)
     controls.target.set(0, 0, 0)
     controls.maxDistance = Math.max(28, span * 2.2)

@@ -88,9 +88,11 @@
   {#if selected}
     <h2>{systemLabel(selected, locale)}</h2>
     <p class="meta">
-      {selected.token}
+      {#if selected.kind !== 'junction'}
+        {selected.token}
+      {/if}
       {#if selectedPolity}
-        · {polityLabel(selectedPolity, locale)}
+        {selected.kind !== 'junction' ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
       {/if}
     </p>
     {#if detail}
@@ -102,13 +104,19 @@
               {locale === 'en' ? 'Black hole system' : 'Система чёрной дыры'}
             {:else if detail.kind === 'well'}
               {locale === 'en' ? 'Galactic core' : 'Галактическое ядро'}
+            {:else if detail.kind === 'junction'}
+              {locale === 'en' ? 'Hypercorridor junction' : 'Стык гиперкоридоров'}
             {:else}
               {locale === 'en' ? 'Star system' : 'Звёздная система'}
             {/if}
           </dd>
         </div>
         <div>
-          <dt>{locale === 'en' ? 'Star / hole type' : 'Тип звезды / дыры'}</dt>
+          <dt>
+            {detail.kind === 'junction'
+              ? (locale === 'en' ? 'Node type' : 'Тип узла')
+              : (locale === 'en' ? 'Star / hole type' : 'Тип звезды / дыры')}
+          </dt>
           <dd>{detail.starType}</dd>
         </div>
         {#if detail.sectorNameEn}
@@ -139,6 +147,20 @@
         </ul>
       {/if}
 
+      {#if detail.worlds?.some((world) => world.satellites?.length)}
+        <h3>{locale === 'en' ? 'Natural satellites' : 'Естественные спутники'}</h3>
+        <ul class="worlds">
+          {#each detail.worlds as world}
+            {#each world.satellites || [] as satellite}
+              <li>
+                <strong>{locale === 'en' ? satellite.nameEn : satellite.nameRu}</strong>
+                <span>{satellite.planetType}</span>
+              </li>
+            {/each}
+          {/each}
+        </ul>
+      {/if}
+
       {#if detail.uninhabited?.length}
         <h3>{locale === 'en' ? 'Uninhabited planets' : 'Необитаемые планеты'}</h3>
         <ul class="worlds">
@@ -163,7 +185,13 @@
         </ul>
       {/if}
 
-      {#if detail.kind === 'black_hole' || detail.kind === 'well'}
+      {#if detail.kind === 'junction'}
+        <p class="hint">
+          {locale === 'en'
+            ? 'No star or planets: hypercorridors intersect here. Asteroid belts may be present.'
+            : 'Здесь нет звезды и планет: в этой точке стыкуются гиперкоридоры. Возможны астероидные пояса.'}
+        </p>
+      {:else if detail.kind === 'black_hole' || detail.kind === 'well'}
         <p class="hint">
           {locale === 'en'
             ? 'This system has no counted worlds — only the black hole itself.'
@@ -175,8 +203,8 @@
     {/if}
     <p class="hint">
       {locale === 'en'
-        ? 'Double-click a star or black hole to enter its system.'
-        : 'Двойной клик по звезде или чёрной дыре открывает систему.'}
+        ? 'Double-click a star, black hole, or junction to enter its system.'
+        : 'Двойной клик по звезде, чёрной дыре или стыку открывает систему.'}
     </p>
   {:else}
     <h2>{locale === 'en' ? 'Galaxy overview' : 'Обзор галактики'}</h2>

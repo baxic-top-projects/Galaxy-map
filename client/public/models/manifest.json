@@ -7,7 +7,7 @@
     "skipped": 0
   },
   "planetGlb": {
-    "copied": 14,
+    "copied": 15,
     "skipped": 2
   },
   "featureGlb": {
@@ -15,14 +15,14 @@
     "skipped": 0
   },
   "starPreview": 12,
-  "planetPreview": 16,
+  "planetPreview": 17,
   "featurePreview": 1,
   "starTypes": {
     "copied": 17,
     "skipped": 0
   },
   "planetTypes": {
-    "copied": 16,
+    "copied": 17,
     "skipped": 0
   },
   "systemFeatures": {

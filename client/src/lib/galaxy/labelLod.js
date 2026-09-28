@@ -15,7 +15,8 @@ export function pickLabels(systems, options) {
   const seen = new Set()
 
   const push = (system, priority) => {
-    if (!system || seen.has(system.id)) return
+    // Junctions are anonymous graph nodes, never map labels (even selected).
+    if (!system || system.kind === 'junction' || seen.has(system.id)) return
     seen.add(system.id)
     chosen.push({ system, priority })
   }
@@ -45,6 +46,7 @@ export function pickLabels(systems, options) {
   if (zoom > 4.5) {
     for (const system of systems) {
       if (chosen.length >= maxLabels) break
+      if (system.kind === 'junction') continue
       push(system, 4)
     }
   }

@@ -60,8 +60,9 @@
           <div
             class="planet-label"
             class:inhabited={label.inhabited}
-            class:host={label.kind === 'star' || label.kind === 'black_hole' || label.kind === 'well'}
+            class:host={label.kind === 'star' || label.kind === 'black_hole' || label.kind === 'well' || label.kind === 'junction'}
             class:feature={label.kind === 'feature'}
+            class:satellite={label.kind === 'satellite'}
             class:hyperlane={label.kind === 'hyperlane'}
             style={`left:${label.x}px;top:${label.y}px`}
           >
@@ -87,13 +88,16 @@
     width: 100%;
     height: 100%;
     min-height: 280px;
-    background: radial-gradient(circle at 40% 30%, #15203a, #05070f 70%);
+    background:
+      linear-gradient(rgba(0, 0, 0, 0.68), rgba(0, 0, 0, 0.68)),
+      #000 url('/textures/system_starfield.png?v=2') center / cover no-repeat;
   }
 
   .detail-canvas {
     display: block;
     width: 100%;
     height: 100%;
+    background: transparent;
   }
 
   .empty {
@@ -144,6 +148,12 @@
   .planet-label.feature {
     border-color: rgba(210, 190, 120, 0.45);
     color: #e6d7a8;
+  }
+
+  .planet-label.satellite {
+    border-color: rgba(185, 195, 215, 0.42);
+    color: #d8deea;
+    transform: translate(-50%, -115%) scale(0.88);
   }
 
   .planet-label.hyperlane {

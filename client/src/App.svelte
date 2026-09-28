@@ -202,6 +202,9 @@
     width: 100vw;
     height: 100vh;
     overflow: hidden;
+  }
+
+  .app-shell {
     background:
       radial-gradient(circle at 50% 45%, rgba(40, 70, 140, 0.28), transparent 42%),
       #05070f;
@@ -210,6 +213,9 @@
   .system-mode {
     padding: 0;
     box-sizing: border-box;
+    background:
+      linear-gradient(rgba(0, 0, 0, 0.68), rgba(0, 0, 0, 0.68)),
+      #000 url('/textures/system_starfield.png?v=2') center / cover no-repeat;
   }
 
   .labels {

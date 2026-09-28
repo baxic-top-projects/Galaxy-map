@@ -40,9 +40,11 @@ const MARKER = {
   blackHole: 1,
   capital: 2,
   well: 3,
+  junction: 4,
 }
 
 function markerKind(system) {
+  if (system.kind === 'junction') return MARKER.junction
   if (system.kind === 'well') return MARKER.well
   if (system.kind === 'black_hole') return MARKER.blackHole
   if (system.capital) return MARKER.capital
@@ -54,6 +56,7 @@ function pointSizeFor(system) {
   if (kind === MARKER.well) return 14
   if (kind === MARKER.capital) return 12
   if (kind === MARKER.blackHole) return 9.5
+  if (kind === MARKER.junction) return 7.5
   return 5.2
 }
 
@@ -125,7 +128,9 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     kinds[index] = kind
     sizes[index] = pointSizeFor(system)
 
-    if (kind === MARKER.blackHole || kind === MARKER.well) {
+    if (kind === MARKER.junction) {
+      color.setHex(0xa8e2dd)
+    } else if (kind === MARKER.blackHole || kind === MARKER.well) {
       // Core is dark; rim color carried in vertex color for the shader.
       color.setHex(kind === MARKER.well ? 0xffbe6a : 0xff9a3c)
     } else if (kind === MARKER.capital) {
@@ -172,7 +177,8 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
         float cap = 9.5;
         if (vKind > 0.5 && vKind < 1.5) cap = 13.0;       // black hole
         else if (vKind > 1.5 && vKind < 2.5) cap = 15.0;  // capital
-        else if (vKind >= 2.5) cap = 16.0;                // well
+        else if (vKind > 2.5 && vKind < 3.5) cap = 16.0;  // well
+        else if (vKind >= 3.5) cap = 10.0;                // junction
         gl_PointSize = clamp(px, 2.5, cap);
         gl_Position = projectionMatrix * mvPosition;
       }
@@ -210,6 +216,16 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
           if (ring < 0.02 && core < 0.02) discard;
           vec3 col = mix(vColor * 0.55, vColor, max(core, ring));
           gl_FragColor = vec4(col, max(core, ring * 0.95));
+          return;
+        }
+
+        // Empty hypercorridor junction: small hollow diamond.
+        if (vKind >= 3.5) {
+          float diamond = abs(uv.x) + abs(uv.y);
+          float rim = smoothstep(0.28, 0.34, diamond) * (1.0 - smoothstep(0.43, 0.49, diamond));
+          float core = 1.0 - smoothstep(0.07, 0.13, d);
+          if (rim < 0.02 && core < 0.02) discard;
+          gl_FragColor = vec4(vColor, max(rim * 0.9, core));
           return;
         }
 
