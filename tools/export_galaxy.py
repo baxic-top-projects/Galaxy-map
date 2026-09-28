@@ -220,9 +220,10 @@ def _parse_system_card(path: Path | None, kind: str) -> dict:
             )
 
     features = []
-    feat_block = text.split("### System features", 1)
+    feat_block = re.split(r"(?m)^#{2,3} System features\s*$", text, maxsplit=1)
     if len(feat_block) > 1:
-        for name_en_f, name_ru_f, feature, placement in FEATURE_ROW_RE.findall(feat_block[1]):
+        feature_body = re.split(r"(?m)^##\s+", feat_block[1], maxsplit=1)[0]
+        for name_en_f, name_ru_f, feature, placement in FEATURE_ROW_RE.findall(feature_body):
             placement_text = placement.strip().lower()
             if placement_text.startswith("inner"):
                 placement_key = "inner"
@@ -381,18 +382,6 @@ def main() -> None:
             card["nameEn"] = "Hypercorridor junction"
             card["nameRu"] = "Стык гиперкоридоров"
             card["starType"] = "Empty hypercorridor node"
-            # Some empty crossings contain a central meteorite ring. Keep the
-            # choice stable across exports without inventing a proper name.
-            ring_seed = int(hashlib.md5(f"junction-ring:{sys['token']}".encode()).hexdigest()[:8], 16)
-            if not card["features"] and ring_seed % 4 == 0:
-                card["features"] = [
-                    {
-                        "nameEn": "Meteorite ring",
-                        "nameRu": "Метеоритное кольцо",
-                        "feature": "Asteroid Belt",
-                        "placement": "inner",
-                    }
-                ]
 
         capital = (sys["stem"], sys["token"]) in CAPITALS
         worlds = []
