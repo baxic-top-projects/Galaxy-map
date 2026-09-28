@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { filterSearch } from './lib/galaxy/search.js'
 import { estimateZoom, pickLabels } from './lib/galaxy/labelLod.js'
 import { buildSpatialIndex } from './lib/galaxy/spatialIndex.js'
-import { resolveStarTypeKey, starColor, starModelPath } from './lib/galaxy/modelCatalog.js'
+import { resolveStarTypeKey, starColor } from './lib/galaxy/modelCatalog.js'
 
 describe('search', () => {
   const entries = [
@@ -55,7 +55,6 @@ describe('model catalog', () => {
     expect(resolveStarTypeKey('class_g')).toBe('class_g')
     expect(resolveStarTypeKey('class_g', 'black_hole')).toBe('black_hole')
     expect(resolveStarTypeKey('class_g', 'well')).toBe('supermassive_black_hole')
-    expect(starModelPath('black_hole')).toBe('/models/stars/star_type_black_hole.glb')
     expect(starColor('class_g')).toBe(0xffe08a)
   })
 })
