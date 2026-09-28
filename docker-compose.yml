@@ -43,7 +43,17 @@ services:
     env_file:
       - ./server/services/storm-service/.env
     volumes:
-      - ./client/public/data/galaxy-index.json:/data/galaxy-index.json:ro
+      - ./server/data/galaxy-index.json:/data/galaxy-index.json:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
     depends_on:
       kafka:
         condition: service_healthy
@@ -60,6 +70,16 @@ services:
       - "8002"
     env_file:
       - ./server/services/asset-service/.env
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
     networks:
       - galaxy_net
@@ -74,8 +94,18 @@ services:
     env_file:
       - ./server/services/catalog-service/.env
     volumes:
-      - ./client/public/data/galaxy-index.json:/data/galaxy-index.json:ro
-      - ./client/public/data/systems:/data/systems:ro
+      - ./server/data/galaxy-index.json:/data/galaxy-index.json:ro
+      - ./server/data/systems:/data/systems:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/health')\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 180s
     restart: unless-stopped
     networks:
       - galaxy_net

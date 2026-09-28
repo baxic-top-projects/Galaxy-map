@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 CANON = Path(r"D:\GitHub\EfolsMiradinsPact")
-OUT_DIR = Path(__file__).resolve().parents[1] / "client" / "public" / "data"
+OUT_DIR = Path(__file__).resolve().parents[1] / "server" / "data"
 SYSTEMS_DIR = OUT_DIR / "systems"
 
 sys.path.insert(0, str(CANON / "tools"))

@@ -6,8 +6,13 @@ import { estimateZoom, pickLabels } from '../galaxy/labelLod.js'
 
 const GALAXY_SCALE = 42
 const MAP_LIM = 1.06
-const TERRITORY_PLATE_URL = mapTexturePath('galaxy_territory_plate.png', 'v=40')
 const textureLoader = new THREE.TextureLoader()
+textureLoader.setCrossOrigin('anonymous')
+
+function territoryPlateUrl() {
+  // Resolve at use-time so applyAssetManifest / VITE_ASSETS_BASE are already applied.
+  return mapTexturePath('galaxy_territory_plate.png', 'v=40')
+}
 
 function loadTexture(url, { crisp = false } = {}) {
   return new Promise((resolve, reject) => {
@@ -704,9 +709,12 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 
 function createPoliticalPlate(galaxy) {
   // Prefer the canon territory plate (same paint as galaxy_political_map.png).
-  return loadTexture(TERRITORY_PLATE_URL, { crisp: true })
+  return loadTexture(territoryPlateUrl(), { crisp: true })
     .then((texture) => makePlateMeshFromTexture(texture))
-    .catch(() => createProceduralPoliticalPlate(galaxy))
+    .catch((err) => {
+      console.warn('Galaxy territory plate failed, using procedural fallback', territoryPlateUrl(), err)
+      return createProceduralPoliticalPlate(galaxy)
+    })
 }
 
 function makePlateMeshFromTexture(texture) {

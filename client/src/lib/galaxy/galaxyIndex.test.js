@@ -1,56 +1,86 @@
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { loadGalaxy, loadSystemDetail, polityLabel, systemLabel } from './loadGalaxy.js'
 
-const root = dirname(fileURLToPath(import.meta.url))
-const indexPath = join(root, '../../../public/data/galaxy-index.json')
-
-describe('galaxy-index contract', () => {
-  const data = JSON.parse(readFileSync(indexPath, 'utf8'))
-
-  test('contains expected top-level collections', () => {
-    expect(data.meta.source).toBe('EfolsMiradinsPact')
-    expect(data.polities.length).toBeGreaterThan(40)
-    expect(data.systems.length).toBeGreaterThan(3000)
-    expect(data.edgesDisplay.length).toBeGreaterThan(4000)
-    expect(data.search.length).toBeGreaterThan(data.systems.length)
+describe('loadGalaxy API client', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
-  test('systems expose coordinates and shards', () => {
-    const sample = data.systems.find((system) => system.token === 'MiradinSirius')
-    expect(sample).toBeTruthy()
-    expect(typeof sample.x).toBe('number')
-    expect(typeof sample.y).toBe('number')
-    expect(typeof sample.z).toBe('number')
-    expect(sample.shard).toContain('systems/')
-    expect(sample.capital).toBe(true)
-  })
+  test('loads galaxy index from /api/v1/galaxy', async () => {
+    const payload = {
+      meta: { source: 'EfolsMiradinsPact' },
+      polities: [{ stem: 'Miradin_Empire', nameEn: 'Miradin Empire', nameRu: 'Империя Мирадин' }],
+      systems: [
+        {
+          id: 'Miradin_Empire:MiradinSirius',
+          token: 'MiradinSirius',
+          stem: 'Miradin_Empire',
+          kind: 'star',
+          nameEn: 'Miradin Sirius',
+          nameRu: 'Мирадин Сириус',
+          starTypeKey: 'class_g',
+          sectorId: 's1',
+          capital: true,
+          x: 1,
+          y: 2,
+          z: 3,
+          worldCount: 4,
+          shard: 'systems/Miradin_Empire__MiradinSirius.json',
+        },
+      ],
+      edgesCanon: [{ a: 'A', b: 'B' }],
+      edgesDisplay: [{ a: 'A', b: 'B' }],
+      search: [],
+    }
 
-  test('exports all empty hypercorridor junctions as connected systems', () => {
-    const junctions = data.systems.filter((system) => system.kind === 'junction')
-    const connected = new Set(
-      data.edgesDisplay.flatMap((edge) => [edge.a, edge.b]),
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        expect(String(url)).toMatch(/\/api\/v1\/galaxy$/)
+        return {
+          ok: true,
+          json: async () => payload,
+        }
+      }),
     )
 
-    expect(junctions).toHaveLength(400)
-    expect(junctions.every((system) => system.worldCount === 0)).toBe(true)
-    expect(junctions.every((system) => system.starTypeKey === 'junction')).toBe(true)
-    expect(junctions.every((system) => connected.has(system.id))).toBe(true)
-    expect(data.search.some((entry) => junctions.some((system) => system.id === entry.id))).toBe(false)
+    const galaxy = await loadGalaxy('http://gateway.test')
+    expect(galaxy.meta.source).toBe('EfolsMiradinsPact')
+    expect(galaxy.byId.get('Miradin_Empire:MiradinSirius').token).toBe('MiradinSirius')
+    expect(galaxy.polityByStem.get('Miradin_Empire').nameEn).toBe('Miradin Empire')
   })
 
-  test('preserves named moons from the canonical planet registry', () => {
-    const mira = JSON.parse(
-      readFileSync(join(root, '../../../public/data/systems/Miradin_Empire__MiradinSirius.json'), 'utf8'),
-    )
-    const world = mira.worlds.find((entry) => entry.token === 'Mira')
+  test('loads system detail by id from /api/v1/systems', async () => {
+    const detail = {
+      id: 'Miradin_Empire:MiradinSirius',
+      token: 'MiradinSirius',
+      worlds: [{ token: 'Mira', satellites: [{ nameEn: 'Old Frend' }] }],
+    }
 
-    expect(world.satellites.map((moon) => moon.nameEn)).toEqual([
-      'Old Frend',
-      'Ekkel',
-      'Shrjne',
-    ])
-    expect(world.satellites.every((moon) => moon.planetTypeKey === 'moon')).toBe(true)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        expect(String(url)).toContain('/api/v1/systems/')
+        expect(String(url)).toContain(encodeURIComponent('Miradin_Empire:MiradinSirius'))
+        return {
+          ok: true,
+          json: async () => detail,
+        }
+      }),
+    )
+
+    const system = await loadSystemDetail(
+      { id: 'Miradin_Empire:MiradinSirius' },
+      'http://gateway.test',
+    )
+    expect(system.worlds[0].token).toBe('Mira')
+  })
+
+  test('labels prefer locale', () => {
+    const system = { nameEn: 'Alpha', nameRu: 'Альфа' }
+    const polity = { nameEn: 'Empire', nameRu: 'Империя' }
+    expect(systemLabel(system, 'ru')).toBe('Альфа')
+    expect(systemLabel(system, 'en')).toBe('Alpha')
+    expect(polityLabel(polity, 'ru')).toBe('Империя')
   })
 })

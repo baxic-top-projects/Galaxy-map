@@ -17,6 +17,7 @@ import {
 
 const gltfLoader = new GLTFLoader()
 const textureLoader = new THREE.TextureLoader()
+textureLoader.setCrossOrigin('anonymous')
 const glbCache = new Map()
 const texCache = new Map()
 

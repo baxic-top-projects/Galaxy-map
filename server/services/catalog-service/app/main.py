@@ -19,9 +19,11 @@ async def lifespan(_app: FastAPI):
     init_db()
     if settings.seed_on_startup:
         try:
-            CatalogSeedService(settings).seed_if_empty()
+            result = CatalogSeedService(settings).sync_on_startup()
+            logger.info("Catalog sync result: %s", result)
         except Exception:
-            logger.exception("Catalog seed failed")
+            logger.exception("Catalog sync failed")
+            raise
     yield
 
 
