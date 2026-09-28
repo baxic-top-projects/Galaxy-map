@@ -5,6 +5,7 @@
     detail = null,
     galaxy = null,
     locale = 'ru',
+    storm = null,
     onLabels = undefined,
     onZoomOut = undefined,
     onTravelTo = undefined,
@@ -17,6 +18,7 @@
   $effect(() => {
     const current = detail
     const map = galaxy
+    const initialStorm = storm
     let cancelled = false
     api?.dispose()
     api = null
@@ -29,6 +31,7 @@
       if (cancelled || !canvas) return
       api = createSystemDetailScene(canvas, current, {
         galaxy: map,
+        storm: initialStorm,
         onLabels(next) {
           labels = next
           onLabels?.(next)
@@ -45,6 +48,11 @@
     }
   })
 
+  $effect(() => {
+    if (!api) return
+    api.setStorm(storm)
+  })
+
   onDestroy(() => {
     api?.dispose()
     api = null
@@ -54,6 +62,21 @@
 {#if detail}
   <div class="system-stage">
     <canvas bind:this={canvas} class="detail-canvas" aria-label="System detail view"></canvas>
+    {#if storm}
+      <div
+        class="storm-banner"
+        style={`--storm:${storm.color || '#6ec8ff'}`}
+        aria-hidden="true"
+      >
+        <strong>
+          {locale === 'en' ? 'System storm' : 'Системная буря'}
+        </strong>
+        <span>
+          {storm.stage}
+          · {Math.round((Number(storm.intensity) || 0) * 100)}%
+        </span>
+      </div>
+    {/if}
     <div class="planet-labels" aria-hidden="true">
       {#each labels as label}
         {#if label.visible}
@@ -98,6 +121,36 @@
     width: 100%;
     height: 100%;
     background: transparent;
+  }
+
+  .storm-banner {
+    position: absolute;
+    top: 5.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4;
+    display: grid;
+    gap: 0.15rem;
+    justify-items: center;
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--storm) 55%, transparent);
+    background: color-mix(in srgb, var(--storm) 16%, rgba(4, 8, 16, 0.72));
+    color: #e8f4ff;
+    pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  }
+
+  .storm-banner strong {
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .storm-banner span {
+    font-size: 0.7rem;
+    color: #c5d8ef;
+    text-transform: capitalize;
   }
 
   .empty {

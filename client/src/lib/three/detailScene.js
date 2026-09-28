@@ -741,6 +741,173 @@ function createHyperlaneArrowMesh() {
 /**
  * Create a detail scene for one star / black-hole system.
  */
+/**
+ * Stellaris-style storm rim: flat turbulent band + soft vertical shell at the system edge.
+ * @param {{
+ *   radius: number,
+ *   color?: string,
+ *   intensity?: number,
+ *   stage?: string,
+ *   type?: string,
+ * }} options
+ */
+function createStormBoundary(options) {
+  const {
+    radius,
+    color = '#6ec8ff',
+    intensity = 0.6,
+    stage = 'active',
+    type = 'electric',
+  } = options
+  const stageBoost = stage === 'forming' ? 0.55 : stage === 'dissipating' ? 0.7 : 1
+  const typeId = type === 'gravity' ? 1 : type === 'particle' ? 2 : type === 'shroud' ? 3 : 0
+  const group = new THREE.Group()
+  group.name = 'stormBoundary'
+  group.renderOrder = 6
+
+  const uniforms = {
+    uTime: { value: 0 },
+    uColor: { value: new THREE.Color(color) },
+    uIntensity: { value: THREE.MathUtils.clamp(Number(intensity) || 0.5, 0.15, 1) * stageBoost },
+    uType: { value: typeId },
+  }
+
+  const sharedFragmentNoise = `
+    float hash21(vec2 p) {
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+    }
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      float a = hash21(i);
+      float b = hash21(i + vec2(1.0, 0.0));
+      float c = hash21(i + vec2(0.0, 1.0));
+      float d = hash21(i + vec2(1.0, 1.0));
+      return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    }
+    float fbm(vec2 p) {
+      float v = 0.0;
+      float a = 0.5;
+      for (int i = 0; i < 4; i++) {
+        v += a * noise(p);
+        p = p * 2.05 + 17.3;
+        a *= 0.5;
+      }
+      return v;
+    }
+  `
+
+  const inner = radius * 0.78
+  const outer = radius * 1.08
+  const band = new THREE.Mesh(
+    new THREE.RingGeometry(inner, outer, 256, 48),
+    new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: `
+        varying vec2 vPos;
+        void main() {
+          vPos = position.xy;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uColor;
+        uniform float uIntensity;
+        uniform float uType;
+        varying vec2 vPos;
+        ${sharedFragmentNoise}
+        void main() {
+          float r = length(vPos);
+          float t = (r - ${inner.toFixed(4)}) / max(${(outer - inner).toFixed(4)}, 0.001);
+          float angle = atan(vPos.y, vPos.x);
+          float rim = smoothstep(0.0, 0.18, t) * (1.0 - smoothstep(0.72, 1.0, t));
+          vec2 drift = vec2(angle * 2.2, t * 4.0) + vec2(uTime * (0.18 + uType * 0.04), -uTime * 0.11);
+          float clouds = fbm(drift * 2.4);
+          float bolts = smoothstep(0.78, 0.96, fbm(drift * 6.5 + 9.1));
+          float swirl = 0.5 + 0.5 * sin(angle * (8.0 + uType) - uTime * 1.4 + clouds * 4.0);
+          float glow = rim * (0.35 + clouds * 0.55 + swirl * 0.25) + bolts * rim * 0.85;
+          vec3 tint = uColor;
+          if (uType > 2.5) tint = mix(uColor, vec3(0.55, 1.0, 0.82), 0.35);
+          else if (uType > 1.5) tint = mix(uColor, vec3(1.0, 0.86, 0.45), 0.3);
+          else if (uType > 0.5) tint = mix(uColor, vec3(0.72, 0.55, 1.0), 0.28);
+          float alpha = glow * uIntensity * 0.95;
+          if (alpha < 0.012) discard;
+          gl_FragColor = vec4(tint * (0.55 + bolts * 1.4 + clouds * 0.35), clamp(alpha, 0.0, 0.92));
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    }),
+  )
+  band.rotation.x = -Math.PI / 2
+  band.position.y = 0.04
+  band.raycast = () => {}
+  group.add(band)
+
+  const wallHeight = Math.max(1.8, radius * 0.22)
+  const wall = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius * 0.96, radius * 1.02, wallHeight, 128, 1, true),
+    new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: `
+        varying vec2 vUv;
+        varying float vY;
+        void main() {
+          vUv = uv;
+          vY = position.y;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uColor;
+        uniform float uIntensity;
+        uniform float uType;
+        varying vec2 vUv;
+        varying float vY;
+        ${sharedFragmentNoise}
+        void main() {
+          float h = abs(vY) / ${wallHeight.toFixed(4)};
+          float vertical = 1.0 - smoothstep(0.15, 0.55, h);
+          vec2 drift = vec2(vUv.x * 18.0 + uTime * 0.25, vUv.y * 3.0 - uTime * 0.18);
+          float clouds = fbm(drift);
+          float arcs = smoothstep(0.82, 0.97, fbm(drift * 3.2 + 4.7));
+          float pulse = 0.65 + 0.35 * sin(uTime * 2.1 + vUv.x * 40.0);
+          float alpha = vertical * (0.22 + clouds * 0.48 + arcs * 0.55) * uIntensity * pulse;
+          if (alpha < 0.02) discard;
+          vec3 tint = mix(uColor, vec3(1.0), arcs * 0.45);
+          gl_FragColor = vec4(tint, clamp(alpha, 0.0, 0.78));
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    }),
+  )
+  wall.raycast = () => {}
+  group.add(wall)
+
+  group.userData.updateVisual = (elapsed) => {
+    uniforms.uTime.value = elapsed
+  }
+  group.userData.setStorm = (storm) => {
+    if (!storm) return
+    uniforms.uColor.value.set(storm.color || color)
+    const nextStage = storm.stage === 'forming' ? 0.55 : storm.stage === 'dissipating' ? 0.7 : 1
+    uniforms.uIntensity.value =
+      THREE.MathUtils.clamp(Number(storm.intensity) || 0.5, 0.15, 1) * nextStage
+    uniforms.uType.value =
+      storm.type === 'gravity' ? 1 : storm.type === 'particle' ? 2 : storm.type === 'shroud' ? 3 : 0
+  }
+
+  return group
+}
+
 export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
   renderer.setClearColor(0x000000, 0)
@@ -918,6 +1085,41 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   const animated = []
   const labelAnchors = []
   const zAxis = new THREE.Vector3(0, 0, 1)
+  let stormBoundary = null
+  let stormRadius = 10
+
+  function clearStormBoundary() {
+    if (!stormBoundary) return
+    root.remove(stormBoundary)
+    stormBoundary.traverse((child) => {
+      child.geometry?.dispose()
+      if (child.material) {
+        if (Array.isArray(child.material)) child.material.forEach((mat) => mat.dispose())
+        else child.material.dispose()
+      }
+    })
+    stormBoundary = null
+  }
+
+  function setStorm(storm) {
+    if (disposed) return
+    if (!storm || !(Number(storm.intensity) > 0.05)) {
+      clearStormBoundary()
+      return
+    }
+    if (!stormBoundary) {
+      stormBoundary = createStormBoundary({
+        radius: stormRadius,
+        color: storm.color,
+        intensity: storm.intensity,
+        stage: storm.stage,
+        type: storm.type,
+      })
+      root.add(stormBoundary)
+    } else {
+      stormBoundary.userData.setStorm?.(storm)
+    }
+  }
 
   async function build() {
     let host
@@ -1168,6 +1370,9 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     controls.maxDistance = Math.max(28, span * 2.2)
     controls.update()
 
+    stormRadius = Math.max(span * 0.88, farthest + 1.1)
+    setStorm(callbacks.storm)
+
     // Stellaris-style hyperlane arrows toward connected systems.
     const neighbors = neighborSystems(detail, callbacks.galaxy)
     arrowRadius = Math.max(span * 0.92, farthest + 1.35)
@@ -1233,6 +1438,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     raf = requestAnimationFrame(frame)
     frameCount += 1
     const elapsed = performance.now() * 0.001
+    stormBoundary?.userData.updateVisual?.(elapsed)
     for (const body of animated) {
       body.mesh?.userData.updateVisual?.(elapsed, camera)
       if (body.beltSpin) {
@@ -1262,6 +1468,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   function dispose() {
     disposed = true
     cancelAnimationFrame(raf)
+    clearStormBoundary()
     window.removeEventListener('resize', resize)
     window.removeEventListener('keydown', onKeyDown)
     window.removeEventListener('keyup', onKeyUp)
@@ -1278,5 +1485,5 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   build()
   raf = requestAnimationFrame(frame)
 
-  return { dispose, resize }
+  return { dispose, resize, setStorm }
 }

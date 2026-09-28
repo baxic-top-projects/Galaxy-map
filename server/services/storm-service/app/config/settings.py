@@ -19,8 +19,11 @@ class Settings(BaseSettings):
     max_radius_hops: int = 4
     host: str = "0.0.0.0"
     port: int = 8001
-    # Reserved for future event bus integration.
+    # 0 = auto (os.cpu_count())
+    worker_processes: int = 0
     kafka_bootstrap_servers: str = "kafka:9092"
+    kafka_topic: str = "galaxy.storms"
+    kafka_enabled: bool = True
 
 
 settings = Settings()

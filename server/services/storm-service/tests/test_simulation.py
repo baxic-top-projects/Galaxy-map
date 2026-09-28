@@ -47,6 +47,8 @@ def test_storm_lifecycle_and_spawn(tiny_galaxy: Path):
         active_ticks=4,
         dissipate_ticks=2,
         max_radius_hops=2,
+        worker_processes=1,
+        kafka_enabled=False,
     )
     sim = StormSimulationService(GalaxyGraphService(tiny_galaxy), settings)
 
@@ -76,3 +78,28 @@ def test_storm_lifecycle_and_spawn(tiny_galaxy: Path):
     for _ in range(settings.dissipate_ticks + 1):
         sim.step()
     assert all(item.id != active.id for item in sim.snapshot().storms)
+    sim.close()
+
+
+def test_parallel_workers_advance_storms(tiny_galaxy: Path):
+    settings = Settings(
+        galaxy_index_path=tiny_galaxy,
+        seed=11,
+        max_active_storms=3,
+        spawn_chance=1.0,
+        form_ticks=1,
+        active_ticks=3,
+        dissipate_ticks=1,
+        max_radius_hops=2,
+        worker_processes=2,
+        kafka_enabled=False,
+    )
+    sim = StormSimulationService(GalaxyGraphService(tiny_galaxy), settings)
+    try:
+        for _ in range(4):
+            snap = sim.step()
+        assert snap.tick == 4
+        assert 1 <= len(snap.storms) <= 3
+        assert snap.systems
+    finally:
+        sim.close()

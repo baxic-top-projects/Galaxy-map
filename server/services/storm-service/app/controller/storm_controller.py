@@ -37,9 +37,13 @@ def get_system_storm(system_id: str) -> SystemStormResponseDto:
 
 @router.post("/internal/v1/storms/tick", response_model=StormSnapshotDto)
 async def force_tick() -> StormSnapshotDto:
+    from app.main import _schedule_kafka_publish
+
     sim = get_simulator()
     snapshot = await __import__("asyncio").to_thread(sim.step)
-    await storm_broadcast.broadcast_json(snapshot.model_dump(mode="json"))
+    payload = snapshot.model_dump(mode="json")
+    await storm_broadcast.broadcast_json(payload)
+    _schedule_kafka_publish(payload)
     return snapshot
 
 
