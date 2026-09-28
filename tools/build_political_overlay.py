@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import ast
 import io
+import json
 import math
 from pathlib import Path
 
@@ -12,14 +14,7 @@ import requests
 from botocore.client import Config
 from dotenv import dotenv_values
 from PIL import Image, ImageDraw, ImageFont
-from scipy.ndimage import (
-    binary_closing,
-    binary_dilation,
-    binary_fill_holes,
-    center_of_mass,
-    distance_transform_edt,
-    label as component_labels,
-)
+from scipy.ndimage import binary_dilation
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,7 +25,8 @@ ENV_PATH = ROOT / "server" / "services" / "asset-service" / ".env"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
 TEXTURE_KEY = "textures/galaxy_territory_plate.png"
 SIDE = 2048
-MAP_LIMIT = 1.06
+ANCHORS_PATH = ROOT / "tools" / "polity_label_anchors.json"
+CANONICAL_RENDERER = ROOT.parent / "EfolsMiradinsPact" / "tools" / "_render_galaxy_political_map.py"
 
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -134,7 +130,18 @@ def fit_label(
     return None
 
 
-def build_overlay(polities: list[dict], systems: list[dict]) -> Image.Image:
+def canonical_labels() -> dict[str, str]:
+    tree = ast.parse(CANONICAL_RENDERER.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "SHORT_RU" for target in node.targets)
+        ):
+            return ast.literal_eval(node.value)
+    raise RuntimeError("SHORT_RU not found in canonical renderer")
+
+
+def build_overlay(polities: list[dict]) -> Image.Image:
     territory = Image.open(TERRITORY_PLATE).convert("RGBA").resize(
         (SIDE, SIDE), Image.Resampling.LANCZOS
     )
@@ -189,125 +196,34 @@ def build_overlay(polities: list[dict], systems: list[dict]) -> Image.Image:
     output[border, 3] = 255
 
     image = Image.fromarray(output, "RGBA")
-    occupied = np.zeros((SIDE, SIDE), dtype=bool)
-    system_pixels: dict[str, list[tuple[int, int]]] = {}
-    for system in systems:
-        stem = system.get("stem")
-        if not stem:
-            continue
-        px = round(
-            ((float(system["x"]) + MAP_LIMIT) / (MAP_LIMIT * 2)) * (SIDE - 1)
-        )
-        py = round(
-            (1 - (float(system["y"]) + MAP_LIMIT) / (MAP_LIMIT * 2)) * (SIDE - 1)
-        )
-        if 0 <= px < SIDE and 0 <= py < SIDE:
-            system_pixels.setdefault(stem, []).append((px, py))
-
+    anchors = json.loads(ANCHORS_PATH.read_text(encoding="utf-8"))
+    labels = canonical_labels()
     decoded = 0
-    owner_sizes = np.bincount(owner[owner >= 0], minlength=len(polities))
-    placement_order = sorted(
-        range(len(polities)),
-        key=lambda item: (
-            polities[item].get("kind") == "suzerain",
-            int(owner_sizes[item]),
-        ),
-        reverse=True,
-    )
-    for index in placement_order:
-        polity = polities[index]
-        mask = binary_fill_holes(binary_closing(owner == index, iterations=3))
-        if int(mask.sum()) < 20:
-            print(f"WARNING: no territory decoded for {polity['stem']}")
+    for polity in polities:
+        stem = polity["stem"]
+        if stem not in anchors or stem not in labels:
+            print(f"WARNING: missing canonical label anchor for {stem}")
             continue
-        points = system_pixels.get(polity["stem"], [])
-        components, count = component_labels(mask)
-        component = 0
-        target_x = float(np.mean([point[0] for point in points])) if points else SIDE / 2
-        target_y = float(np.mean([point[1] for point in points])) if points else SIDE / 2
-        if count > 0:
-            sizes = np.bincount(components.ravel())
-            sizes[0] = 0
-            candidates = np.argsort(sizes)[-min(8, count):]
-            candidates = candidates[sizes[candidates] >= 200]
-            if candidates.size:
-                centers = center_of_mass(mask, components, candidates.tolist())
-                distances = [
-                    (center_x - target_x) ** 2 + (center_y - target_y) ** 2
-                    for center_y, center_x in centers
-                ]
-                component = int(candidates[int(np.argmin(distances))])
-
-        label_mask = components == component if component > 0 else mask
-        if points:
-            inside_y, inside_x = np.nonzero(label_mask)
-            nearest = int(
-                np.argmin((inside_x - target_x) ** 2 + (inside_y - target_y) ** 2)
-            )
-            px, py = int(inside_x[nearest]), int(inside_y[nearest])
-        else:
-            py_float, px_float = center_of_mass(label_mask)
-            py, px = int(round(py_float)), int(round(px_float))
-
-        distance = distance_transform_edt(label_mask)
-        safe_mask = distance >= max(2, round(1.5 * SIDE / 1024))
-        candidates = [(px, py)]
-        center_y, center_x = center_of_mass(label_mask)
-        candidates.append((int(round(center_x)), int(round(center_y))))
-        sample = distance[::16, ::16]
-        sample_count = min(32, sample.size)
-        sample_indices = np.argpartition(sample.ravel(), -sample_count)[-sample_count:]
-        sample_indices = sample_indices[np.argsort(sample.ravel()[sample_indices])[::-1]]
-        candidates.extend(
-            (int(sample_x * 16), int(sample_y * 16))
-            for sample_y, sample_x in (
-                np.unravel_index(int(sample_index), sample.shape)
-                for sample_index in sample_indices
-            )
+        x, y = anchors[stem]
+        suzerain = polity.get("kind") == "suzerain"
+        block = render_label_block(
+            labels[stem].splitlines(),
+            22 if suzerain else 10,
+            suzerain,
+            5 if suzerain else 4,
         )
-
-        fitted = None
-        for candidate_x, candidate_y in candidates:
-            fitted = fit_label(
-                polity,
-                safe_mask,
-                occupied,
-                candidate_x,
-                candidate_y,
-            )
-            if fitted is not None:
-                break
-        if fitted is None:
-            distance = distance_transform_edt(mask)
-            py, px = np.unravel_index(int(np.argmax(distance)), distance.shape)
-            fitted = fit_label(
-                polity,
-                distance >= max(2, round(1.5 * SIDE / 1024)),
-                occupied,
-                int(px),
-                int(py),
-            )
-        if fitted is None:
-            print(f"WARNING: label cannot fit inside {polity['stem']}")
-            continue
-        block, left, top = fitted
+        left = round(x * SIDE - block.width / 2)
+        top = round(y * SIDE - block.height / 2)
         image.alpha_composite(block, (left, top))
-        letters = np.asarray(block.getchannel("A")) > 0
-        new_occupied = np.zeros_like(occupied)
-        new_occupied[top:top + block.height, left:left + block.width] = letters
-        occupied |= binary_dilation(
-            new_occupied,
-            iterations=max(2, round(2 * SIDE / 1024)),
-        )
         decoded += 1
-    print(f"Decoded and labeled {decoded}/{len(polities)} exact painted territories")
+    print(f"Placed {decoded}/{len(polities)} labels at canonical screenshot anchors")
     return image
 
 
 def main() -> int:
     galaxy = requests.get(GALAXY_API, timeout=60).json()
     polities = galaxy.get("polities", [])
-    image = build_overlay(polities, galaxy.get("systems", []))
+    image = build_overlay(polities)
     output = io.BytesIO()
     image.save(output, format="PNG", optimize=True)
     body = output.getvalue()

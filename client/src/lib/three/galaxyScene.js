@@ -11,7 +11,7 @@ textureLoader.setCrossOrigin('anonymous')
 
 function territoryPlateUrl() {
   // Resolve at use-time so applyAssetManifest / VITE_ASSETS_BASE are already applied.
-  return mapTexturePath('galaxy_territory_plate.png', 'v=54')
+  return mapTexturePath('galaxy_territory_plate.png', 'v=55')
 }
 
 function basePlateUrl() {
