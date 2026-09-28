@@ -246,16 +246,19 @@
     gap: 0.55rem;
     flex-wrap: wrap;
     justify-content: flex-end;
+    min-width: 0;
   }
 
   .search {
     position: relative;
     min-width: min(320px, 70vw);
+    max-width: 100%;
   }
 
   input,
   select,
   button {
+    box-sizing: border-box;
     border: 1px solid rgba(170, 200, 255, 0.25);
     background: rgba(8, 14, 28, 0.82);
     color: inherit;
