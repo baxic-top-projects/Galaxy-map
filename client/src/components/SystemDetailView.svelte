@@ -1,5 +1,5 @@
 <script>
-  import { onDestroy, tick } from 'svelte'
+  import { onDestroy, tick, untrack } from 'svelte'
   import { mapTexturePath } from '../lib/galaxy/modelCatalog.js'
 
   let {
@@ -20,8 +20,10 @@
   $effect(() => {
     const current = detail
     const map = galaxy
+    const initialStorm = untrack(() => storm)
     let cancelled = false
-    api?.dispose?.()
+    const previousApi = untrack(() => api)
+    previousApi?.dispose?.()
     api = null
     labels = []
     if (!current) return
@@ -32,7 +34,7 @@
       if (cancelled || !canvas) return
       const next = createSystemDetailScene(canvas, current, {
         galaxy: map,
-        storm,
+        storm: initialStorm,
         onLabels(nextLabels) {
           labels = nextLabels
           onLabels?.(nextLabels)

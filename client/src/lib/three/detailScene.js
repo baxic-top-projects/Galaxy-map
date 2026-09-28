@@ -23,13 +23,9 @@ textureLoader.setCrossOrigin('anonymous')
 const glbCache = new Map()
 const texCache = new Map()
 
-// Network downloads may use the shared six-slot gate, but geometry creation and
-// shader setup happen on the browser's main thread. Keep that work narrow.
-const MESH_BUILD_CONCURRENCY = 2
-
-function yieldToFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve))
-}
+// Start all object categories immediately while the shared asset gate keeps
+// actual S3/CDN requests bounded.
+const MESH_BUILD_CONCURRENCY = 6
 
 function loadTexture(url) {
   if (texCache.has(url)) return texCache.get(url)
@@ -666,6 +662,31 @@ async function createBodyMesh({ kind, typeKey, radius, lightColor }) {
   return createTexturedSphere({ typeKey: key, radius, kind, lightColor })
 }
 
+async function prefetchBodyAsset(kind, typeKey) {
+  if (kind === 'junction') return
+  const isStarLike = kind === 'star' || kind === 'black_hole' || kind === 'well'
+  if (kind === 'black_hole' || kind === 'well') return
+  let key = isStarLike ? resolveStarTypeKey(typeKey, kind) : resolvePlanetTypeKey(typeKey)
+  if (key === 'binary_class_g' || key === 'triple_class_g' || key === 'trinary_class_g') {
+    key = 'class_g'
+  }
+  if (kind === 'planet' && key === 'moon') {
+    await loadGlb(planetModelPath(key))
+    return
+  }
+  const artUrl = isStarLike ? starTypeArtPath(key) : planetTypeArtPath(key)
+  const previewUrl = isStarLike ? starPreviewPath(key) : planetPreviewPath(key)
+  try {
+    await loadTexture(artUrl)
+  } catch {
+    try {
+      await loadTexture(previewUrl)
+    } catch {
+      // createTexturedSphere will use its procedural color fallback.
+    }
+  }
+}
+
 function collectBodies(detail) {
   const bodies = []
   for (const world of detail.worlds || []) {
@@ -1103,7 +1124,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   scene.add(root)
 
   let raf = 0
-  let frameCount = 0
+  let lastLabelUpdate = 0
   let disposed = false
   const animated = []
   const labelAnchors = []
@@ -1153,6 +1174,26 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   }
 
   async function build() {
+    const planets = collectBodies(detail)
+    const featureBelts = detail.features || []
+    const assetTasks = [
+      () => prefetchBodyAsset(hostKind, hostTypeKey),
+      ...planets.flatMap((planet) => [
+        () => prefetchBodyAsset('planet', planet.planetTypeKey),
+        ...(planet.satellites || []).map(
+          (satellite) => () =>
+            prefetchBodyAsset('planet', satellite.planetTypeKey || 'moon'),
+        ),
+      ]),
+      ...featureBelts.map((feature) => {
+        const key = resolveFeatureKey(feature.feature || feature.nameEn)
+        return () => loadGlb(featureModelPath(key))
+      }),
+    ]
+    // Begin every category now. The global gate limits actual network traffic
+    // while cache hits let later mesh construction reuse these promises.
+    void mapPool(assetTasks, assetTasks.length || 1, (task) => task())
+
     let host
     const hostRadius = hostKind === 'well' ? 2.1 : hostKind === 'black_hole' ? 1.55 : 1.35
     if (hostKind === 'junction') {
@@ -1185,8 +1226,6 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     // Junctions deliberately have no host and no planets; optional feature
     // belts are still rendered below when present in canon.
 
-    const planets = collectBodies(detail)
-    const featureBelts = detail.features || []
     const ORBIT_START = 2.6
     const ORBIT_STEP = 1.5
     const PLANET_CLEARANCE = 0.9
@@ -1285,8 +1324,6 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     }
 
     await mapPool(planets, MESH_BUILD_CONCURRENCY, async (planet, index) => {
-      await yieldToFrame()
-      if (disposed) return
       const orbit = planetOrbits[index]
       const radius = planetRadii[index]
       const mesh = await createBodyMesh({
@@ -1329,60 +1366,62 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
         planetType: planet.planetType,
       })
 
-      await mapPool(planet.satellites || [], 1, async (satellite, satelliteIndex) => {
-        await yieldToFrame()
-        if (disposed) return
-        const satelliteRadius = Math.max(
-          0.075,
-          radius * (satellite.planetTypeKey === 'gas_giant' ? 0.34 : 0.26),
-        )
-        const satelliteOrbit = radius * 1.65 + satelliteIndex * radius * 0.72
-        const satelliteMesh = await createBodyMesh({
-          kind: 'planet',
-          typeKey: satellite.planetTypeKey || 'moon',
-          radius: satelliteRadius,
-          lightColor: systemLightColor,
-        })
-        if (disposed) return
-        const satelliteAngle =
-          (satelliteIndex / Math.max(planet.satellites.length, 1)) * Math.PI * 2 + 0.65
-        satelliteMesh.position.set(
-          Math.cos(satelliteAngle) * satelliteOrbit,
-          0,
-          Math.sin(satelliteAngle) * satelliteOrbit,
-        )
-        mesh.add(satelliteMesh)
+      await mapPool(
+        planet.satellites || [],
+        MESH_BUILD_CONCURRENCY,
+        async (satellite, satelliteIndex) => {
+          const satelliteRadius = Math.max(
+            0.075,
+            radius * (satellite.planetTypeKey === 'gas_giant' ? 0.34 : 0.26),
+          )
+          const satelliteOrbit = radius * 1.65 + satelliteIndex * radius * 0.72
+          const satelliteMesh = await createBodyMesh({
+            kind: 'planet',
+            typeKey: satellite.planetTypeKey || 'moon',
+            radius: satelliteRadius,
+            lightColor: systemLightColor,
+          })
+          if (disposed) return
+          const satelliteAngle =
+            (satelliteIndex / Math.max(planet.satellites.length, 1)) * Math.PI * 2 + 0.65
+          satelliteMesh.position.set(
+            Math.cos(satelliteAngle) * satelliteOrbit,
+            0,
+            Math.sin(satelliteAngle) * satelliteOrbit,
+          )
+          mesh.add(satelliteMesh)
 
-        const satelliteRing = new THREE.Mesh(
-          new THREE.RingGeometry(satelliteOrbit - 0.006, satelliteOrbit + 0.006, 96),
-          new THREE.MeshBasicMaterial({
-            color: 0x7891ac,
-            transparent: true,
-            opacity: 0.24,
-            side: THREE.DoubleSide,
-            depthWrite: false,
-          }),
-        )
-        satelliteRing.rotation.x = -Math.PI / 2
-        satelliteRing.raycast = () => {}
-        mesh.add(satelliteRing)
+          const satelliteRing = new THREE.Mesh(
+            new THREE.RingGeometry(satelliteOrbit - 0.006, satelliteOrbit + 0.006, 96),
+            new THREE.MeshBasicMaterial({
+              color: 0x7891ac,
+              transparent: true,
+              opacity: 0.24,
+              side: THREE.DoubleSide,
+              depthWrite: false,
+            }),
+          )
+          satelliteRing.rotation.x = -Math.PI / 2
+          satelliteRing.raycast = () => {}
+          mesh.add(satelliteRing)
 
-        animated.push({
-          mesh: satelliteMesh,
-          orbit: satelliteOrbit,
-          speed: 0.9 / Math.sqrt(satelliteIndex + 1),
-          angle: satelliteAngle,
-        })
-        labelAnchors.push({
-          id: `${planet.id}:satellite:${satellite.nameEn}`,
-          mesh: satelliteMesh,
-          nameEn: satellite.nameEn,
-          nameRu: satellite.nameRu,
-          kind: 'satellite',
-          inhabited: false,
-          planetType: satellite.planetType,
-        })
-      })
+          animated.push({
+            mesh: satelliteMesh,
+            orbit: satelliteOrbit,
+            speed: 0.9 / Math.sqrt(satelliteIndex + 1),
+            angle: satelliteAngle,
+          })
+          labelAnchors.push({
+            id: `${planet.id}:satellite:${satellite.nameEn}`,
+            mesh: satelliteMesh,
+            nameEn: satellite.nameEn,
+            nameRu: satellite.nameRu,
+            kind: 'satellite',
+            inhabited: false,
+            planetType: satellite.planetType,
+          })
+        },
+      )
     })
 
     // Place belts sequentially outside planet orbits (and outside previous belts).
@@ -1476,7 +1515,6 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   function frame() {
     if (disposed) return
     raf = requestAnimationFrame(frame)
-    frameCount += 1
     const elapsed = performance.now() * 0.001
     stormBoundary?.userData.updateVisual?.(elapsed)
     for (const body of animated) {
@@ -1502,7 +1540,10 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     applyKeyboardPan()
     controls.update()
     renderer.render(scene, camera)
-    if (frameCount % 2 === 0) emitLabels()
+    if (elapsed - lastLabelUpdate >= 0.1) {
+      lastLabelUpdate = elapsed
+      emitLabels()
+    }
   }
 
   function dispose() {
