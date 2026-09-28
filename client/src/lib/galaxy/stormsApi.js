@@ -46,8 +46,9 @@ export function normalizeStormSnapshot(snapshot) {
 }
 
 export function stormWebSocketUrl(baseUrl = DEFAULT_API_BASE) {
+  // VITE_WS_URL only overrides the default base; an explicit base URL wins.
   const configured = import.meta.env.VITE_WS_URL
-  if (configured) return `${String(configured).replace(/\/$/, '')}/api/v1/storms/ws`
+  if (configured && baseUrl === DEFAULT_API_BASE) return `${String(configured).replace(/\/$/, '')}/api/v1/storms/ws`
 
   if (!baseUrl) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
