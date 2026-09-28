@@ -378,9 +378,9 @@ def main() -> None:
             card["nameRu"] = card["nameRu"] or "Осевой Колодец"
             card["starType"] = "Supermassive Black Hole"
         elif sys["kind"] == "junction":
-            # Junction tokens are stable graph IDs, not astronomical names.
-            card["nameEn"] = "Hypercorridor junction"
-            card["nameRu"] = "Стык гиперкоридоров"
+            # Junction tokens are stable graph IDs — keep them visible in the label.
+            card["nameEn"] = f"{sys['token']} Junction"
+            card["nameRu"] = f"Стык {sys['token']}"
             card["starType"] = "Empty hypercorridor node"
 
         capital = (sys["stem"], sys["token"]) in CAPITALS
@@ -497,6 +497,12 @@ def main() -> None:
         f"Wrote {out_path} with {len(index_systems)} systems, "
         f"{len(display_edges)} display edges, {len(search)} search entries"
     )
+
+    # Force globally unique display names (no shared labels across polities).
+    from uniquify_system_names import uniquify
+
+    result = uniquify()
+    print(f"Uniquified names: {result}")
 
 
 if __name__ == "__main__":

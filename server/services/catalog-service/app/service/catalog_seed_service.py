@@ -23,8 +23,8 @@ class CatalogSeedService:
             return int(session.scalar(select(func.count()).select_from(SystemRow)) or 0)
 
     def sync_on_startup(self) -> dict:
-        """Refresh index tables; upsert new/missing systems (full rewrite if configured)."""
-        return self.sync(full=bool(getattr(self.settings, "seed_full_sync", False)))
+        """Refresh index tables and upsert every system JSON (background-friendly)."""
+        return self.sync(full=True)
 
     def seed_if_empty(self, *, force: bool = False) -> dict:
         return self.sync(wipe_first=force, full=True)

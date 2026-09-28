@@ -897,6 +897,7 @@ function createStormBoundary(options) {
   wall.raycast = () => {}
   group.add(wall)
 
+  group.userData.radius = radius
   group.userData.updateVisual = (elapsed) => {
     uniforms.uTime.value = elapsed
   }
@@ -1106,13 +1107,18 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     stormBoundary = null
   }
 
-  function setStorm(storm) {
+  function setStorm(storm, { forceRadius = false } = {}) {
     if (disposed) return
     if (!storm || !(Number(storm.intensity) > 0.05)) {
       clearStormBoundary()
       return
     }
-    if (!stormBoundary) {
+    const needsRebuild =
+      forceRadius ||
+      !stormBoundary ||
+      Math.abs(Number(stormBoundary.userData.radius) - stormRadius) > 0.05
+    if (needsRebuild) {
+      clearStormBoundary()
       stormBoundary = createStormBoundary({
         radius: stormRadius,
         color: storm.color,
@@ -1120,6 +1126,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
         stage: storm.stage,
         type: storm.type,
       })
+      stormBoundary.userData.radius = stormRadius
       root.add(stormBoundary)
     } else {
       stormBoundary.userData.setStorm?.(storm)
@@ -1376,7 +1383,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     controls.update()
 
     stormRadius = Math.max(span * 0.88, farthest + 1.1)
-    setStorm(callbacks.storm)
+    setStorm(callbacks.storm, { forceRadius: true })
 
     // Stellaris-style hyperlane arrows toward connected systems.
     const neighbors = neighborSystems(detail, callbacks.galaxy)
