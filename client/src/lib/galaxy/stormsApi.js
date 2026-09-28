@@ -45,10 +45,13 @@ export function normalizeStormSnapshot(snapshot) {
   }
 }
 
-export function stormWebSocketUrl(baseUrl = DEFAULT_API_BASE) {
-  // VITE_WS_URL only overrides the default base; an explicit base URL wins.
-  const configured = import.meta.env.VITE_WS_URL
-  if (configured && baseUrl === DEFAULT_API_BASE) return `${String(configured).replace(/\/$/, '')}/api/v1/storms/ws`
+export function stormWebSocketUrl(baseUrl) {
+  // VITE_WS_URL only applies when no base URL is given; an explicit base URL wins.
+  if (baseUrl === undefined) {
+    const configured = import.meta.env.VITE_WS_URL
+    if (configured) return `${String(configured).replace(/\/$/, '')}/api/v1/storms/ws`
+    baseUrl = DEFAULT_API_BASE
+  }
 
   if (!baseUrl) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -77,7 +80,7 @@ export function stormWebSocketUrl(baseUrl = DEFAULT_API_BASE) {
  * }} [options]
  */
 export function connectStormSocket(options = {}) {
-  const { baseUrl = DEFAULT_API_BASE, onSnapshot, onStatus } = options
+  const { baseUrl, onSnapshot, onStatus } = options
   let socket = null
   let closedByUser = false
   let reconnectTimer = 0
