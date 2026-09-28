@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 
 from app.config.settings import settings
 from app.controller.health_controller import router as health_router
 from app.controller.storm_controller import router as storm_router
+from app.service.catalog_client_service import fetch_galaxy_index
 from app.service.galaxy_graph_service import GalaxyGraphService
 from app.service.storm_broadcast_service import storm_broadcast
 from app.service.storm_kafka_service import storm_kafka
@@ -44,10 +44,8 @@ async def _tick_loop(sim: StormSimulationService) -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     global simulator, _tick_task
-    index_path = Path(settings.galaxy_index_path)
-    if not index_path.is_file():
-        raise RuntimeError(f"Galaxy index not found: {index_path}")
-    graph = GalaxyGraphService(index_path)
+    payload = await asyncio.to_thread(fetch_galaxy_index, settings)
+    graph = GalaxyGraphService(payload)
     simulator = StormSimulationService(graph, settings)
     await storm_kafka.start()
     first = await asyncio.to_thread(simulator.step)

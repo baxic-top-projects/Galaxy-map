@@ -1,17 +1,22 @@
 from __future__ import annotations
 
-import json
 from collections import defaultdict, deque
 from pathlib import Path
+from typing import Any
 
 
 class GalaxyGraphService:
-    """Loads galaxy-index.json and exposes the hypercorridor adjacency graph."""
+    """Hypercorridor adjacency graph from a galaxy index payload (DB/API or file)."""
 
-    def __init__(self, index_path: Path):
-        payload = json.loads(index_path.read_text(encoding="utf-8"))
-        self.systems = {row["id"]: row for row in payload.get("systems", [])}
-        self.edges = payload.get("edgesDisplay") or payload.get("edgesCanon") or []
+    def __init__(self, payload: dict[str, Any] | Path):
+        if isinstance(payload, Path):
+            import json
+
+            data = json.loads(payload.read_text(encoding="utf-8"))
+        else:
+            data = payload
+        self.systems = {row["id"]: row for row in data.get("systems", []) if row.get("id")}
+        self.edges = data.get("edgesDisplay") or data.get("edgesCanon") or []
         self.adjacency: dict[str, set[str]] = defaultdict(set)
         for edge in self.edges:
             a = edge.get("a")

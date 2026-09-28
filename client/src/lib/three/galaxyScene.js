@@ -283,6 +283,14 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   let stormPoints = null
   let stormMaterial = null
   let stormGeometry = null
+  let stormEyes = []
+  let stormEyePoints = null
+  let stormEyeMaterial = null
+  let stormEyeGeometry = null
+  // Match storm-service defaults: crawl one hyperlane over move_interval ticks.
+  const STORM_TICK_SECONDS = 2
+  const STORM_MOVE_INTERVAL_TICKS = 3
+  let lastFrameTime = performance.now()
 
   const pickHelper = new THREE.Raycaster()
   pickHelper.params.Points = { threshold: 0.9 }
@@ -304,16 +312,31 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const panForward = new THREE.Vector3()
   const stormColor = new THREE.Color()
 
-  function setStorms(stormSnapshot) {
-    const systems = stormSnapshot?.systems || []
-    while (stormGroup.children.length) {
-      const child = stormGroup.children.pop()
+  function clearStormMeshes(group) {
+    while (group.children.length) {
+      const child = group.children.pop()
       child.geometry?.dispose()
       child.material?.dispose()
     }
-    stormPoints = null
-    stormMaterial = null
-    stormGeometry = null
+  }
+
+  function worldPosForSystem(system) {
+    return new THREE.Vector3(
+      system.x * GALAXY_SCALE,
+      system.y * GALAXY_SCALE,
+      system.z * GALAXY_SCALE,
+    )
+  }
+
+  function rebuildAffectedStormPoints(systems) {
+    if (stormPoints) {
+      stormGroup.remove(stormPoints)
+      stormGeometry?.dispose()
+      stormMaterial?.dispose()
+      stormPoints = null
+      stormGeometry = null
+      stormMaterial = null
+    }
     if (!systems.length) return
 
     const count = systems.length
@@ -335,7 +358,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
       stormColors[i + 2] = stormColor.b
       const intensity = THREE.MathUtils.clamp(Number(entry.intensity) || 0.4, 0.15, 1)
       stormIntensity[index] = intensity
-      stormSizes[index] = 18 + intensity * 28
+      stormSizes[index] = 14 + intensity * 18
     })
 
     stormGeometry = new THREE.BufferGeometry()
@@ -367,7 +390,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
           float pulse = 1.0 + 0.12 * sin(uTime * 1.8 + intensity * 6.0);
           float dist = max(-mvPosition.z, 6.0);
           float atten = clamp(52.0 / dist, 0.7, 1.25);
-          gl_PointSize = clamp(size * uScale * atten * pulse, 8.0, 64.0);
+          gl_PointSize = clamp(size * uScale * atten * pulse, 8.0, 48.0);
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
@@ -386,8 +409,8 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
           float swirl = 0.55 + 0.45 * sin((atan(uv.y, uv.x) + uTime) * 3.0 + n * 6.2831);
           float core = 1.0 - smoothstep(0.08, 0.42, d);
           float haze = (1.0 - smoothstep(0.2, 0.5, d)) * swirl;
-          float alpha = (core * 0.55 + haze * 0.65) * (0.35 + vIntensity * 0.65);
-          vec3 col = mix(vColor * 0.55, vColor * 1.35, core);
+          float alpha = (core * 0.45 + haze * 0.55) * (0.28 + vIntensity * 0.55);
+          vec3 col = mix(vColor * 0.55, vColor * 1.25, core);
           gl_FragColor = vec4(col, alpha);
         }
       `,
@@ -396,6 +419,136 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     stormPoints = new THREE.Points(stormGeometry, stormMaterial)
     stormPoints.frustumCulled = false
     stormGroup.add(stormPoints)
+  }
+
+  function rebuildStormEyes(storms) {
+    if (stormEyePoints) {
+      stormGroup.remove(stormEyePoints)
+      stormEyeGeometry?.dispose()
+      stormEyeMaterial?.dispose()
+      stormEyePoints = null
+      stormEyeGeometry = null
+      stormEyeMaterial = null
+    }
+
+    stormEyes = []
+    for (const storm of storms || []) {
+      const from = galaxy.byId.get(storm.currentSystemId)
+      const to = galaxy.byId.get(storm.nextSystemId || storm.currentSystemId) || from
+      if (!from) continue
+      const progress = THREE.MathUtils.clamp(Number(storm.pathProgress) || 0, 0, 1)
+      stormEyes.push({
+        id: storm.id,
+        from,
+        to: to || from,
+        progress,
+        displayProgress: progress,
+        color: storm.color || '#6ec8ff',
+        intensity: THREE.MathUtils.clamp(Number(storm.intensity) || 0.5, 0.2, 1),
+        stage: storm.stage || 'active',
+      })
+    }
+    if (!stormEyes.length) return
+
+    const count = stormEyes.length
+    stormEyeGeometry = new THREE.BufferGeometry()
+    stormEyeGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3))
+    stormEyeGeometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(count * 3), 3))
+    stormEyeGeometry.setAttribute('size', new THREE.BufferAttribute(new Float32Array(count), 1))
+    stormEyeGeometry.setAttribute('intensity', new THREE.BufferAttribute(new Float32Array(count), 1))
+
+    stormEyeMaterial = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexColors: true,
+      uniforms: {
+        uTime: { value: 0 },
+        uScale: { value: 1 },
+      },
+      vertexShader: `
+        attribute float size;
+        attribute float intensity;
+        varying vec3 vColor;
+        varying float vIntensity;
+        uniform float uScale;
+        uniform float uTime;
+        void main() {
+          vColor = color;
+          vIntensity = intensity;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          float pulse = 1.0 + 0.18 * sin(uTime * 2.4 + intensity * 5.0);
+          float dist = max(-mvPosition.z, 6.0);
+          float atten = clamp(52.0 / dist, 0.7, 1.25);
+          gl_PointSize = clamp(size * uScale * atten * pulse, 14.0, 72.0);
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColor;
+        varying float vIntensity;
+        uniform float uTime;
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+        void main() {
+          vec2 uv = gl_PointCoord - vec2(0.5);
+          float d = length(uv);
+          if (d > 0.5) discard;
+          float n = hash(uv * 10.0 + uTime * 0.55);
+          float swirl = 0.5 + 0.5 * sin((atan(uv.y, uv.x) * 4.0) - uTime * 2.2 + n * 6.2831);
+          float core = 1.0 - smoothstep(0.05, 0.28, d);
+          float rim = (1.0 - smoothstep(0.18, 0.5, d)) * swirl;
+          float alpha = (core * 0.85 + rim * 0.75) * (0.45 + vIntensity * 0.55);
+          vec3 col = mix(vColor * 0.7, vec3(1.0), core * 0.45);
+          gl_FragColor = vec4(col, alpha);
+        }
+      `,
+    })
+
+    stormEyePoints = new THREE.Points(stormEyeGeometry, stormEyeMaterial)
+    stormEyePoints.frustumCulled = false
+    stormGroup.add(stormEyePoints)
+    writeStormEyePositions()
+  }
+
+  function writeStormEyePositions() {
+    if (!stormEyeGeometry || !stormEyes.length) return
+    const positions = stormEyeGeometry.attributes.position.array
+    const colors = stormEyeGeometry.attributes.color.array
+    const sizes = stormEyeGeometry.attributes.size.array
+    const intensities = stormEyeGeometry.attributes.intensity.array
+    const from = new THREE.Vector3()
+    const to = new THREE.Vector3()
+    const pos = new THREE.Vector3()
+
+    stormEyes.forEach((eye, index) => {
+      from.copy(worldPosForSystem(eye.from))
+      to.copy(worldPosForSystem(eye.to))
+      const t = eye.from.id === eye.to.id ? 0 : eye.displayProgress
+      pos.lerpVectors(from, to, t)
+      const i = index * 3
+      positions[i] = pos.x
+      positions[i + 1] = pos.y
+      positions[i + 2] = pos.z
+      stormColor.set(eye.color)
+      colors[i] = stormColor.r
+      colors[i + 1] = stormColor.g
+      colors[i + 2] = stormColor.b
+      const stageBoost = eye.stage === 'forming' ? 0.75 : eye.stage === 'dissipating' ? 0.85 : 1
+      intensities[index] = eye.intensity * stageBoost
+      sizes[index] = 26 + eye.intensity * 34
+    })
+
+    stormEyeGeometry.attributes.position.needsUpdate = true
+    stormEyeGeometry.attributes.color.needsUpdate = true
+    stormEyeGeometry.attributes.size.needsUpdate = true
+    stormEyeGeometry.attributes.intensity.needsUpdate = true
+  }
+
+  function setStorms(stormSnapshot) {
+    rebuildAffectedStormPoints(stormSnapshot?.systems || [])
+    rebuildStormEyes(stormSnapshot?.storms || [])
   }
 
   function resize() {
@@ -610,6 +763,9 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     if (disposed) return
     raf = requestAnimationFrame(frame)
     frameCount += 1
+    const now = performance.now()
+    const dt = Math.min(0.05, (now - lastFrameTime) / 1000)
+    lastFrameTime = now
     if (focusTween) focusTween()
     applyKeyboardPan()
     controls.update()
@@ -617,9 +773,25 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     for (const layer of starLayers) {
       layer.material.uniforms.uScale.value = scale
     }
+    // Smooth crawl along the current hyperlane between server ticks.
+    const crawlPerSecond = 1 / Math.max(0.001, STORM_TICK_SECONDS * STORM_MOVE_INTERVAL_TICKS)
+    let eyesMoved = false
+    for (const eye of stormEyes) {
+      if (eye.from.id === eye.to.id) continue
+      const next = Math.min(1, eye.displayProgress + dt * crawlPerSecond)
+      if (next !== eye.displayProgress) {
+        eye.displayProgress = next
+        eyesMoved = true
+      }
+    }
+    if (eyesMoved) writeStormEyePositions()
     if (stormMaterial?.uniforms?.uTime) {
-      stormMaterial.uniforms.uTime.value = performance.now() * 0.001
+      stormMaterial.uniforms.uTime.value = now * 0.001
       stormMaterial.uniforms.uScale.value = scale
+    }
+    if (stormEyeMaterial?.uniforms?.uTime) {
+      stormEyeMaterial.uniforms.uTime.value = now * 0.001
+      stormEyeMaterial.uniforms.uScale.value = scale
     }
     renderer.render(scene, camera)
     if (frameCount % 2 === 0) emitLabels()
@@ -642,6 +814,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
       layer.material.dispose()
     }
     setStorms(null)
+    stormEyes = []
     edgeGeom.dispose()
     edgeMat.dispose()
     plate.geometry.dispose()

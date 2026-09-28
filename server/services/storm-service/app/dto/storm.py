@@ -20,8 +20,12 @@ class StormDto(BaseModel):
     stage: StormStage
     originSystemId: str
     currentSystemId: str
+    # Next hop along the planned hyperlane path (same as current when idle/at end).
+    nextSystemId: str
     path: list[str] = Field(default_factory=list)
     pathIndex: int = Field(ge=0, default=0)
+    # 0 = at path[pathIndex], 1 = arriving at path[pathIndex+1].
+    pathProgress: float = Field(ge=0.0, le=1.0, default=0.0)
     intensity: float = Field(ge=0.0, le=1.0)
     radiusHops: int = Field(ge=0)
     ageTicks: int = Field(ge=0)

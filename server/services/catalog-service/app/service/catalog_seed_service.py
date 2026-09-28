@@ -23,8 +23,19 @@ class CatalogSeedService:
             return int(session.scalar(select(func.count()).select_from(SystemRow)) or 0)
 
     def sync_on_startup(self) -> dict:
-        """Refresh index tables and upsert every system JSON (background-friendly)."""
-        return self.sync(full=True)
+        """Seed from JSON only when seed files are present; otherwise keep DB as source of truth."""
+        index_path = Path(self.settings.galaxy_index_path)
+        systems_dir = Path(self.settings.systems_dir)
+        if not index_path.is_file() or not systems_dir.is_dir():
+            count = self.system_count()
+            if count > 0:
+                logger.info("No seed JSON mounted; serving %s systems from database", count)
+                return {"synced": False, "skipped": True, "reason": "no-seed-files", "systems": count}
+            raise FileNotFoundError(
+                "Catalog DB is empty and seed JSON is missing "
+                f"(index={index_path}, systems={systems_dir})"
+            )
+        return self.sync(full=bool(getattr(self.settings, "seed_full_sync", False)))
 
     def seed_if_empty(self, *, force: bool = False) -> dict:
         return self.sync(wipe_first=force, full=True)

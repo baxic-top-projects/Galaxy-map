@@ -5,7 +5,7 @@
   import SystemDetailView from './components/SystemDetailView.svelte'
   import { loadGalaxy, loadSystemDetail, systemLabel } from './lib/galaxy/loadGalaxy.js'
   import { estimateZoom } from './lib/galaxy/labelLod.js'
-  import { connectStormSocket, fetchSystemStorm, stormForSystem } from './lib/galaxy/stormsApi.js'
+  import { connectStormSocket, stormForSystem } from './lib/galaxy/stormsApi.js'
   import { fetchAssetManifest } from './lib/galaxy/assetsApi.js'
   import { applyAssetManifest, mapTexturePath } from './lib/galaxy/modelCatalog.js'
 
@@ -27,38 +27,6 @@
   const starfieldUrl = $derived(mapTexturePath('system_starfield.png', 'v=2'))
 
   const selectedStorm = $derived(stormForSystem(stormSnapshot, selected?.id))
-
-  // When entering a system, refresh that system's storm over HTTP in case WS snapshot lags.
-  $effect(() => {
-    if (mode !== 'system' || !selected?.id) return
-    let cancelled = false
-    const systemId = selected.id
-    fetchSystemStorm(systemId)
-      .then((payload) => {
-        if (cancelled || !payload?.active || !payload?.storm) return
-        const entry = {
-          systemId: payload.storm.systemId || systemId,
-          intensity: Number(payload.storm.intensity) || 0,
-          stage: payload.storm.stage || 'active',
-          type: payload.storm.type || 'electric',
-          stormId: payload.storm.stormId || '',
-          color: payload.storm.color || '#6ec8ff',
-        }
-        const current = stormSnapshot || { tick: 0, generatedAt: '', storms: [], systems: [], bySystemId: {} }
-        stormSnapshot = {
-          ...current,
-          bySystemId: { ...current.bySystemId, [systemId]: entry },
-          systems: [
-            ...(current.systems || []).filter((row) => row.systemId !== systemId),
-            entry,
-          ],
-        }
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  })
 
   onMount(async () => {
     try {

@@ -51,7 +51,7 @@ def test_storm_migrates_along_hyperlanes(tiny_galaxy: Path):
         active_ticks=8,
         dissipate_ticks=2,
         max_radius_hops=1,
-        move_interval_ticks=1,
+        move_interval_ticks=3,
         path_hops_min=2,
         path_hops_max=4,
         worker_processes=1,
@@ -65,6 +65,8 @@ def test_storm_migrates_along_hyperlanes(tiny_galaxy: Path):
     storm = first.storms[0]
     assert storm.stage == "forming"
     assert storm.currentSystemId == storm.originSystemId
+    assert storm.nextSystemId
+    assert 0.0 <= storm.pathProgress <= 1.0
     assert len(storm.path) >= 2
 
     for _ in range(settings.form_ticks):
@@ -73,22 +75,24 @@ def test_storm_migrates_along_hyperlanes(tiny_galaxy: Path):
     assert active.stage == "active"
     origin = active.originSystemId
 
-    # While active the eye should leave the spawn system along the planned path.
+    # While active the eye should crawl along hyperlanes (progress and/or node change).
     moved = False
-    for _ in range(settings.active_ticks):
+    for _ in range(settings.active_ticks * settings.move_interval_ticks + 2):
         snap = sim.step()
         current = snap.storms[0]
         assert current.currentSystemId in current.path
+        assert current.nextSystemId in current.path or current.nextSystemId == current.currentSystemId
+        assert 0.0 <= current.pathProgress <= 1.0
         center_hops = GalaxyGraphService(tiny_galaxy).systems_within_hops(
-            current.currentSystemId,
+            current.currentSystemId if current.pathProgress < 0.5 else current.nextSystemId,
             current.radiusHops,
         )
         for affected in current.affectedSystems:
             assert affected.systemId in center_hops
-        if current.currentSystemId != origin:
+        if current.currentSystemId != origin or current.pathProgress > 0.05:
             moved = True
             break
-    assert moved, "storm eye did not migrate from origin"
+    assert moved, "storm eye did not migrate along hyperlanes"
 
     # Finish lifecycle.
     for _ in range(settings.active_ticks + settings.dissipate_ticks + 2):
@@ -109,7 +113,7 @@ def test_parallel_workers_advance_storms(tiny_galaxy: Path):
         active_ticks=5,
         dissipate_ticks=1,
         max_radius_hops=1,
-        move_interval_ticks=1,
+        move_interval_ticks=2,
         path_hops_min=2,
         path_hops_max=4,
         worker_processes=2,
@@ -124,6 +128,8 @@ def test_parallel_workers_advance_storms(tiny_galaxy: Path):
         assert snap.systems
         for storm in snap.storms:
             assert storm.currentSystemId
+            assert storm.nextSystemId
             assert storm.path
+            assert 0.0 <= storm.pathProgress <= 1.0
     finally:
         sim.close()

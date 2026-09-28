@@ -1,5 +1,5 @@
 <script>
-  import { onDestroy, tick } from 'svelte'
+  import { onDestroy, tick, untrack } from 'svelte'
   import { mapTexturePath } from '../lib/galaxy/modelCatalog.js'
 
   let {
@@ -17,10 +17,11 @@
   let labels = $state([])
   const starfieldUrl = $derived(mapTexturePath('system_starfield.png', 'v=2'))
 
-  // Rebuild only when the system detail changes — not on every storm WS tick.
   $effect(() => {
     const current = detail
     const map = galaxy
+    // Capture storm once with the system load — do not rebuild on every WS tick.
+    const currentStorm = untrack(() => storm)
     let cancelled = false
     api?.dispose?.()
     api = null
@@ -33,7 +34,7 @@
       if (cancelled || !canvas) return
       const next = createSystemDetailScene(canvas, current, {
         galaxy: map,
-        storm: null,
+        storm: currentStorm,
         onLabels(nextLabels) {
           labels = nextLabels
           onLabels?.(nextLabels)
@@ -53,11 +54,6 @@
       api?.dispose?.()
       api = null
     }
-  })
-
-  $effect(() => {
-    if (!api) return
-    api.setStorm(storm)
   })
 
   onDestroy(() => {

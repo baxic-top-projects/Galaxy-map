@@ -10,8 +10,9 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "server" / "data"
+DATA = ROOT / "server" / "seed"
 INDEX_PATH = DATA / "galaxy-index.json"
+SYSTEMS_DIR = DATA / "systems"
 
 PAREN_RE = re.compile(r"\s*\([^)]*\)\s*$")
 

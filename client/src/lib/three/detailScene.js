@@ -1093,8 +1093,6 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   const zAxis = new THREE.Vector3(0, 0, 1)
   let stormBoundary = null
   let stormRadius = 10
-  let sceneReady = false
-  let latestStorm = callbacks.storm || null
 
   function clearStormBoundary() {
     if (!stormBoundary) return
@@ -1109,31 +1107,19 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     stormBoundary = null
   }
 
-  function setStorm(storm, { forceRadius = false } = {}) {
-    latestStorm = storm || null
-    if (disposed || !sceneReady) return
-    if (!latestStorm || !(Number(latestStorm.intensity) > 0.05)) {
-      clearStormBoundary()
-      return
-    }
-    const needsRebuild =
-      forceRadius ||
-      !stormBoundary ||
-      Math.abs(Number(stormBoundary.userData.radius) - stormRadius) > 0.05
-    if (needsRebuild) {
-      clearStormBoundary()
-      stormBoundary = createStormBoundary({
-        radius: stormRadius,
-        color: latestStorm.color,
-        intensity: latestStorm.intensity,
-        stage: latestStorm.stage,
-        type: latestStorm.type,
-      })
-      stormBoundary.userData.radius = stormRadius
-      root.add(stormBoundary)
-    } else {
-      stormBoundary.userData.setStorm?.(latestStorm)
-    }
+  function applyStorm(storm) {
+    if (disposed) return
+    clearStormBoundary()
+    if (!storm || !(Number(storm.intensity) > 0.05)) return
+    stormBoundary = createStormBoundary({
+      radius: stormRadius,
+      color: storm.color,
+      intensity: storm.intensity,
+      stage: storm.stage,
+      type: storm.type,
+    })
+    stormBoundary.userData.radius = stormRadius
+    root.add(stormBoundary)
   }
 
   async function build() {
@@ -1386,8 +1372,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     controls.update()
 
     stormRadius = Math.max(span * 0.88, farthest + 1.1)
-    sceneReady = true
-    setStorm(latestStorm, { forceRadius: true })
+    applyStorm(callbacks.storm)
 
     // Stellaris-style hyperlane arrows toward connected systems.
     const neighbors = neighborSystems(detail, callbacks.galaxy)
@@ -1501,5 +1486,5 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   build()
   raf = requestAnimationFrame(frame)
 
-  return { dispose, resize, setStorm }
+  return { dispose, resize }
 }

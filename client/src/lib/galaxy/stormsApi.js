@@ -38,10 +38,25 @@ export function normalizeStormSnapshot(snapshot) {
       color: entry.color || '#6ec8ff',
     }
   }
+  const storms = (Array.isArray(snapshot?.storms) ? snapshot.storms : []).map((storm) => ({
+    id: storm.id || '',
+    type: storm.type || 'electric',
+    stage: storm.stage || 'active',
+    originSystemId: storm.originSystemId || '',
+    currentSystemId: storm.currentSystemId || '',
+    nextSystemId: storm.nextSystemId || storm.currentSystemId || '',
+    path: Array.isArray(storm.path) ? storm.path : [],
+    pathIndex: Number(storm.pathIndex) || 0,
+    pathProgress: Math.min(1, Math.max(0, Number(storm.pathProgress) || 0)),
+    intensity: Number(storm.intensity) || 0,
+    radiusHops: Number(storm.radiusHops) || 0,
+    color: storm.color || '#6ec8ff',
+    affectedSystems: Array.isArray(storm.affectedSystems) ? storm.affectedSystems : [],
+  }))
   return {
     tick: Number(snapshot?.tick) || 0,
     generatedAt: snapshot?.generatedAt || '',
-    storms: Array.isArray(snapshot?.storms) ? snapshot.storms : [],
+    storms,
     systems,
     bySystemId,
   }

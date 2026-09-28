@@ -7,7 +7,5 @@ dist/
 .env.*
 !.env.example
 
-# OS / IDE
-.DS_Store
-.idea/
-.vscode/
+# Optional offline seed artifacts (not used at runtime; catalog serves from Postgres).
+server/seed/

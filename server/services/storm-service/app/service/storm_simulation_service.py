@@ -144,7 +144,14 @@ def _extend_travel_path(
 
 
 def _refresh_affected_payload(storm: dict[str, Any], adjacency: dict[str, list[str]]) -> dict[str, Any]:
-    center = storm.get("currentSystemId") or storm["originSystemId"]
+    path = list(storm.get("path") or [storm["originSystemId"]])
+    path_index = int(storm.get("pathIndex") or 0)
+    path_index = max(0, min(path_index, len(path) - 1))
+    progress = float(storm.get("pathProgress") or 0.0)
+    from_id = path[path_index]
+    to_id = path[path_index + 1] if path_index + 1 < len(path) else from_id
+    # AoE follows the eye: after the midpoint of a hop, influence shifts to the destination.
+    center = to_id if (to_id != from_id and progress >= 0.5) else from_id
     hops = _systems_within_hops(center, int(storm["radiusHops"]), adjacency)
     affected = []
     for system_id, hop in sorted(hops.items(), key=lambda item: (item[1], item[0])):
@@ -158,7 +165,11 @@ def _refresh_affected_payload(storm: dict[str, Any], adjacency: dict[str, list[s
             }
         )
     storm = dict(storm)
-    storm["currentSystemId"] = center
+    storm["path"] = path
+    storm["pathIndex"] = path_index
+    storm["pathProgress"] = max(0.0, min(1.0, progress))
+    storm["currentSystemId"] = from_id
+    storm["nextSystemId"] = to_id
     storm["affectedSystems"] = affected
     return storm
 
@@ -170,7 +181,8 @@ def _advance_storm_payload(storm: dict[str, Any]) -> dict[str, Any] | None:
     active_ticks = int(settings["active_ticks"])
     dissipate_ticks = int(settings["dissipate_ticks"])
     max_radius_hops = int(settings["max_radius_hops"])
-    move_interval = max(1, int(settings.get("move_interval_ticks", 1)))
+    # Ticks required to travel one hyperlane segment (Stellaris-like crawl).
+    move_interval = max(1, int(settings.get("move_interval_ticks", 3)))
     active_end = form_end + active_ticks
     dissipate_end = active_end + dissipate_ticks
     if age >= dissipate_end:
@@ -178,47 +190,56 @@ def _advance_storm_payload(storm: dict[str, Any]) -> dict[str, Any] | None:
 
     path = list(storm.get("path") or [storm["originSystemId"]])
     path_index = int(storm.get("pathIndex") or 0)
-    current = storm.get("currentSystemId") or path[min(path_index, len(path) - 1)]
+    path_index = max(0, min(path_index, len(path) - 1))
+    path_progress = float(storm.get("pathProgress") or 0.0)
+    current = path[path_index]
+
+    def crawl_along_path(*, step: float) -> None:
+        nonlocal path, path_index, path_progress, current
+        if path_index >= len(path) - 1:
+            return
+        path_progress += step
+        while path_progress >= 1.0 and path_index < len(path) - 1:
+            path_progress -= 1.0
+            path_index += 1
+            current = path[path_index]
+        if path_index >= len(path) - 1:
+            path_progress = 0.0
+            current = path[path_index]
 
     if age < form_end:
         stage: StormStage = "forming"
         intensity = 0.25 + 0.35 * (age / max(form_end, 1))
         radius = 0 if age < max(1, form_end // 2) else min(1, max_radius_hops)
+        path_progress = 0.0
     elif age < active_end:
         stage = "active"
         active_age = age - form_end
         intensity = 0.65 + 0.3 * min(1.0, active_age / max(active_ticks * 0.4, 1))
         radius = min(max_radius_hops, max(1, max_radius_hops))
-        # Stellaris-like: move the eye along the hyperlane path.
-        if active_age > 0 and active_age % move_interval == 0:
-            if path_index < len(path) - 1:
-                path_index += 1
-                current = path[path_index]
-            else:
-                # Path exhausted mid-life: wander onward from the front.
-                seed = int(hashlib.sha1(f"{storm['id']}:{age}".encode()).hexdigest()[:8], 16)
-                rng = random.Random(seed)
-                extension = _extend_travel_path(
-                    _WORKER_ADJACENCY,
-                    current,
-                    set(path),
-                    rng,
-                    hops_min=3,
-                    hops_max=8,
-                )
-                if len(extension) > 1:
-                    path = path + extension[1:]
-                    path_index += 1
-                    current = path[path_index]
+        crawl_along_path(step=1.0 / move_interval)
+        if path_index >= len(path) - 1:
+            # Path exhausted mid-life: wander onward from the front.
+            seed = int(hashlib.sha1(f"{storm['id']}:{age}".encode()).hexdigest()[:8], 16)
+            rng = random.Random(seed)
+            extension = _extend_travel_path(
+                _WORKER_ADJACENCY,
+                current,
+                set(path),
+                rng,
+                hops_min=3,
+                hops_max=8,
+            )
+            if len(extension) > 1:
+                path = path + extension[1:]
+                # Start crawling the new segment immediately.
+                crawl_along_path(step=1.0 / move_interval)
     else:
         stage = "dissipating"
         dissipate_age = age - active_end
         intensity = max(0.08, 0.7 * (1.0 - dissipate_age / max(dissipate_ticks, 1)))
         radius = max(0, int(storm["radiusHops"]) - (1 if dissipate_age % 2 == 0 else 0))
-        # Keep drifting slowly while fading out.
-        if dissipate_age % (move_interval + 1) == 0 and path_index < len(path) - 1:
-            path_index += 1
-            current = path[path_index]
+        crawl_along_path(step=1.0 / (move_interval + 1))
 
     updated = dict(storm)
     updated.update(
@@ -229,7 +250,9 @@ def _advance_storm_payload(storm: dict[str, Any]) -> dict[str, Any] | None:
             "radiusHops": radius,
             "path": path,
             "pathIndex": path_index,
+            "pathProgress": round(max(0.0, min(1.0, path_progress)), 4),
             "currentSystemId": current,
+            "nextSystemId": path[path_index + 1] if path_index + 1 < len(path) else current,
         }
     )
     return _refresh_affected_payload(updated, _WORKER_ADJACENCY)
@@ -336,8 +359,10 @@ class StormSimulationService:
             stage="forming",
             originSystemId=origin,
             currentSystemId=origin,
+            nextSystemId=path[1] if len(path) > 1 else origin,
             path=path,
             pathIndex=0,
+            pathProgress=0.0,
             intensity=0.35,
             radiusHops=0,
             ageTicks=0,
