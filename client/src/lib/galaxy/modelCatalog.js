@@ -17,10 +17,14 @@ const PLANET_FALLBACK = {
 /** @type {string} */
 let assetsBaseUrl = String(import.meta.env.VITE_ASSETS_BASE || '').replace(/\/$/, '')
 
+/**
+ * @typedef {{ url?: string, previewUrl?: string|null, artUrl?: string|null }} RemoteAsset
+ */
+
 /** @type {{
- *  stars: Map<string, string>,
- *  planets: Map<string, string>,
- *  features: Map<string, string>,
+ *  stars: Map<string, RemoteAsset>,
+ *  planets: Map<string, RemoteAsset>,
+ *  features: Map<string, RemoteAsset>,
  * } | null} */
 let remoteCatalog = null
 
@@ -34,9 +38,9 @@ function joinAssetUrl(path) {
  * Optional remote catalog from asset-service / S3 manifest.
  * @param {{
  *   publicBaseUrl?: string,
- *   stars?: Array<{ key: string, url: string }>,
- *   planets?: Array<{ key: string, url: string }>,
- *   features?: Array<{ key: string, url: string }>,
+ *   stars?: Array<RemoteAsset & { key: string }>,
+ *   planets?: Array<RemoteAsset & { key: string }>,
+ *   features?: Array<RemoteAsset & { key: string }>,
  * } | null | undefined} manifest
  */
 export function applyAssetManifest(manifest) {
@@ -47,10 +51,21 @@ export function applyAssetManifest(manifest) {
   if (manifest.publicBaseUrl) {
     assetsBaseUrl = String(manifest.publicBaseUrl).replace(/\/$/, '')
   }
+  const toMap = (rows = []) =>
+    new Map(
+      rows.map((row) => [
+        row.key,
+        {
+          url: row.url,
+          previewUrl: row.previewUrl || null,
+          artUrl: row.artUrl || null,
+        },
+      ]),
+    )
   remoteCatalog = {
-    stars: new Map((manifest.stars || []).map((row) => [row.key, row.url])),
-    planets: new Map((manifest.planets || []).map((row) => [row.key, row.url])),
-    features: new Map((manifest.features || []).map((row) => [row.key, row.url])),
+    stars: toMap(manifest.stars),
+    planets: toMap(manifest.planets),
+    features: toMap(manifest.features),
   }
 }
 
@@ -59,45 +74,63 @@ export function getAssetsBaseUrl() {
 }
 
 export function starModelPath(typeKey) {
-  const remote = remoteCatalog?.stars.get(typeKey)
+  const remote = remoteCatalog?.stars.get(typeKey)?.url
   if (remote) return remote
   return joinAssetUrl(`/models/stars/star_type_${typeKey}.glb`)
 }
 
 export function starPreviewPath(typeKey) {
+  const remote = remoteCatalog?.stars.get(typeKey)?.previewUrl
+  if (remote) return remote
   return joinAssetUrl(`/models/stars/star_type_${typeKey}_preview.png`)
 }
 
 export function starTypeArtPath(typeKey) {
-  return `/textures/star_types/star_type_${typeKey}.png`
+  const remote = remoteCatalog?.stars.get(typeKey)?.artUrl
+  if (remote) return remote
+  return joinAssetUrl(`/textures/star_types/star_type_${typeKey}.png`)
 }
 
 export function planetModelPath(typeKey) {
-  const remote = remoteCatalog?.planets.get(typeKey)
+  const remote = remoteCatalog?.planets.get(typeKey)?.url
   if (remote) return remote
   return joinAssetUrl(`/models/planets/planet_type_${typeKey}.glb`)
 }
 
 export function planetPreviewPath(typeKey) {
+  const remote = remoteCatalog?.planets.get(typeKey)?.previewUrl
+  if (remote) return remote
   return joinAssetUrl(`/models/planets/planet_type_${typeKey}_preview.png`)
 }
 
 export function planetTypeArtPath(typeKey) {
-  return `/textures/planet_types/planet_type_${typeKey}.png`
+  const remote = remoteCatalog?.planets.get(typeKey)?.artUrl
+  if (remote) return remote
+  return joinAssetUrl(`/textures/planet_types/planet_type_${typeKey}.png`)
 }
 
 export function featureModelPath(featureKey = 'asteroid_belt') {
-  const remote = remoteCatalog?.features.get(featureKey)
+  const remote = remoteCatalog?.features.get(featureKey)?.url
   if (remote) return remote
   return joinAssetUrl(`/models/features/system_feature_${featureKey}.glb`)
 }
 
 export function featurePreviewPath(featureKey = 'asteroid_belt') {
+  const remote = remoteCatalog?.features.get(featureKey)?.previewUrl
+  if (remote) return remote
   return joinAssetUrl(`/models/features/system_feature_${featureKey}_preview.png`)
 }
 
 export function featureArtPath(featureKey = 'asteroid_belt') {
-  return `/textures/system_features/system_feature_${featureKey}.png`
+  const remote = remoteCatalog?.features.get(featureKey)?.artUrl
+  if (remote) return remote
+  return joinAssetUrl(`/textures/system_features/system_feature_${featureKey}.png`)
+}
+
+/** Map / UI textures stored at textures/<name> in S3. */
+export function mapTexturePath(fileName, cacheBust = '') {
+  const url = joinAssetUrl(`/textures/${fileName}`)
+  return cacheBust ? `${url}${url.includes('?') ? '&' : '?'}${cacheBust}` : url
 }
 
 export function resolveFeatureKey(feature) {

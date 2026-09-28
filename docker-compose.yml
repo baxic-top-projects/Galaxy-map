@@ -27,6 +27,8 @@ services:
         condition: service_healthy
       asset-service:
         condition: service_healthy
+      catalog-service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - galaxy_net
@@ -58,6 +60,22 @@ services:
       - "8002"
     env_file:
       - ./server/services/asset-service/.env
+    restart: unless-stopped
+    networks:
+      - galaxy_net
+
+  catalog-service:
+    build:
+      context: ./server/services/catalog-service
+      dockerfile: Dockerfile
+    container_name: galaxy-catalog-service
+    expose:
+      - "8003"
+    env_file:
+      - ./server/services/catalog-service/.env
+    volumes:
+      - ./client/public/data/galaxy-index.json:/data/galaxy-index.json:ro
+      - ./client/public/data/systems:/data/systems:ro
     restart: unless-stopped
     networks:
       - galaxy_net

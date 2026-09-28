@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     s3_secret_access_key: str = ""
     s3_force_path_style: bool = False
     s3_prefix: str = "models/"
+    s3_textures_prefix: str = "textures/"
 
     # Browser-facing base URL (CDN or public bucket URL). No trailing slash.
     # Example: https://storage.yandexcloud.net/galaxy-map-assets

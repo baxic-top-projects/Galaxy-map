@@ -8,3 +8,4 @@ class GatewayHealthDto(BaseModel):
     service: str
     stormService: dict
     assetService: dict = Field(default_factory=dict)
+    catalogService: dict = Field(default_factory=dict)

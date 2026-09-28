@@ -1,2 +1,1 @@
-# Track 3D models with Git LFS
-client/public/models/**/*.glb filter=lfs diff=lfs merge=lfs -text
+# Binary assets are stored in S3 (galaxybucket), not in this repo.

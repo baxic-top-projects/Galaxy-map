@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 import time
 from typing import Any
-from urllib.parse import urljoin
 
 import boto3
 from botocore.client import Config
@@ -24,9 +23,15 @@ NAME_PATTERNS = {
     "features": re.compile(r"^system_feature_(.+)\.glb$", re.IGNORECASE),
 }
 
+ART_PATTERNS = {
+    "stars": ("star_types/", re.compile(r"^star_type_(.+)\.png$", re.IGNORECASE)),
+    "planets": ("planet_types/", re.compile(r"^planet_type_(.+)\.png$", re.IGNORECASE)),
+    "features": ("system_features/", re.compile(r"^system_feature_(.+)\.png$", re.IGNORECASE)),
+}
+
 
 class S3AssetService:
-    """Lists GLB assets in S3 and builds browser-facing URLs (public or presigned)."""
+    """Lists GLB + texture assets in S3 and builds browser-facing URLs."""
 
     def __init__(self, app_settings: Settings | None = None):
         self.settings = app_settings or settings
@@ -63,6 +68,7 @@ class S3AssetService:
             "service": "asset-service",
             "bucket": self.settings.s3_bucket,
             "prefix": self.settings.s3_prefix,
+            "texturesPrefix": self.settings.s3_textures_prefix,
             "presignEnabled": self.settings.presign_enabled,
             "configured": bool(self.settings.s3_access_key_id and self.settings.s3_secret_access_key),
         }
@@ -73,7 +79,7 @@ class S3AssetService:
             client = self._ensure_client()
             client.head_bucket(Bucket=self.settings.s3_bucket)
             payload["bucketReachable"] = True
-        except Exception as exc:  # noqa: BLE001 - surface health without crashing
+        except Exception as exc:  # noqa: BLE001
             payload["status"] = "degraded"
             payload["bucketReachable"] = False
             payload["error"] = str(exc)
@@ -82,7 +88,6 @@ class S3AssetService:
     def _public_url(self, object_key: str) -> str:
         base = (self.settings.s3_public_base_url or "").rstrip("/")
         if not base:
-            # Fallback to path-style endpoint URL if provided.
             endpoint = (self.settings.s3_endpoint_url or "").rstrip("/")
             if endpoint:
                 return f"{endpoint}/{self.settings.s3_bucket}/{object_key.lstrip('/')}"
@@ -107,6 +112,16 @@ class S3AssetService:
             return None
         return object_key[: -len(".glb")] + "_preview.png"
 
+    def _art_key(self, kind: AssetKind, key: str) -> str:
+        textures_prefix = self.settings.s3_textures_prefix.strip("/")
+        folder, _ = ART_PATTERNS[kind]
+        filename = {
+            "stars": f"star_type_{key}.png",
+            "planets": f"planet_type_{key}.png",
+            "features": f"system_feature_{key}.png",
+        }[kind]
+        return f"{textures_prefix}/{folder}{filename}".replace("//", "/")
+
     def _parse_item(self, object_key: str) -> AssetItemDto | None:
         prefix = self.settings.s3_prefix.lstrip("/")
         relative = object_key
@@ -122,35 +137,56 @@ class S3AssetService:
                 return None
             key = match.group(1)
             preview_key = self._preview_key(object_key)
+            art_key = self._art_key(kind, key)  # type: ignore[arg-type]
             return AssetItemDto(
                 kind=kind,  # type: ignore[arg-type]
                 key=key,
                 objectKey=object_key,
                 url=self._object_url(object_key),
                 previewUrl=self._object_url(preview_key) if preview_key else None,
+                artUrl=self._object_url(art_key),
             )
         return None
 
-    def list_objects(self) -> list[str]:
+    def _list_prefix(self, prefix: str, *, suffixes: tuple[str, ...]) -> list[str]:
         client = self._ensure_client()
         keys: list[str] = []
         token = None
         while True:
             kwargs: dict[str, Any] = {
                 "Bucket": self.settings.s3_bucket,
-                "Prefix": self.settings.s3_prefix,
+                "Prefix": prefix,
             }
             if token:
                 kwargs["ContinuationToken"] = token
             response = client.list_objects_v2(**kwargs)
             for item in response.get("Contents") or []:
                 key = item.get("Key")
-                if key and not key.endswith("/") and key.lower().endswith(".glb"):
+                if not key or key.endswith("/"):
+                    continue
+                lower = key.lower()
+                if any(lower.endswith(suffix) for suffix in suffixes):
                     keys.append(key)
             if not response.get("IsTruncated"):
                 break
             token = response.get("NextContinuationToken")
         return keys
+
+    def list_objects(self) -> list[str]:
+        return self._list_prefix(self.settings.s3_prefix, suffixes=(".glb",))
+
+    def list_texture_objects(self) -> list[str]:
+        return self._list_prefix(self.settings.s3_textures_prefix, suffixes=(".png", ".jpg", ".jpeg", ".webp"))
+
+    def _attach_existing_art_urls(self, items: list[AssetItemDto], texture_keys: set[str]) -> None:
+        for item in items:
+            art_key = self._art_key(item.kind, item.key)
+            if art_key in texture_keys:
+                item.artUrl = self._object_url(art_key)
+            preview_key = self._preview_key(item.objectKey)
+            if preview_key and preview_key in texture_keys:
+                # Preview may live under models/ as sibling; already set. Keep if present in textures too.
+                item.previewUrl = self._object_url(preview_key)
 
     def manifest(self, *, force: bool = False) -> AssetManifestDto:
         now = time.monotonic()
@@ -175,6 +211,15 @@ class S3AssetService:
             else:
                 features.append(item)
 
+        texture_keys = set(self.list_texture_objects())
+        # Also treat model-side preview pngs as known if listed under models/ prefix.
+        texture_keys.update(
+            self._list_prefix(self.settings.s3_prefix, suffixes=(".png", ".jpg", ".jpeg", ".webp"))
+        )
+        self._attach_existing_art_urls(stars, texture_keys)
+        self._attach_existing_art_urls(planets, texture_keys)
+        self._attach_existing_art_urls(features, texture_keys)
+
         stars.sort(key=lambda row: row.key)
         planets.sort(key=lambda row: row.key)
         features.sort(key=lambda row: row.key)
@@ -182,6 +227,7 @@ class S3AssetService:
         payload = AssetManifestDto(
             bucket=self.settings.s3_bucket,
             prefix=self.settings.s3_prefix,
+            texturesPrefix=self.settings.s3_textures_prefix,
             publicBaseUrl=(self.settings.s3_public_base_url or "").rstrip("/"),
             presigned=self.settings.presign_enabled,
             stars=stars,
@@ -203,8 +249,8 @@ class S3AssetService:
                     objectKey=item.objectKey,
                     url=item.url,
                     previewUrl=item.previewUrl,
+                    artUrl=item.artUrl,
                 )
-        # Synthesize expected object key even if listing missed it (lazy public URL).
         filename = {
             "stars": f"star_type_{key}.glb",
             "planets": f"planet_type_{key}.glb",
@@ -212,12 +258,14 @@ class S3AssetService:
         }[kind]
         object_key = f"{self.settings.s3_prefix.rstrip('/')}/{KIND_PREFIX[kind]}{filename}".replace("//", "/")
         preview_key = self._preview_key(object_key)
+        art_key = self._art_key(kind, key)
         return AssetResolveDto(
             kind=kind,
             key=key,
             objectKey=object_key,
             url=self._object_url(object_key),
             previewUrl=self._object_url(preview_key) if preview_key else None,
+            artUrl=self._object_url(art_key),
         )
 
 

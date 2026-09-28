@@ -1,5 +1,6 @@
 <script>
   import { onDestroy, tick } from 'svelte'
+  import { mapTexturePath } from '../lib/galaxy/modelCatalog.js'
 
   let {
     detail = null,
@@ -14,6 +15,7 @@
   let canvas = $state(null)
   let api = null
   let labels = $state([])
+  const starfieldUrl = $derived(mapTexturePath('system_starfield.png', 'v=2'))
 
   $effect(() => {
     const current = detail
@@ -60,7 +62,7 @@
 </script>
 
 {#if detail}
-  <div class="system-stage">
+  <div class="system-stage" style={`--starfield:url('${starfieldUrl}')`}>
     <canvas bind:this={canvas} class="detail-canvas" aria-label="System detail view"></canvas>
     {#if storm}
       <div
@@ -113,7 +115,7 @@
     min-height: 280px;
     background:
       linear-gradient(rgba(0, 0, 0, 0.68), rgba(0, 0, 0, 0.68)),
-      #000 url('/textures/system_starfield.png?v=2') center / cover no-repeat;
+      #000 var(--starfield, none) center / cover no-repeat;
   }
 
   .detail-canvas {

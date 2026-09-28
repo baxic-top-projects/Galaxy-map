@@ -8,13 +8,14 @@ class Settings(BaseSettings):
 
     storm_service_url: str = "http://storm-service:8001"
     asset_service_url: str = "http://asset-service:8002"
+    catalog_service_url: str = "http://catalog-service:8003"
     cors_origins: str = (
         "http://localhost:5173,http://127.0.0.1:5173,"
         "http://localhost:9999,http://127.0.0.1:9999"
     )
     host: str = "0.0.0.0"
     port: int = 8000
-    request_timeout_seconds: float = 5.0
+    request_timeout_seconds: float = 30.0
 
 
 settings = Settings()

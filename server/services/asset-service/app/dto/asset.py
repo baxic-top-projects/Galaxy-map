@@ -13,11 +13,13 @@ class AssetItemDto(BaseModel):
     objectKey: str
     url: str
     previewUrl: str | None = None
+    artUrl: str | None = None
 
 
 class AssetManifestDto(BaseModel):
     bucket: str
     prefix: str
+    texturesPrefix: str
     publicBaseUrl: str
     presigned: bool
     stars: list[AssetItemDto] = Field(default_factory=list)
@@ -31,3 +33,4 @@ class AssetResolveDto(BaseModel):
     objectKey: str
     url: str
     previewUrl: str | None = None
+    artUrl: str | None = None

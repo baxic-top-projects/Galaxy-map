@@ -7,7 +7,7 @@
   import { estimateZoom } from './lib/galaxy/labelLod.js'
   import { connectStormSocket } from './lib/galaxy/stormsApi.js'
   import { fetchAssetManifest } from './lib/galaxy/assetsApi.js'
-  import { applyAssetManifest } from './lib/galaxy/modelCatalog.js'
+  import { applyAssetManifest, mapTexturePath } from './lib/galaxy/modelCatalog.js'
 
   let galaxy = $state(null)
   let error = $state('')
@@ -24,6 +24,7 @@
   let stormSnapshot = $state(null)
   let stormStatus = $state('closed')
   let stormSocket = null
+  const starfieldUrl = $derived(mapTexturePath('system_starfield.png', 'v=2'))
 
   const selectedStorm = $derived(
     selected?.id ? stormSnapshot?.bySystemId?.get(selected.id) || null : null,
@@ -65,7 +66,7 @@
       return
     }
     let cancelled = false
-    loadSystemDetail(current.shard)
+    loadSystemDetail(current)
       .then((data) => {
         if (!cancelled) detail = data
       })
@@ -155,7 +156,7 @@
         {/each}
       </div>
     {:else}
-      <section class="system-mode">
+      <section class="system-mode" style={`--starfield:url('${starfieldUrl}')`}>
         <SystemDetailView
           {detail}
           {galaxy}
@@ -248,7 +249,7 @@
     box-sizing: border-box;
     background:
       linear-gradient(rgba(0, 0, 0, 0.68), rgba(0, 0, 0, 0.68)),
-      #000 url('/textures/system_starfield.png?v=2') center / cover no-repeat;
+      #000 var(--starfield) center / cover no-repeat;
   }
 
   .labels {

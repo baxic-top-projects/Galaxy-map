@@ -5,6 +5,8 @@
  * @typedef {{ id: string, kind: string, token: string, nameEn: string, nameRu: string, stem: string|null, planetTypeKey?: string }} SearchEntry
  */
 
+const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || ''
+
 /**
  * @returns {Promise<{
  *   meta: object,
@@ -17,7 +19,8 @@
  *   polityByStem: Map<string, Polity>
  * }>}
  */
-export async function loadGalaxy(url = '/data/galaxy-index.json') {
+export async function loadGalaxy(baseUrl = DEFAULT_API_BASE) {
+  const url = `${String(baseUrl).replace(/\/$/, '')}/api/v1/galaxy`
   const response = await fetch(url)
   if (!response.ok) {
     throw new Error(`Failed to load galaxy index: ${response.status}`)
@@ -32,8 +35,18 @@ export async function loadGalaxy(url = '/data/galaxy-index.json') {
   }
 }
 
-export async function loadSystemDetail(shardPath) {
-  const response = await fetch(`/data/${shardPath}`)
+/**
+ * @param {string | { id?: string, shard?: string }} systemOrId
+ * @param {string} [baseUrl]
+ */
+export async function loadSystemDetail(systemOrId, baseUrl = DEFAULT_API_BASE) {
+  const key =
+    typeof systemOrId === 'string'
+      ? systemOrId
+      : systemOrId?.id || systemOrId?.shard || ''
+  if (!key) throw new Error('System id is required')
+  const url = `${String(baseUrl).replace(/\/$/, '')}/api/v1/systems/${encodeURIComponent(key)}`
+  const response = await fetch(url)
   if (!response.ok) {
     throw new Error(`Failed to load system detail: ${response.status}`)
   }

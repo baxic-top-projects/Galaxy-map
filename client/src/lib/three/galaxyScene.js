@@ -1,12 +1,12 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { starColor } from '../galaxy/modelCatalog.js'
+import { mapTexturePath, starColor } from '../galaxy/modelCatalog.js'
 import { buildSpatialIndex } from '../galaxy/spatialIndex.js'
 import { estimateZoom, pickLabels } from '../galaxy/labelLod.js'
 
 const GALAXY_SCALE = 42
 const MAP_LIM = 1.06
-const TERRITORY_PLATE_URL = '/textures/galaxy_territory_plate.png?v=40'
+const TERRITORY_PLATE_URL = mapTexturePath('galaxy_territory_plate.png', 'v=40')
 const textureLoader = new THREE.TextureLoader()
 
 function loadTexture(url, { crisp = false } = {}) {
