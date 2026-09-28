@@ -21,7 +21,7 @@ BASE_PLATE = CANON / "galaxy_base_plate.png"
 ENV_PATH = ROOT / "server" / "services" / "asset-service" / ".env"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
 TEXTURE_KEY = "textures/galaxy_territory_plate.png"
-SIDE = 1024
+SIDE = 2048
 
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -106,7 +106,8 @@ def build_overlay(polities: list[dict]) -> Image.Image:
         if not lines:
             continue
         suzerain = polity.get("kind") == "suzerain"
-        size = 15 if suzerain else 9
+        scale = SIDE / 1024
+        size = round((15 if suzerain else 9) * scale)
         text_font = font(size, bold=suzerain)
         line_height = size * 1.12
         for line_index, line in enumerate(lines):
@@ -116,7 +117,7 @@ def build_overlay(polities: list[dict]) -> Image.Image:
                 line,
                 font=text_font,
                 fill=(255, 255, 255, 255),
-                stroke_width=3 if suzerain else 2,
+                stroke_width=round((3 if suzerain else 2) * scale),
                 stroke_fill=(0, 0, 0, 220),
                 anchor="mm",
                 align="center",
