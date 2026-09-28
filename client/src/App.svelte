@@ -22,7 +22,6 @@
   let polityFilter = $state('')
   let mode = $state('galaxy')
   let labels = $state([])
-  let polityLabels = $state([])
   let showPoliticalMap = $state(true)
   let focusRequest = $state(null)
   let resetToken = $state(0)
@@ -136,12 +135,6 @@
     zoom = nextZoom ?? estimateZoom(8)
   }
 
-  function polityMapLabel(label) {
-    const text = locale === 'en' ? label.nameEn : label.label || label.nameRu
-    const words = String(text || '').trim().split(/\s+/)
-    if (words.length < 2) return words[0] || ''
-    return `${words[0]}\n${words.slice(1).join(' ')}`
-  }
 </script>
 
 {#if page !== 'universe'}
@@ -164,22 +157,10 @@
           onSelect={handleSelect}
           onEnterSystem={handleEnterSystem}
           onLabels={handleLabels}
-          onPolityLabels={(nextLabels) => (polityLabels = nextLabels)}
         />
       {/key}
 
       <div class="labels" aria-hidden="true">
-        {#each polityLabels as label}
-          {#if label.visible && showPoliticalMap}
-            <div
-              class="polity-label"
-              class:suzerain={label.kind === 'suzerain'}
-              style={`left:${label.x}px;top:${label.y}px;--polity-color:${label.color || '#dce8ff'}`}
-            >
-              {polityMapLabel(label)}
-            </div>
-          {/if}
-        {/each}
         {#each labels as label}
           {#if label.visible}
             <div
@@ -317,29 +298,6 @@
     white-space: nowrap;
     color: #d5e4ff;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  }
-
-  .polity-label {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    max-width: 12rem;
-    color: #fff;
-    font-size: clamp(0.56rem, 0.72vw, 0.82rem);
-    font-weight: 400;
-    letter-spacing: 0.025em;
-    line-height: 1.12;
-    text-align: center;
-    text-transform: uppercase;
-    white-space: pre-line;
-    text-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.95),
-      0 0 9px rgba(0, 0, 0, 0.9);
-    opacity: 0.82;
-  }
-
-  .polity-label.suzerain {
-    font-size: clamp(0.75rem, 1.05vw, 1.05rem);
-    font-weight: 700;
   }
 
   .label.capital {

@@ -9,7 +9,6 @@
     onHover = undefined,
     onEnterSystem = undefined,
     onLabels = undefined,
-    onPolityLabels = undefined,
     showPoliticalMap = true,
     focusRequest = null,
     resetToken = 0,
@@ -28,7 +27,6 @@
         onHover,
         onEnterSystem,
         onLabels,
-        onPolityLabels,
       })
       if (cancelled) {
         api?.dispose()
