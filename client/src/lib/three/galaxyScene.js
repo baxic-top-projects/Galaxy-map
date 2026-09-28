@@ -272,6 +272,13 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   lanes.renderOrder = 1
   root.add(lanes)
 
+  const stormGroup = new THREE.Group()
+  stormGroup.renderOrder = 3
+  root.add(stormGroup)
+  let stormPoints = null
+  let stormMaterial = null
+  let stormGeometry = null
+
   const pickHelper = new THREE.Raycaster()
   pickHelper.params.Points = { threshold: 0.9 }
   const pointer = new THREE.Vector2()
@@ -290,6 +297,101 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const panOffset = new THREE.Vector3()
   const panRight = new THREE.Vector3()
   const panForward = new THREE.Vector3()
+  const stormColor = new THREE.Color()
+
+  function setStorms(stormSnapshot) {
+    const systems = stormSnapshot?.systems || []
+    while (stormGroup.children.length) {
+      const child = stormGroup.children.pop()
+      child.geometry?.dispose()
+      child.material?.dispose()
+    }
+    stormPoints = null
+    stormMaterial = null
+    stormGeometry = null
+    if (!systems.length) return
+
+    const count = systems.length
+    const stormPositions = new Float32Array(count * 3)
+    const stormColors = new Float32Array(count * 3)
+    const stormSizes = new Float32Array(count)
+    const stormIntensity = new Float32Array(count)
+
+    systems.forEach((entry, index) => {
+      const system = galaxy.byId.get(entry.systemId)
+      if (!system) return
+      const i = index * 3
+      stormPositions[i] = system.x * GALAXY_SCALE
+      stormPositions[i + 1] = system.y * GALAXY_SCALE
+      stormPositions[i + 2] = system.z * GALAXY_SCALE
+      stormColor.set(entry.color || '#6ec8ff')
+      stormColors[i] = stormColor.r
+      stormColors[i + 1] = stormColor.g
+      stormColors[i + 2] = stormColor.b
+      const intensity = THREE.MathUtils.clamp(Number(entry.intensity) || 0.4, 0.15, 1)
+      stormIntensity[index] = intensity
+      stormSizes[index] = 18 + intensity * 28
+    })
+
+    stormGeometry = new THREE.BufferGeometry()
+    stormGeometry.setAttribute('position', new THREE.BufferAttribute(stormPositions, 3))
+    stormGeometry.setAttribute('color', new THREE.BufferAttribute(stormColors, 3))
+    stormGeometry.setAttribute('size', new THREE.BufferAttribute(stormSizes, 1))
+    stormGeometry.setAttribute('intensity', new THREE.BufferAttribute(stormIntensity, 1))
+
+    stormMaterial = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexColors: true,
+      uniforms: {
+        uTime: { value: 0 },
+        uScale: { value: 1 },
+      },
+      vertexShader: `
+        attribute float size;
+        attribute float intensity;
+        varying vec3 vColor;
+        varying float vIntensity;
+        uniform float uScale;
+        uniform float uTime;
+        void main() {
+          vColor = color;
+          vIntensity = intensity;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          float pulse = 1.0 + 0.12 * sin(uTime * 1.8 + intensity * 6.0);
+          float dist = max(-mvPosition.z, 6.0);
+          float atten = clamp(52.0 / dist, 0.7, 1.25);
+          gl_PointSize = clamp(size * uScale * atten * pulse, 8.0, 64.0);
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColor;
+        varying float vIntensity;
+        uniform float uTime;
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+        void main() {
+          vec2 uv = gl_PointCoord - vec2(0.5);
+          float d = length(uv);
+          if (d > 0.5) discard;
+          float n = hash(uv * 8.0 + uTime * 0.35);
+          float swirl = 0.55 + 0.45 * sin((atan(uv.y, uv.x) + uTime) * 3.0 + n * 6.2831);
+          float core = 1.0 - smoothstep(0.08, 0.42, d);
+          float haze = (1.0 - smoothstep(0.2, 0.5, d)) * swirl;
+          float alpha = (core * 0.55 + haze * 0.65) * (0.35 + vIntensity * 0.65);
+          vec3 col = mix(vColor * 0.55, vColor * 1.35, core);
+          gl_FragColor = vec4(col, alpha);
+        }
+      `,
+    })
+
+    stormPoints = new THREE.Points(stormGeometry, stormMaterial)
+    stormPoints.frustumCulled = false
+    stormGroup.add(stormPoints)
+  }
 
   function resize() {
     const width = canvas.clientWidth || canvas.parentElement?.clientWidth || window.innerWidth
@@ -510,6 +612,10 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     for (const layer of starLayers) {
       layer.material.uniforms.uScale.value = scale
     }
+    if (stormMaterial?.uniforms?.uTime) {
+      stormMaterial.uniforms.uTime.value = performance.now() * 0.001
+      stormMaterial.uniforms.uScale.value = scale
+    }
     renderer.render(scene, camera)
     if (frameCount % 2 === 0) emitLabels()
   }
@@ -530,6 +636,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
       layer.geometry.dispose()
       layer.material.dispose()
     }
+    setStorms(null)
     edgeGeom.dispose()
     edgeMat.dispose()
     plate.geometry.dispose()
@@ -589,6 +696,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   return {
     focusSystem,
     setSelected,
+    setStorms,
     resetView,
     dispose,
   }

@@ -1,10 +1,11 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
   import GalaxyScene from './components/GalaxyScene.svelte'
   import MapHud from './components/MapHud.svelte'
   import SystemDetailView from './components/SystemDetailView.svelte'
   import { loadGalaxy, loadSystemDetail, systemLabel } from './lib/galaxy/loadGalaxy.js'
   import { estimateZoom } from './lib/galaxy/labelLod.js'
+  import { connectStormSocket } from './lib/galaxy/stormsApi.js'
 
   let galaxy = $state(null)
   let error = $state('')
@@ -18,6 +19,13 @@
   let focusRequest = $state(null)
   let resetToken = $state(0)
   let zoom = $state(1)
+  let stormSnapshot = $state(null)
+  let stormStatus = $state('closed')
+  let stormSocket = null
+
+  const selectedStorm = $derived(
+    selected?.id ? stormSnapshot?.bySystemId?.get(selected.id) || null : null,
+  )
 
   onMount(async () => {
     try {
@@ -27,6 +35,20 @@
     } finally {
       loading = false
     }
+
+    stormSocket = connectStormSocket({
+      onSnapshot(snapshot) {
+        stormSnapshot = snapshot
+      },
+      onStatus(status) {
+        stormStatus = status
+      },
+    })
+  })
+
+  onDestroy(() => {
+    stormSocket?.close()
+    stormSocket = null
   })
 
   $effect(() => {
@@ -104,6 +126,7 @@
           selectedId={selected?.id || null}
           {focusRequest}
           {resetToken}
+          {stormSnapshot}
           onSelect={handleSelect}
           onEnterSystem={handleEnterSystem}
           onLabels={handleLabels}
@@ -130,6 +153,7 @@
           {detail}
           {galaxy}
           {locale}
+          storm={selectedStorm}
           onZoomOut={() => {
             mode = 'galaxy'
             resetToken += 1
@@ -146,6 +170,9 @@
       {detail}
       {polityFilter}
       {mode}
+      storm={selectedStorm}
+      stormCount={stormSnapshot?.storms?.length || 0}
+      {stormStatus}
       onLocale={(value) => (locale = value)}
       onPolityFilter={(value) => {
         polityFilter = value
@@ -161,8 +188,7 @@
       onBackToGalaxy={() => {
         mode = 'galaxy'
       }}
-    />
-  </main>
+    />  </main>
 {/if}
 
 <style>

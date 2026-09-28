@@ -1,0 +1,1 @@
+"""Galaxy storm microservice (FastAPI)."""

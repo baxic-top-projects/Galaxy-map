@@ -4,6 +4,7 @@
   let {
     galaxy,
     selectedId = null,
+    stormSnapshot = null,
     onSelect = undefined,
     onHover = undefined,
     onEnterSystem = undefined,
@@ -29,7 +30,9 @@
       if (cancelled) {
         api?.dispose()
         api = null
+        return
       }
+      if (stormSnapshot) api.setStorms(stormSnapshot)
     })()
     return () => {
       cancelled = true
@@ -56,6 +59,11 @@
   $effect(() => {
     if (!api) return
     api.setSelected(selectedId)
+  })
+
+  $effect(() => {
+    if (!api) return
+    api.setStorms(stormSnapshot)
   })
 </script>
 
