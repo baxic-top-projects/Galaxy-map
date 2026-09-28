@@ -16,6 +16,7 @@ import {
 } from '../galaxy/modelCatalog.js'
 
 const gltfLoader = new GLTFLoader()
+gltfLoader.setCrossOrigin('anonymous')
 const textureLoader = new THREE.TextureLoader()
 textureLoader.setCrossOrigin('anonymous')
 const glbCache = new Map()
@@ -45,7 +46,10 @@ function loadGlb(url) {
       url,
       (gltf) => resolve(gltf.scene),
       undefined,
-      () => resolve(null),
+      (err) => {
+        console.warn('GLB load failed', url, err)
+        resolve(null)
+      },
     )
   })
   glbCache.set(url, promise)
