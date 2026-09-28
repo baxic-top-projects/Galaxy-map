@@ -20,7 +20,7 @@ describe('stormsApi', () => {
     })
 
     expect(normalized.tick).toBe(4)
-    expect(normalized.bySystemId.get('A:One')).toMatchObject({
+    expect(normalized.bySystemId['A:One']).toMatchObject({
       intensity: 0.7,
       stage: 'active',
       type: 'electric',
@@ -30,7 +30,7 @@ describe('stormsApi', () => {
   test('tolerates empty or invalid payloads', () => {
     const empty = normalizeStormSnapshot(null)
     expect(empty.systems).toEqual([])
-    expect(empty.bySystemId.size).toBe(0)
+    expect(Object.keys(empty.bySystemId)).toEqual([])
   })
 
   test('labels storm stage and type', () => {

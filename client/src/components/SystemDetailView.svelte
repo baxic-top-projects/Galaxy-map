@@ -13,16 +13,16 @@
   } = $props()
 
   let canvas = $state(null)
-  let api = null
+  let api = $state(null)
   let labels = $state([])
   const starfieldUrl = $derived(mapTexturePath('system_starfield.png', 'v=2'))
 
+  // Rebuild only when the system detail changes — not on every storm WS tick.
   $effect(() => {
     const current = detail
     const map = galaxy
-    const initialStorm = storm
     let cancelled = false
-    api?.dispose()
+    api?.dispose?.()
     api = null
     labels = []
     if (!current) return
@@ -31,21 +31,26 @@
       if (cancelled || !canvas) return
       const { createSystemDetailScene } = await import('../lib/three/detailScene.js')
       if (cancelled || !canvas) return
-      api = createSystemDetailScene(canvas, current, {
+      const next = createSystemDetailScene(canvas, current, {
         galaxy: map,
-        storm: initialStorm,
-        onLabels(next) {
-          labels = next
-          onLabels?.(next)
+        storm: null,
+        onLabels(nextLabels) {
+          labels = nextLabels
+          onLabels?.(nextLabels)
         },
         onZoomOut,
         onTravelTo,
       })
+      if (cancelled) {
+        next.dispose()
+        return
+      }
+      api = next
     })
 
     return () => {
       cancelled = true
-      api?.dispose()
+      api?.dispose?.()
       api = null
     }
   })
@@ -56,7 +61,7 @@
   })
 
   onDestroy(() => {
-    api?.dispose()
+    api?.dispose?.()
     api = null
   })
 </script>

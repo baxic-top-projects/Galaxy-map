@@ -20,21 +20,23 @@ const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || ''
 
 /**
  * Normalize a storm snapshot into lookup maps used by the map UI.
+ * bySystemId is a plain object (not Map) so Svelte $state proxies stay reliable.
  * @param {StormSnapshot|null|undefined} snapshot
  */
 export function normalizeStormSnapshot(snapshot) {
   const systems = Array.isArray(snapshot?.systems) ? snapshot.systems : []
-  const bySystemId = new Map()
+  /** @type {Record<string, SystemStormState>} */
+  const bySystemId = {}
   for (const entry of systems) {
     if (!entry?.systemId) continue
-    bySystemId.set(entry.systemId, {
+    bySystemId[entry.systemId] = {
       systemId: entry.systemId,
       intensity: Number(entry.intensity) || 0,
       stage: entry.stage || 'active',
       type: entry.type || 'electric',
       stormId: entry.stormId || '',
       color: entry.color || '#6ec8ff',
-    })
+    }
   }
   return {
     tick: Number(snapshot?.tick) || 0,
@@ -43,6 +45,15 @@ export function normalizeStormSnapshot(snapshot) {
     systems,
     bySystemId,
   }
+}
+
+/**
+ * @param {ReturnType<typeof normalizeStormSnapshot>|null|undefined} snapshot
+ * @param {string|null|undefined} systemId
+ */
+export function stormForSystem(snapshot, systemId) {
+  if (!snapshot || !systemId) return null
+  return snapshot.bySystemId?.[systemId] || null
 }
 
 export function stormWebSocketUrl(baseUrl) {
