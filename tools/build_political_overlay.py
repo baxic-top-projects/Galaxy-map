@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import math
 from pathlib import Path
 
 import boto3
@@ -11,7 +12,14 @@ import requests
 from botocore.client import Config
 from dotenv import dotenv_values
 from PIL import Image, ImageDraw, ImageFont
-from scipy.ndimage import binary_dilation, distance_transform_edt
+from scipy.ndimage import (
+    binary_closing,
+    binary_dilation,
+    binary_fill_holes,
+    center_of_mass,
+    distance_transform_edt,
+    label as component_labels,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +30,7 @@ ENV_PATH = ROOT / "server" / "services" / "asset-service" / ".env"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
 TEXTURE_KEY = "textures/galaxy_territory_plate.png"
 SIDE = 2048
+MAP_LIMIT = 1.06
 
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -29,16 +38,100 @@ def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(path), size=size)
 
 
-def label_lines(polity: dict) -> list[str]:
+def label_line_candidates(polity: dict) -> list[list[str]]:
     text = str(polity.get("label") or polity.get("nameRu") or "").strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     if len(lines) > 1:
-        return lines
+        return [lines]
     words = text.split()
-    return [words[0], " ".join(words[1:])] if len(words) > 1 else words
+    if len(words) < 2:
+        return [words]
+    candidates: list[list[str]] = []
+    for split in range(1, len(words)):
+        candidates.append([" ".join(words[:split]), " ".join(words[split:])])
+    if len(words) >= 3:
+        for first in range(1, len(words) - 1):
+            for second in range(first + 1, len(words)):
+                candidates.append(
+                    [
+                        " ".join(words[:first]),
+                        " ".join(words[first:second]),
+                        " ".join(words[second:]),
+                    ]
+                )
+    return candidates
 
 
-def build_overlay(polities: list[dict]) -> Image.Image:
+def render_label_block(
+    lines: list[str],
+    size: int,
+    bold: bool,
+    stroke_width: int,
+) -> Image.Image:
+    text_font = font(size, bold=bold)
+    text = "\n".join(lines)
+    spacing = max(1, round(size * 0.12))
+    probe = Image.new("L", (1, 1))
+    probe_draw = ImageDraw.Draw(probe)
+    left, top, right, bottom = probe_draw.multiline_textbbox(
+        (0, 0),
+        text,
+        font=text_font,
+        spacing=spacing,
+        align="center",
+        stroke_width=stroke_width,
+        anchor="mm",
+    )
+    width = max(1, math.ceil(right - left + 2))
+    height = max(1, math.ceil(bottom - top + 2))
+    block = Image.new("RGBA", (width, height))
+    block_draw = ImageDraw.Draw(block)
+    block_draw.multiline_text(
+        (width / 2, height / 2),
+        text,
+        font=text_font,
+        fill=(255, 255, 255, 255),
+        stroke_width=stroke_width,
+        stroke_fill=(0, 0, 0, 220),
+        spacing=spacing,
+        anchor="mm",
+        align="center",
+    )
+    return block
+
+
+def fit_label(
+    polity: dict,
+    territory_mask: np.ndarray,
+    center_x: int,
+    center_y: int,
+) -> tuple[Image.Image, int, int] | None:
+    scale = SIDE / 1024
+    suzerain = polity.get("kind") == "suzerain"
+    maximum = round((15 if suzerain else 9) * scale)
+    minimum = max(4, round((4 if suzerain else 3) * scale))
+    safe_mask = distance_transform_edt(territory_mask) >= max(2, round(1.5 * scale))
+
+    for size in range(maximum, minimum - 1, -1):
+        stroke_width = max(1, round((3 if suzerain else 2) * scale * size / maximum))
+        options = []
+        for lines in label_line_candidates(polity):
+            block = render_label_block(lines, size, suzerain, stroke_width)
+            options.append((block.width * block.height, block))
+        for _area, block in sorted(options, key=lambda item: item[0]):
+            left = round(center_x - block.width / 2)
+            top = round(center_y - block.height / 2)
+            right = left + block.width
+            bottom = top + block.height
+            if left < 0 or top < 0 or right > SIDE or bottom > SIDE:
+                continue
+            letters = np.asarray(block.getchannel("A")) > 0
+            if np.all(safe_mask[top:bottom, left:right][letters]):
+                return block, left, top
+    return None
+
+
+def build_overlay(polities: list[dict], systems: list[dict]) -> Image.Image:
     territory = Image.open(TERRITORY_PLATE).convert("RGBA").resize(
         (SIDE, SIDE), Image.Resampling.LANCZOS
     )
@@ -93,43 +186,78 @@ def build_overlay(polities: list[dict]) -> Image.Image:
     output[border, 3] = 255
 
     image = Image.fromarray(output, "RGBA")
-    draw = ImageDraw.Draw(image)
+    system_pixels: dict[str, list[tuple[int, int]]] = {}
+    for system in systems:
+        stem = system.get("stem")
+        if not stem:
+            continue
+        px = round(
+            ((float(system["x"]) + MAP_LIMIT) / (MAP_LIMIT * 2)) * (SIDE - 1)
+        )
+        py = round(
+            (1 - (float(system["y"]) + MAP_LIMIT) / (MAP_LIMIT * 2)) * (SIDE - 1)
+        )
+        if 0 <= px < SIDE and 0 <= py < SIDE:
+            system_pixels.setdefault(stem, []).append((px, py))
+
     decoded = 0
     for index, polity in enumerate(polities):
-        mask = owner == index
+        mask = binary_fill_holes(binary_closing(owner == index, iterations=3))
         if int(mask.sum()) < 20:
             print(f"WARNING: no territory decoded for {polity['stem']}")
             continue
-        distance = distance_transform_edt(mask)
-        py, px = np.unravel_index(int(np.argmax(distance)), distance.shape)
-        lines = label_lines(polity)
-        if not lines:
-            continue
-        suzerain = polity.get("kind") == "suzerain"
-        scale = SIDE / 1024
-        size = round((15 if suzerain else 9) * scale)
-        text_font = font(size, bold=suzerain)
-        line_height = size * 1.12
-        for line_index, line in enumerate(lines):
-            line_y = py + (line_index - (len(lines) - 1) / 2) * line_height
-            draw.text(
-                (px, line_y),
-                line,
-                font=text_font,
-                fill=(255, 255, 255, 255),
-                stroke_width=round((3 if suzerain else 2) * scale),
-                stroke_fill=(0, 0, 0, 220),
-                anchor="mm",
-                align="center",
+        points = system_pixels.get(polity["stem"], [])
+        components, count = component_labels(mask)
+        component = 0
+        target_x = float(np.mean([point[0] for point in points])) if points else SIDE / 2
+        target_y = float(np.mean([point[1] for point in points])) if points else SIDE / 2
+        if count > 0:
+            sizes = np.bincount(components.ravel())
+            sizes[0] = 0
+            candidates = np.argsort(sizes)[-min(8, count):]
+            candidates = candidates[sizes[candidates] >= 200]
+            if candidates.size:
+                centers = center_of_mass(mask, components, candidates.tolist())
+                distances = [
+                    (center_x - target_x) ** 2 + (center_y - target_y) ** 2
+                    for center_y, center_x in centers
+                ]
+                component = int(candidates[int(np.argmin(distances))])
+
+        label_mask = components == component if component > 0 else mask
+        if points:
+            inside_y, inside_x = np.nonzero(label_mask)
+            nearest = int(
+                np.argmin((inside_x - target_x) ** 2 + (inside_y - target_y) ** 2)
             )
+            px, py = int(inside_x[nearest]), int(inside_y[nearest])
+        else:
+            py_float, px_float = center_of_mass(label_mask)
+            py, px = int(round(py_float)), int(round(px_float))
+
+        fitted = fit_label(polity, label_mask, px, py)
+        if fitted is None:
+            distance = distance_transform_edt(label_mask)
+            py, px = np.unravel_index(int(np.argmax(distance)), distance.shape)
+            fitted = fit_label(polity, label_mask, int(px), int(py))
+        if fitted is None:
+            distance = distance_transform_edt(mask)
+            py, px = np.unravel_index(int(np.argmax(distance)), distance.shape)
+            fitted = fit_label(polity, mask, int(px), int(py))
+        if fitted is None:
+            print(f"WARNING: label cannot fit inside {polity['stem']}")
+            continue
+        block, left, top = fitted
+        image.alpha_composite(block, (left, top))
         decoded += 1
     print(f"Decoded and labeled {decoded}/{len(polities)} exact painted territories")
     return image
 
 
 def main() -> int:
-    polities = requests.get(GALAXY_API, timeout=60).json().get("polities", [])
-    image = build_overlay(polities)
+    galaxy = requests.get(GALAXY_API, timeout=60).json()
+    polities = galaxy.get("polities", [])
+    image = build_overlay(polities, galaxy.get("systems", []))
     output = io.BytesIO()
     image.save(output, format="PNG", optimize=True)
     body = output.getvalue()
