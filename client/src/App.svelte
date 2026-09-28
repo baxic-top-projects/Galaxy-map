@@ -6,6 +6,8 @@
   import { loadGalaxy, loadSystemDetail, systemLabel } from './lib/galaxy/loadGalaxy.js'
   import { estimateZoom } from './lib/galaxy/labelLod.js'
   import { connectStormSocket } from './lib/galaxy/stormsApi.js'
+  import { fetchAssetManifest } from './lib/galaxy/assetsApi.js'
+  import { applyAssetManifest } from './lib/galaxy/modelCatalog.js'
 
   let galaxy = $state(null)
   let error = $state('')
@@ -29,6 +31,11 @@
 
   onMount(async () => {
     try {
+      try {
+        applyAssetManifest(await fetchAssetManifest())
+      } catch {
+        // Keep local /models fallbacks when asset-service is unavailable.
+      }
       galaxy = await loadGalaxy()
     } catch (err) {
       error = err instanceof Error ? err.message : String(err)

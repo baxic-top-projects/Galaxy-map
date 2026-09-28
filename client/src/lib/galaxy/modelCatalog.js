@@ -14,12 +14,58 @@ const PLANET_FALLBACK = {
   moon: 'barren',
 }
 
+/** @type {string} */
+let assetsBaseUrl = String(import.meta.env.VITE_ASSETS_BASE || '').replace(/\/$/, '')
+
+/** @type {{
+ *  stars: Map<string, string>,
+ *  planets: Map<string, string>,
+ *  features: Map<string, string>,
+ * } | null} */
+let remoteCatalog = null
+
+function joinAssetUrl(path) {
+  const normalized = path.startsWith('/') ? path : `/${path}`
+  if (!assetsBaseUrl) return normalized
+  return `${assetsBaseUrl}${normalized}`
+}
+
+/**
+ * Optional remote catalog from asset-service / S3 manifest.
+ * @param {{
+ *   publicBaseUrl?: string,
+ *   stars?: Array<{ key: string, url: string }>,
+ *   planets?: Array<{ key: string, url: string }>,
+ *   features?: Array<{ key: string, url: string }>,
+ * } | null | undefined} manifest
+ */
+export function applyAssetManifest(manifest) {
+  if (!manifest) {
+    remoteCatalog = null
+    return
+  }
+  if (manifest.publicBaseUrl) {
+    assetsBaseUrl = String(manifest.publicBaseUrl).replace(/\/$/, '')
+  }
+  remoteCatalog = {
+    stars: new Map((manifest.stars || []).map((row) => [row.key, row.url])),
+    planets: new Map((manifest.planets || []).map((row) => [row.key, row.url])),
+    features: new Map((manifest.features || []).map((row) => [row.key, row.url])),
+  }
+}
+
+export function getAssetsBaseUrl() {
+  return assetsBaseUrl
+}
+
 export function starModelPath(typeKey) {
-  return `/models/stars/star_type_${typeKey}.glb`
+  const remote = remoteCatalog?.stars.get(typeKey)
+  if (remote) return remote
+  return joinAssetUrl(`/models/stars/star_type_${typeKey}.glb`)
 }
 
 export function starPreviewPath(typeKey) {
-  return `/models/stars/star_type_${typeKey}_preview.png`
+  return joinAssetUrl(`/models/stars/star_type_${typeKey}_preview.png`)
 }
 
 export function starTypeArtPath(typeKey) {
@@ -27,11 +73,13 @@ export function starTypeArtPath(typeKey) {
 }
 
 export function planetModelPath(typeKey) {
-  return `/models/planets/planet_type_${typeKey}.glb`
+  const remote = remoteCatalog?.planets.get(typeKey)
+  if (remote) return remote
+  return joinAssetUrl(`/models/planets/planet_type_${typeKey}.glb`)
 }
 
 export function planetPreviewPath(typeKey) {
-  return `/models/planets/planet_type_${typeKey}_preview.png`
+  return joinAssetUrl(`/models/planets/planet_type_${typeKey}_preview.png`)
 }
 
 export function planetTypeArtPath(typeKey) {
@@ -39,11 +87,13 @@ export function planetTypeArtPath(typeKey) {
 }
 
 export function featureModelPath(featureKey = 'asteroid_belt') {
-  return `/models/features/system_feature_${featureKey}.glb`
+  const remote = remoteCatalog?.features.get(featureKey)
+  if (remote) return remote
+  return joinAssetUrl(`/models/features/system_feature_${featureKey}.glb`)
 }
 
 export function featurePreviewPath(featureKey = 'asteroid_belt') {
-  return `/models/features/system_feature_${featureKey}_preview.png`
+  return joinAssetUrl(`/models/features/system_feature_${featureKey}_preview.png`)
 }
 
 export function featureArtPath(featureKey = 'asteroid_belt') {

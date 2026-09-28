@@ -35,10 +35,12 @@ jobs:
           CLIENT_ENV: ${{ secrets.CLIENT_ENV }}
           GATEWAY_ENV: ${{ secrets.GATEWAY_ENV }}
           STORM_ENV: ${{ secrets.STORM_ENV }}
+          ASSET_ENV: ${{ secrets.ASSET_ENV }}
         run: |
           printf '%s\n' "$CLIENT_ENV" > client/.env
           printf '%s\n' "$GATEWAY_ENV" > server/api-gateway/.env
           printf '%s\n' "$STORM_ENV" > server/services/storm-service/.env
+          printf '%s\n' "$ASSET_ENV" > server/services/asset-service/.env
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -99,10 +101,12 @@ jobs:
           CLIENT_ENV: ${{ secrets.CLIENT_ENV }}
           GATEWAY_ENV: ${{ secrets.GATEWAY_ENV }}
           STORM_ENV: ${{ secrets.STORM_ENV }}
+          ASSET_ENV: ${{ secrets.ASSET_ENV }}
         run: |
           printf '%s\n' "$CLIENT_ENV" > client/.env
           printf '%s\n' "$GATEWAY_ENV" > server/api-gateway/.env
           printf '%s\n' "$STORM_ENV" > server/services/storm-service/.env
+          printf '%s\n' "$ASSET_ENV" > server/services/asset-service/.env
 
       - name: Copy project to server
         uses: appleboy/scp-action@v1.0.0

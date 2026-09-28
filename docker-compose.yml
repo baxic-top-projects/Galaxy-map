@@ -25,6 +25,8 @@ services:
     depends_on:
       storm-service:
         condition: service_healthy
+      asset-service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - galaxy_net
@@ -43,6 +45,19 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - galaxy_net
+
+  asset-service:
+    build:
+      context: ./server/services/asset-service
+      dockerfile: Dockerfile
+    container_name: galaxy-asset-service
+    expose:
+      - "8002"
+    env_file:
+      - ./server/services/asset-service/.env
     restart: unless-stopped
     networks:
       - galaxy_net

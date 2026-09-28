@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="GATEWAY_", env_file=".env", extra="ignore")
 
     storm_service_url: str = "http://storm-service:8001"
+    asset_service_url: str = "http://asset-service:8002"
     cors_origins: str = (
         "http://localhost:5173,http://127.0.0.1:5173,"
         "http://localhost:9999,http://127.0.0.1:9999"
