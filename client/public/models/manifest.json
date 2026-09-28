@@ -1,5 +1,6 @@
 {
   "politicalMap": true,
+  "territoryPlate": true,
   "basePlate": true,
   "starGlb": {
     "copied": 12,
@@ -9,14 +10,23 @@
     "copied": 14,
     "skipped": 2
   },
+  "featureGlb": {
+    "copied": 1,
+    "skipped": 0
+  },
   "starPreview": 12,
   "planetPreview": 16,
+  "featurePreview": 1,
   "starTypes": {
     "copied": 17,
     "skipped": 0
   },
   "planetTypes": {
     "copied": 16,
+    "skipped": 0
+  },
+  "systemFeatures": {
+    "copied": 1,
     "skipped": 0
   }
 }

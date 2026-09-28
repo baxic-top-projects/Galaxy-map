@@ -20,12 +20,16 @@
     ;(async () => {
       const { createGalaxyScene } = await import('../lib/three/galaxyScene.js')
       if (cancelled || !galaxy || !canvas) return
-      api = createGalaxyScene(canvas, galaxy, {
+      api = await createGalaxyScene(canvas, galaxy, {
         onSelect,
         onHover,
         onEnterSystem,
         onLabels,
       })
+      if (cancelled) {
+        api?.dispose()
+        api = null
+      }
     })()
     return () => {
       cancelled = true

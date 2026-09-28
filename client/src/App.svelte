@@ -128,11 +128,13 @@
       <section class="system-mode">
         <SystemDetailView
           {detail}
+          {galaxy}
           {locale}
           onZoomOut={() => {
             mode = 'galaxy'
             resetToken += 1
           }}
+          onTravelTo={handleEnterSystem}
         />
       </section>
     {/if}

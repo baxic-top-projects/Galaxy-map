@@ -1,7 +1,14 @@
 <script>
   import { onDestroy, tick } from 'svelte'
 
-  let { detail = null, locale = 'ru', onLabels = undefined, onZoomOut = undefined } = $props()
+  let {
+    detail = null,
+    galaxy = null,
+    locale = 'ru',
+    onLabels = undefined,
+    onZoomOut = undefined,
+    onTravelTo = undefined,
+  } = $props()
 
   let canvas = $state(null)
   let api = null
@@ -9,6 +16,7 @@
 
   $effect(() => {
     const current = detail
+    const map = galaxy
     let cancelled = false
     api?.dispose()
     api = null
@@ -20,11 +28,13 @@
       const { createSystemDetailScene } = await import('../lib/three/detailScene.js')
       if (cancelled || !canvas) return
       api = createSystemDetailScene(canvas, current, {
+        galaxy: map,
         onLabels(next) {
           labels = next
           onLabels?.(next)
         },
         onZoomOut,
+        onTravelTo,
       })
     })
 
@@ -52,10 +62,13 @@
             class:inhabited={label.inhabited}
             class:host={label.kind === 'star' || label.kind === 'black_hole' || label.kind === 'well'}
             class:feature={label.kind === 'feature'}
+            class:hyperlane={label.kind === 'hyperlane'}
             style={`left:${label.x}px;top:${label.y}px`}
           >
             <strong>{locale === 'en' ? label.nameEn : label.nameRu}</strong>
-            {#if label.planetType}
+            {#if label.kind === 'hyperlane'}
+              <span>{locale === 'en' ? 'Hyperlane' : 'Гиперкоридор'}</span>
+            {:else if label.planetType}
               <span>{label.planetType}</span>
             {/if}
           </div>
@@ -131,5 +144,11 @@
   .planet-label.feature {
     border-color: rgba(210, 190, 120, 0.45);
     color: #e6d7a8;
+  }
+
+  .planet-label.hyperlane {
+    border-color: rgba(110, 190, 255, 0.55);
+    color: #b8e0ff;
+    background: rgba(8, 24, 48, 0.78);
   }
 </style>

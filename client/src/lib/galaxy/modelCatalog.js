@@ -35,6 +35,24 @@ export function planetTypeArtPath(typeKey) {
   return `/textures/planet_types/planet_type_${typeKey}.png`
 }
 
+export function featureModelPath(featureKey = 'asteroid_belt') {
+  return `/models/features/system_feature_${featureKey}.glb`
+}
+
+export function featurePreviewPath(featureKey = 'asteroid_belt') {
+  return `/models/features/system_feature_${featureKey}_preview.png`
+}
+
+export function featureArtPath(featureKey = 'asteroid_belt') {
+  return `/textures/system_features/system_feature_${featureKey}.png`
+}
+
+export function resolveFeatureKey(feature) {
+  const raw = String(feature || '').toLowerCase()
+  if (raw.includes('asteroid')) return 'asteroid_belt'
+  return 'asteroid_belt'
+}
+
 export function resolveStarTypeKey(typeKey, kind = 'star') {
   if (kind === 'well') return 'supermassive_black_hole'
   if (kind === 'black_hole') return 'black_hole'

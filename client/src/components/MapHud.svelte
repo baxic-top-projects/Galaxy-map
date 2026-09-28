@@ -32,8 +32,10 @@
 
 <header class="hud-top">
   <div class="brand">
-    <div class="title">Efols · Miradins Pact</div>
-    <div class="subtitle">Интерактивная карта материальной галактики</div>
+    <div class="title">The Universe</div>
+    <div class="subtitle">
+      {locale === 'en' ? 'Interactive galaxy map' : 'Интерактивная карта галактики'}
+    </div>
   </div>
 
   <div class="controls">

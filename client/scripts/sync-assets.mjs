@@ -70,6 +70,10 @@ const report = {
     join(CANON, 'assets', 'galaxy_political_map.png'),
     join(PUBLIC, 'textures', 'galaxy_political_map.png'),
   ),
+  territoryPlate: copyIfExists(
+    join(CANON, 'assets', 'galaxy_territory_plate.png'),
+    join(PUBLIC, 'textures', 'galaxy_territory_plate.png'),
+  ),
   basePlate: copyIfExists(
     join(CANON, 'assets', 'galaxy_base_plate.png'),
     join(PUBLIC, 'textures', 'galaxy_base_plate.png'),
@@ -82,6 +86,11 @@ const report = {
     join(PUBLIC, 'models', 'planets'),
     { glb: true },
   ),
+  featureGlb: syncFolder(
+    join(CANON, 'assets', 'models', 'features'),
+    join(PUBLIC, 'models', 'features'),
+    { glb: true },
+  ),
   starPreview: syncPreviews(
     join(CANON, 'assets', 'models', 'stars'),
     join(PUBLIC, 'models', 'stars'),
@@ -90,10 +99,18 @@ const report = {
     join(CANON, 'assets', 'models', 'planets'),
     join(PUBLIC, 'models', 'planets'),
   ),
+  featurePreview: syncPreviews(
+    join(CANON, 'assets', 'models', 'features'),
+    join(PUBLIC, 'models', 'features'),
+  ),
   starTypes: syncFolder(join(CANON, 'assets', 'star_types'), join(PUBLIC, 'textures', 'star_types')),
   planetTypes: syncFolder(
     join(CANON, 'assets', 'planet_types'),
     join(PUBLIC, 'textures', 'planet_types'),
+  ),
+  systemFeatures: syncFolder(
+    join(CANON, 'assets', 'system_features'),
+    join(PUBLIC, 'textures', 'system_features'),
   ),
 }
 

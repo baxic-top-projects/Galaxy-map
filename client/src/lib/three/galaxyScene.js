@@ -5,11 +5,55 @@ import { buildSpatialIndex } from '../galaxy/spatialIndex.js'
 import { estimateZoom, pickLabels } from '../galaxy/labelLod.js'
 
 const GALAXY_SCALE = 42
+const MAP_LIM = 1.06
+const TERRITORY_PLATE_URL = '/textures/galaxy_territory_plate.png?v=36'
+const textureLoader = new THREE.TextureLoader()
+
+function loadTexture(url) {
+  return new Promise((resolve, reject) => {
+    textureLoader.load(
+      url,
+      (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.anisotropy = 8
+        texture.generateMipmaps = true
+        texture.minFilter = THREE.LinearMipmapLinearFilter
+        texture.magFilter = THREE.LinearFilter
+        resolve(texture)
+      },
+      undefined,
+      reject,
+    )
+  })
+}
+
+/** Marker style matching EfolsMiradinsPact galaxy_political_map.png */
+const MARKER = {
+  star: 0,
+  blackHole: 1,
+  capital: 2,
+  well: 3,
+}
+
+function markerKind(system) {
+  if (system.kind === 'well') return MARKER.well
+  if (system.kind === 'black_hole') return MARKER.blackHole
+  if (system.capital) return MARKER.capital
+  return MARKER.star
+}
+
+function pointSizeFor(system) {
+  const kind = markerKind(system)
+  if (kind === MARKER.well) return 14
+  if (kind === MARKER.capital) return 12
+  if (kind === MARKER.blackHole) return 9.5
+  return 5.2
+}
 
 /**
  * Create an imperative Three.js galaxy scene attached to a canvas.
  */
-export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
+export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
@@ -34,6 +78,15 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   controls.maxDistance = 110
   controls.maxPolarAngle = Math.PI * 0.495
   controls.target.set(0, 0, 0)
+  controls.mouseButtons = {
+    LEFT: THREE.MOUSE.PAN,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT: THREE.MOUSE.ROTATE,
+  }
+  controls.touches = {
+    ONE: THREE.TOUCH.PAN,
+    TWO: THREE.TOUCH.DOLLY_PAN,
+  }
   const overviewPosition = new THREE.Vector3(0, -58, 34)
   const overviewTarget = new THREE.Vector3(0, 0, 0)
 
@@ -46,13 +99,13 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   keyLight.position.set(20, -30, 50)
   scene.add(keyLight)
 
-  const plate = createPoliticalPlate()
+  const plate = await createPoliticalPlate(galaxy)
   root.add(plate)
 
-  const systemIndex = new Map(galaxy.systems.map((system, index) => [system.id, index]))
   const positions = new Float32Array(galaxy.systems.length * 3)
   const colors = new Float32Array(galaxy.systems.length * 3)
   const sizes = new Float32Array(galaxy.systems.length)
+  const kinds = new Float32Array(galaxy.systems.length)
   const color = new THREE.Color()
 
   galaxy.systems.forEach((system, index) => {
@@ -61,12 +114,17 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     positions[i + 1] = system.y * GALAXY_SCALE
     positions[i + 2] = system.z * GALAXY_SCALE
 
-    const polity = system.stem ? galaxy.polityByStem.get(system.stem) : null
-    if (system.kind === 'black_hole' || system.kind === 'well') {
-      color.setHex(0xff66aa)
-    } else if (polity?.color) {
-      color.set(polity.color)
-      if (system.capital) color.offsetHSL(0, 0.05, 0.18)
+    const kind = markerKind(system)
+    kinds[index] = kind
+    sizes[index] = pointSizeFor(system)
+
+    if (kind === MARKER.blackHole || kind === MARKER.well) {
+      // Core is dark; rim color carried in vertex color for the shader.
+      color.setHex(kind === MARKER.well ? 0xffbe6a : 0xff9a3c)
+    } else if (kind === MARKER.capital) {
+      // Efol gold / Miradin pink from the political map.
+      const stem = system.stem || ''
+      color.setHex(stem.includes('Miradin') ? 0xffd0dc : 0xffe566)
     } else {
       color.setHex(starColor(system.starTypeKey))
     }
@@ -74,47 +132,95 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     colors[i] = color.r
     colors[i + 1] = color.g
     colors[i + 2] = color.b
-    sizes[index] =
-      system.capital ? 5.2 : system.kind === 'well' ? 6.2 : system.kind === 'black_hole' ? 3.4 : 2.35 + Math.min(system.worldCount || 0, 4) * 0.22
   })
 
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
   geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+  geometry.setAttribute('kind', new THREE.BufferAttribute(kinds, 1))
 
   const material = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
     vertexColors: true,
     uniforms: {
       uScale: { value: 1 },
     },
-    vertexShader: `
+      vertexShader: `
       attribute float size;
+      attribute float kind;
       varying vec3 vColor;
+      varying float vKind;
       uniform float uScale;
       void main() {
         vColor = color;
+        vKind = kind;
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-        gl_PointSize = size * uScale * (180.0 / -mvPosition.z);
+        // Keep all map markers near-constant on screen when zooming.
+        float dist = max(-mvPosition.z, 6.0);
+        float atten = clamp(52.0 / dist, 0.75, 1.15);
+        float px = size * uScale * atten;
+        float cap = 9.5;
+        if (vKind > 0.5 && vKind < 1.5) cap = 13.0;       // black hole
+        else if (vKind > 1.5 && vKind < 2.5) cap = 15.0;  // capital
+        else if (vKind >= 2.5) cap = 16.0;                // well
+        gl_PointSize = clamp(px, 2.5, cap);
         gl_Position = projectionMatrix * mvPosition;
       }
     `,
     fragmentShader: `
       varying vec3 vColor;
+      varying float vKind;
       void main() {
         vec2 uv = gl_PointCoord - vec2(0.5);
         float d = length(uv);
-        float alpha = smoothstep(0.5, 0.0, d);
-        gl_FragColor = vec4(vColor, alpha);
+
+        // Ordinary stars: tiny filled dots (political map style)
+        if (vKind < 0.5) {
+          if (d > 0.5) discard;
+          float a = 0.88 * (1.0 - smoothstep(0.35, 0.5, d));
+          gl_FragColor = vec4(vColor, a);
+          return;
+        }
+
+        // Black holes: dark core + thin bright/orange rim
+        if (vKind < 1.5) {
+          if (d > 0.5) discard;
+          float rim = smoothstep(0.34, 0.40, d) * (1.0 - smoothstep(0.46, 0.5, d));
+          float core = 1.0 - smoothstep(0.32, 0.38, d);
+          vec3 col = mix(vec3(0.04, 0.04, 0.05), vColor, rim);
+          float a = max(core, rim);
+          gl_FragColor = vec4(col, a);
+          return;
+        }
+
+        // Capitals: bright center + hollow circle ring
+        if (vKind < 2.5) {
+          float ring = smoothstep(0.36, 0.40, d) * (1.0 - smoothstep(0.46, 0.5, d));
+          float core = 1.0 - smoothstep(0.12, 0.18, d);
+          if (ring < 0.02 && core < 0.02) discard;
+          vec3 col = mix(vColor * 0.55, vColor, max(core, ring));
+          gl_FragColor = vec4(col, max(core, ring * 0.95));
+          return;
+        }
+
+        // Axis Well: larger dark core + warm rim + outer ring
+        if (d > 0.5) discard;
+        float rim = smoothstep(0.30, 0.36, d) * (1.0 - smoothstep(0.42, 0.48, d));
+        float outer = smoothstep(0.44, 0.46, d) * (1.0 - smoothstep(0.49, 0.5, d));
+        float core = 1.0 - smoothstep(0.28, 0.34, d);
+        vec3 col = mix(vec3(0.02, 0.02, 0.025), vColor, max(rim, outer));
+        gl_FragColor = vec4(col, max(core, max(rim, outer)));
       }
     `,
   })
 
   const points = new THREE.Points(geometry, material)
+  points.renderOrder = 2
   root.add(points)
+  const starLayers = [{ points, geometry, material }]
 
   const edgePositions = []
   for (const edge of galaxy.edgesDisplay) {
@@ -133,11 +239,14 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const edgeGeom = new THREE.BufferGeometry()
   edgeGeom.setAttribute('position', new THREE.Float32BufferAttribute(edgePositions, 3))
   const edgeMat = new THREE.LineBasicMaterial({
-    color: 0x7aa0c8,
+    color: 0x8aa4bc,
     transparent: true,
-    opacity: 0.18,
+    opacity: 0.12,
+    depthWrite: false,
+    fog: false,
   })
   const lanes = new THREE.LineSegments(edgeGeom, edgeMat)
+  lanes.renderOrder = 1
   root.add(lanes)
 
   const pickHelper = new THREE.Raycaster()
@@ -154,6 +263,10 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   let lastClickAt = 0
   let lastClickId = null
   let pointerDown = null
+  const pressedKeys = new Set()
+  const panOffset = new THREE.Vector3()
+  const panRight = new THREE.Vector3()
+  const panForward = new THREE.Vector3()
 
   function resize() {
     const width = canvas.clientWidth || canvas.parentElement?.clientWidth || window.innerWidth
@@ -302,13 +415,78 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     if (system) focusSystem(system, { enterSystem: true })
   }
 
+  function isTypingTarget(target) {
+    if (!target || !(target instanceof Element)) return false
+    const tag = target.tagName
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
+  }
+
+  function normalizePanKey(raw) {
+    const key = raw.length === 1 ? raw.toLowerCase() : raw
+    // Russian layout: ЦЫФВ sit on the same physical keys as WASD.
+    if (key === 'ц') return 'w'
+    if (key === 'ы') return 's'
+    if (key === 'ф') return 'a'
+    if (key === 'в') return 'd'
+    return key
+  }
+
+  function onKeyDown(event) {
+    if (isTypingTarget(event.target)) return
+    const key = normalizePanKey(event.key)
+    if (
+      key === 'ArrowUp' ||
+      key === 'ArrowDown' ||
+      key === 'ArrowLeft' ||
+      key === 'ArrowRight' ||
+      key === 'w' ||
+      key === 'a' ||
+      key === 's' ||
+      key === 'd'
+    ) {
+      event.preventDefault()
+      pressedKeys.add(key)
+    }
+  }
+
+  function onKeyUp(event) {
+    pressedKeys.delete(normalizePanKey(event.key))
+  }
+
+  function applyKeyboardPan() {
+    if (!pressedKeys.size) return
+    const dist = cameraDistance()
+    const step = THREE.MathUtils.clamp(dist * 0.018, 0.12, 1.4)
+    panOffset.set(0, 0, 0)
+    // Screen-relative pan on the galaxy XY plane
+    panRight.setFromMatrixColumn(camera.matrixWorld, 0)
+    panRight.z = 0
+    if (panRight.lengthSq() < 1e-6) panRight.set(1, 0, 0)
+    else panRight.normalize()
+    panForward.set(-panRight.y, panRight.x, 0)
+
+    if (pressedKeys.has('ArrowLeft') || pressedKeys.has('a')) panOffset.addScaledVector(panRight, -step)
+    if (pressedKeys.has('ArrowRight') || pressedKeys.has('d')) panOffset.addScaledVector(panRight, step)
+    if (pressedKeys.has('ArrowUp') || pressedKeys.has('w')) panOffset.addScaledVector(panForward, step)
+    if (pressedKeys.has('ArrowDown') || pressedKeys.has('s')) panOffset.addScaledVector(panForward, -step)
+
+    if (panOffset.lengthSq() < 1e-8) return
+    focusTween = null
+    camera.position.add(panOffset)
+    controls.target.add(panOffset)
+  }
+
   function frame() {
     if (disposed) return
     raf = requestAnimationFrame(frame)
     frameCount += 1
     if (focusTween) focusTween()
+    applyKeyboardPan()
     controls.update()
-    material.uniforms.uScale.value = THREE.MathUtils.clamp(22 / cameraDistance(), 0.7, 3.0)
+    const scale = THREE.MathUtils.clamp(Math.sqrt(18 / Math.max(cameraDistance(), 1)), 0.75, 1.25)
+    for (const layer of starLayers) {
+      layer.material.uniforms.uScale.value = scale
+    }
     renderer.render(scene, camera)
     if (frameCount % 2 === 0) emitLabels()
   }
@@ -317,14 +495,18 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     disposed = true
     cancelAnimationFrame(raf)
     window.removeEventListener('resize', resize)
+    window.removeEventListener('keydown', onKeyDown)
+    window.removeEventListener('keyup', onKeyUp)
     canvas.removeEventListener('pointermove', onPointerMove)
     canvas.removeEventListener('pointerdown', onPointerDown)
     canvas.removeEventListener('pointerup', onPointerUp)
     canvas.removeEventListener('dblclick', onDblClick)
     canvas.removeEventListener('wheel', onWheel)
     controls.dispose()
-    geometry.dispose()
-    material.dispose()
+    for (const layer of starLayers) {
+      layer.geometry.dispose()
+      layer.material.dispose()
+    }
     edgeGeom.dispose()
     edgeMat.dispose()
     plate.geometry.dispose()
@@ -371,6 +553,8 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   }
 
   window.addEventListener('resize', resize)
+  window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('keyup', onKeyUp)
   canvas.addEventListener('pointermove', onPointerMove)
   canvas.addEventListener('pointerdown', onPointerDown)
   canvas.addEventListener('pointerup', onPointerUp)
@@ -387,8 +571,31 @@ export function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   }
 }
 
-function createPoliticalPlate() {
-  const size = 1024
+function createPoliticalPlate(galaxy) {
+  // Prefer the canon territory plate (same paint as galaxy_political_map.png).
+  return loadTexture(TERRITORY_PLATE_URL)
+    .then((texture) => makePlateMeshFromTexture(texture))
+    .catch(() => createProceduralPoliticalPlate(galaxy))
+}
+
+function makePlateMeshFromTexture(texture) {
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    opacity: 1,
+    depthWrite: false,
+    fog: false,
+    side: THREE.DoubleSide,
+  })
+  const span = GALAXY_SCALE * 2 * MAP_LIM
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, span), material)
+  mesh.position.z = -0.8
+  mesh.raycast = () => {}
+  return mesh
+}
+
+function createProceduralPoliticalPlate(galaxy) {
+  const size = 900
   const canvas2d = document.createElement('canvas')
   canvas2d.width = size
   canvas2d.height = size
@@ -398,46 +605,99 @@ function createPoliticalPlate() {
 
   const cx = size / 2
   const cy = size / 2
-  const radius = size * 0.48
+  const diskR = size * 0.48
+  const lim = MAP_LIM
 
-  const arms = ctx.createRadialGradient(cx, cy, radius * 0.05, cx, cy, radius)
-  arms.addColorStop(0, 'rgba(255, 210, 140, 0.28)')
-  arms.addColorStop(0.18, 'rgba(180, 120, 170, 0.16)')
-  arms.addColorStop(0.45, 'rgba(70, 100, 170, 0.12)')
-  arms.addColorStop(0.78, 'rgba(30, 50, 90, 0.06)')
+  const arms = ctx.createRadialGradient(cx, cy, diskR * 0.04, cx, cy, diskR)
+  arms.addColorStop(0, 'rgba(255, 210, 140, 0.18)')
+  arms.addColorStop(0.25, 'rgba(150, 95, 145, 0.10)')
+  arms.addColorStop(0.6, 'rgba(60, 90, 150, 0.07)')
   arms.addColorStop(1, 'rgba(5, 7, 15, 0)')
   ctx.fillStyle = arms
   ctx.beginPath()
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.arc(cx, cy, diskR, 0, Math.PI * 2)
   ctx.fill()
 
-  ctx.globalCompositeOperation = 'lighter'
-  for (let i = 0; i < 4; i += 1) {
-    const grad = ctx.createRadialGradient(
-      cx + Math.cos((i * Math.PI) / 2) * radius * 0.28,
-      cy + Math.sin((i * Math.PI) / 2) * radius * 0.18,
-      0,
-      cx,
-      cy,
-      radius * 0.85,
-    )
-    grad.addColorStop(0, 'rgba(90, 130, 200, 0.05)')
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
-    ctx.fillStyle = grad
-    ctx.fillRect(0, 0, size, size)
-  }
-  ctx.globalCompositeOperation = 'source-over'
+  const owned = galaxy.systems.filter(
+    (system) => system.kind === 'star' || system.kind === 'black_hole',
+  )
+  if (!owned.length) return makePlateMeshFromCanvas(canvas2d)
 
+  const spatial = buildSpatialIndex(owned)
+
+  const image = ctx.createImageData(size, size)
+  const data = image.data
+  const owner = new Int32Array(size * size)
+  owner.fill(-1)
+
+  const systemIndex = new Map(owned.map((system, index) => [system.id, index]))
+  const systemMeta = owned.map((system) => {
+    const polity = system.stem ? galaxy.polityByStem.get(system.stem) : null
+    const color = new THREE.Color(polity?.color || '#7aa0c8')
+    return {
+      polityStem: system.stem || '',
+      r: Math.round(color.r * 255),
+      g: Math.round(color.g * 255),
+      b: Math.round(color.b * 255),
+    }
+  })
+
+  for (let py = 0; py < size; py += 1) {
+    for (let px = 0; px < size; px += 1) {
+      const dx = px - cx
+      const dy = py - cy
+      const rr = Math.hypot(dx, dy)
+      if (rr > diskR) continue
+
+      const gx = ((px + 0.5) / size) * 2 * lim - lim
+      const gy = -(((py + 0.5) / size) * 2 * lim - lim)
+      const nearest = spatial.queryNearestAny(gx, gy)
+      if (!nearest) continue
+      const idx = systemIndex.get(nearest.id)
+      if (idx == null) continue
+
+      const i = py * size + px
+      owner[i] = idx
+      const meta = systemMeta[idx]
+      const edgeFade = Math.max(0, Math.min(1, (diskR - rr) / (diskR * 0.06)))
+      const o = i * 4
+      data[o] = meta.r
+      data[o + 1] = meta.g
+      data[o + 2] = meta.b
+      data[o + 3] = Math.round(120 * edgeFade)
+    }
+  }
+
+  for (let py = 1; py < size - 1; py += 1) {
+    for (let px = 1; px < size - 1; px += 1) {
+      const i = py * size + px
+      const current = owner[i]
+      if (current < 0) continue
+      const neighbors = [owner[i - 1], owner[i + 1], owner[i - size], owner[i + size]]
+      let polityBorder = false
+      for (const other of neighbors) {
+        if (other < 0 || other === current) continue
+        if (systemMeta[other].polityStem !== systemMeta[current].polityStem) {
+          polityBorder = true
+          break
+        }
+      }
+      if (!polityBorder) continue
+      const o = i * 4
+      data[o] = 242
+      data[o + 1] = 235
+      data[o + 2] = 209
+      data[o + 3] = 220
+    }
+  }
+
+  ctx.putImageData(image, 0, 0)
+  return makePlateMeshFromCanvas(canvas2d)
+}
+
+function makePlateMeshFromCanvas(canvas2d) {
   const texture = new THREE.CanvasTexture(canvas2d)
   texture.colorSpace = THREE.SRGBColorSpace
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    opacity: 0.9,
-    depthWrite: false,
-  })
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(GALAXY_SCALE * 2.0, GALAXY_SCALE * 2.0), material)
-  mesh.position.z = -0.8
-  mesh.raycast = () => {}
-  return mesh
+  texture.needsUpdate = true
+  return makePlateMeshFromTexture(texture)
 }
