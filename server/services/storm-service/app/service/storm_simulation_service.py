@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import random
 import threading
 from collections import deque
@@ -272,9 +271,9 @@ class StormSimulationService:
         self._adjacency = {key: list(values) for key, values in graph.adjacency.items()}
         for system_id in graph.systems:
             self._adjacency.setdefault(system_id, [])
-        workers = settings.worker_processes
-        if workers <= 0:
-            workers = max(1, os.cpu_count() or 1)
+        # 0/1 = single-process advance (asyncio only keeps the event loop free).
+        # >1 = real CPU parallelism via ProcessPoolExecutor.
+        workers = max(0, int(settings.worker_processes))
         self._workers = workers
         self._pool: ProcessPoolExecutor | None = None
         if workers > 1:
@@ -297,6 +296,33 @@ class StormSimulationService:
                 storms=[storm.model_copy(deep=True) for storm in self.storms],
                 systems=self._system_states(self.storms),
             )
+
+    def public_snapshot(self) -> dict[str, Any]:
+        """Compact snapshot for HTTP/WS clients (no duplicated AoE lists / full paths)."""
+        with self._lock:
+            storms = [
+                {
+                    "id": storm.id,
+                    "type": storm.type,
+                    "stage": storm.stage,
+                    "originSystemId": storm.originSystemId,
+                    "currentSystemId": storm.currentSystemId,
+                    "nextSystemId": storm.nextSystemId,
+                    "pathIndex": storm.pathIndex,
+                    "pathProgress": storm.pathProgress,
+                    "intensity": storm.intensity,
+                    "radiusHops": storm.radiusHops,
+                    "color": storm.color,
+                }
+                for storm in self.storms
+            ]
+            systems = [state.model_dump(mode="json") for state in self._system_states(self.storms)]
+            return {
+                "tick": self.tick,
+                "generatedAt": _utc_now(),
+                "storms": storms,
+                "systems": systems,
+            }
 
     def system_state(self, system_id: str) -> SystemStormStateDto | None:
         with self._lock:

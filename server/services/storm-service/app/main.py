@@ -35,8 +35,8 @@ def _schedule_kafka_publish(payload: dict) -> None:
 async def _tick_loop(sim: StormSimulationService) -> None:
     while True:
         await asyncio.sleep(settings.tick_seconds)
-        snapshot = await asyncio.to_thread(sim.step)
-        payload = snapshot.model_dump(mode="json")
+        await asyncio.to_thread(sim.step)
+        payload = sim.public_snapshot()
         await storm_broadcast.broadcast_json(payload)
         _schedule_kafka_publish(payload)
 
@@ -48,8 +48,8 @@ async def lifespan(_app: FastAPI):
     graph = GalaxyGraphService(payload)
     simulator = StormSimulationService(graph, settings)
     await storm_kafka.start()
-    first = await asyncio.to_thread(simulator.step)
-    first_payload = first.model_dump(mode="json")
+    await asyncio.to_thread(simulator.step)
+    first_payload = simulator.public_snapshot()
     await storm_broadcast.broadcast_json(first_payload)
     _schedule_kafka_publish(first_payload)
     _tick_task = asyncio.create_task(_tick_loop(simulator))

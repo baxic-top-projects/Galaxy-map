@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     path_hops_max: int = 16
     host: str = "0.0.0.0"
     port: int = 8001
-    # 0 = auto (os.cpu_count())
+    # 0/1 = single process (asyncio keeps WS free; no CPU parallelism).
+    # >1 = ProcessPoolExecutor across storm advances.
     worker_processes: int = 0
     kafka_bootstrap_servers: str = "kafka:9092"
     kafka_topic: str = "galaxy.storms"

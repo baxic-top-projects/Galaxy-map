@@ -14,6 +14,7 @@ import {
   starPreviewPath,
   starTypeArtPath,
 } from '../galaxy/modelCatalog.js'
+import { assetLoadGate, mapPool } from '../galaxy/assetLoadPool.js'
 
 const gltfLoader = new GLTFLoader()
 gltfLoader.setCrossOrigin('anonymous')
@@ -22,36 +23,45 @@ textureLoader.setCrossOrigin('anonymous')
 const glbCache = new Map()
 const texCache = new Map()
 
+/** Soft cap for planet / satellite mesh construction tasks. */
+const MESH_BUILD_CONCURRENCY = 6
+
 function loadTexture(url) {
   if (texCache.has(url)) return texCache.get(url)
-  const promise = new Promise((resolve, reject) => {
-    textureLoader.load(
-      url,
-      (texture) => {
-        texture.colorSpace = THREE.SRGBColorSpace
-        resolve(texture)
-      },
-      undefined,
-      reject,
-    )
-  })
+  const promise = assetLoadGate.run(
+    () =>
+      new Promise((resolve, reject) => {
+        textureLoader.load(
+          url,
+          (texture) => {
+            texture.colorSpace = THREE.SRGBColorSpace
+            resolve(texture)
+          },
+          undefined,
+          reject,
+        )
+      }),
+  )
   texCache.set(url, promise)
   return promise
 }
 
 function loadGlb(url) {
   if (glbCache.has(url)) return glbCache.get(url)
-  const promise = new Promise((resolve) => {
-    gltfLoader.load(
-      url,
-      (gltf) => resolve(gltf.scene),
-      undefined,
-      (err) => {
-        console.warn('GLB load failed', url, err)
-        resolve(null)
-      },
-    )
-  })
+  const promise = assetLoadGate.run(
+    () =>
+      new Promise((resolve) => {
+        gltfLoader.load(
+          url,
+          (gltf) => resolve(gltf.scene),
+          undefined,
+          (err) => {
+            console.warn('GLB load failed', url, err)
+            resolve(null)
+          },
+        )
+      }),
+  )
   glbCache.set(url, promise)
   return promise
 }
@@ -1216,6 +1226,15 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     })
 
     let innerClearAfter = hostKind === 'junction' ? 0.55 : hostRadius + 0.45
+
+    // Prefetch belt GLBs in parallel (placement stays sequential for orbit math).
+    const allBelts = [...innerBelts, ...middleBelts, ...outerBelts]
+    const beltKeys = [
+      ...new Set(allBelts.map((feature) => resolveFeatureKey(feature.feature || feature.nameEn))),
+    ]
+    await mapPool(beltKeys, MESH_BUILD_CONCURRENCY, (key) => loadGlb(featureModelPath(key)))
+    if (disposed) return
+
     for (let index = 0; index < innerBelts.length; index += 1) {
       const result = await addFeatureBelt(innerBelts[index], index, innerClearAfter)
       if (!result) return
@@ -1245,106 +1264,102 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
       planetaryOuterEdge = orbit + satelliteExtents[index]
     }
 
-    await Promise.all(
-      planets.map(async (planet, index) => {
-        const orbit = planetOrbits[index]
-        const radius = planetRadii[index]
-        const mesh = await createBodyMesh({
+    await mapPool(planets, MESH_BUILD_CONCURRENCY, async (planet, index) => {
+      const orbit = planetOrbits[index]
+      const radius = planetRadii[index]
+      const mesh = await createBodyMesh({
+        kind: 'planet',
+        typeKey: planet.planetTypeKey,
+        radius,
+        lightColor: systemLightColor,
+      })
+      if (disposed) return
+      const angle = (index / Math.max(planets.length, 1)) * Math.PI * 2
+      // Horizontal XZ orbits around the textured host star.
+      mesh.position.set(Math.cos(angle) * orbit, 0, Math.sin(angle) * orbit)
+      root.add(mesh)
+
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(orbit - 0.02, orbit + 0.02, 128),
+        new THREE.MeshBasicMaterial({
+          color: planet.inhabited ? 0x8ec7ff : 0x6f8fb8,
+          transparent: true,
+          opacity: planet.inhabited ? 0.45 : 0.28,
+          side: THREE.DoubleSide,
+        }),
+      )
+      ring.rotation.x = -Math.PI / 2
+      root.add(ring)
+
+      animated.push({
+        mesh,
+        orbit,
+        speed: 0.35 / Math.sqrt(index + 1),
+        angle,
+      })
+      labelAnchors.push({
+        id: planet.id,
+        mesh,
+        nameEn: planet.nameEn,
+        nameRu: planet.nameRu,
+        kind: planet.kind,
+        inhabited: planet.inhabited,
+        planetType: planet.planetType,
+      })
+
+      await mapPool(planet.satellites || [], MESH_BUILD_CONCURRENCY, async (satellite, satelliteIndex) => {
+        const satelliteRadius = Math.max(
+          0.075,
+          radius * (satellite.planetTypeKey === 'gas_giant' ? 0.34 : 0.26),
+        )
+        const satelliteOrbit = radius * 1.65 + satelliteIndex * radius * 0.72
+        const satelliteMesh = await createBodyMesh({
           kind: 'planet',
-          typeKey: planet.planetTypeKey,
-          radius,
+          typeKey: satellite.planetTypeKey || 'moon',
+          radius: satelliteRadius,
           lightColor: systemLightColor,
         })
         if (disposed) return
-        const angle = (index / Math.max(planets.length, 1)) * Math.PI * 2
-        // Horizontal XZ orbits around the textured host star.
-        mesh.position.set(Math.cos(angle) * orbit, 0, Math.sin(angle) * orbit)
-        root.add(mesh)
+        const satelliteAngle =
+          (satelliteIndex / Math.max(planet.satellites.length, 1)) * Math.PI * 2 + 0.65
+        satelliteMesh.position.set(
+          Math.cos(satelliteAngle) * satelliteOrbit,
+          0,
+          Math.sin(satelliteAngle) * satelliteOrbit,
+        )
+        mesh.add(satelliteMesh)
 
-        const ring = new THREE.Mesh(
-          new THREE.RingGeometry(orbit - 0.02, orbit + 0.02, 128),
+        const satelliteRing = new THREE.Mesh(
+          new THREE.RingGeometry(satelliteOrbit - 0.006, satelliteOrbit + 0.006, 96),
           new THREE.MeshBasicMaterial({
-            color: planet.inhabited ? 0x8ec7ff : 0x6f8fb8,
+            color: 0x7891ac,
             transparent: true,
-            opacity: planet.inhabited ? 0.45 : 0.28,
+            opacity: 0.24,
             side: THREE.DoubleSide,
+            depthWrite: false,
           }),
         )
-        ring.rotation.x = -Math.PI / 2
-        root.add(ring)
+        satelliteRing.rotation.x = -Math.PI / 2
+        satelliteRing.raycast = () => {}
+        mesh.add(satelliteRing)
 
         animated.push({
-          mesh,
-          orbit,
-          speed: 0.35 / Math.sqrt(index + 1),
-          angle,
+          mesh: satelliteMesh,
+          orbit: satelliteOrbit,
+          speed: 0.9 / Math.sqrt(satelliteIndex + 1),
+          angle: satelliteAngle,
         })
         labelAnchors.push({
-          id: planet.id,
-          mesh,
-          nameEn: planet.nameEn,
-          nameRu: planet.nameRu,
-          kind: planet.kind,
-          inhabited: planet.inhabited,
-          planetType: planet.planetType,
+          id: `${planet.id}:satellite:${satellite.nameEn}`,
+          mesh: satelliteMesh,
+          nameEn: satellite.nameEn,
+          nameRu: satellite.nameRu,
+          kind: 'satellite',
+          inhabited: false,
+          planetType: satellite.planetType,
         })
-
-        await Promise.all(
-          (planet.satellites || []).map(async (satellite, satelliteIndex) => {
-            const satelliteRadius = Math.max(
-              0.075,
-              radius * (satellite.planetTypeKey === 'gas_giant' ? 0.34 : 0.26),
-            )
-            const satelliteOrbit = radius * 1.65 + satelliteIndex * radius * 0.72
-            const satelliteMesh = await createBodyMesh({
-              kind: 'planet',
-              typeKey: satellite.planetTypeKey || 'moon',
-              radius: satelliteRadius,
-              lightColor: systemLightColor,
-            })
-            if (disposed) return
-            const satelliteAngle =
-              (satelliteIndex / Math.max(planet.satellites.length, 1)) * Math.PI * 2 + 0.65
-            satelliteMesh.position.set(
-              Math.cos(satelliteAngle) * satelliteOrbit,
-              0,
-              Math.sin(satelliteAngle) * satelliteOrbit,
-            )
-            mesh.add(satelliteMesh)
-
-            const satelliteRing = new THREE.Mesh(
-              new THREE.RingGeometry(satelliteOrbit - 0.006, satelliteOrbit + 0.006, 96),
-              new THREE.MeshBasicMaterial({
-                color: 0x7891ac,
-                transparent: true,
-                opacity: 0.24,
-                side: THREE.DoubleSide,
-                depthWrite: false,
-              }),
-            )
-            satelliteRing.rotation.x = -Math.PI / 2
-            satelliteRing.raycast = () => {}
-            mesh.add(satelliteRing)
-
-            animated.push({
-              mesh: satelliteMesh,
-              orbit: satelliteOrbit,
-              speed: 0.9 / Math.sqrt(satelliteIndex + 1),
-              angle: satelliteAngle,
-            })
-            labelAnchors.push({
-              id: `${planet.id}:satellite:${satellite.nameEn}`,
-              mesh: satelliteMesh,
-              nameEn: satellite.nameEn,
-              nameRu: satellite.nameRu,
-              kind: 'satellite',
-              inhabited: false,
-              planetType: satellite.planetType,
-            })
-          }),
-        )
-      }),
-    )
+      })
+    })
 
     // Place belts sequentially outside planet orbits (and outside previous belts).
     let clearAfter =

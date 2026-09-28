@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 
-from app.dto.storm import StormSnapshotDto, SystemStormResponseDto
+from app.dto.storm import SystemStormResponseDto
 from app.service.storm_broadcast_service import storm_broadcast
 from app.service.storm_simulation_service import StormSimulationService
 
@@ -17,9 +18,9 @@ def get_simulator() -> StormSimulationService:
     return simulator
 
 
-@router.get("/internal/v1/storms", response_model=StormSnapshotDto)
-def get_storms() -> StormSnapshotDto:
-    return get_simulator().snapshot()
+@router.get("/internal/v1/storms")
+def get_storms():
+    return JSONResponse(get_simulator().public_snapshot())
 
 
 @router.get("/internal/v1/storms/systems/{system_id:path}", response_model=SystemStormResponseDto)
@@ -35,24 +36,23 @@ def get_system_storm(system_id: str) -> SystemStormResponseDto:
     )
 
 
-@router.post("/internal/v1/storms/tick", response_model=StormSnapshotDto)
-async def force_tick() -> StormSnapshotDto:
+@router.post("/internal/v1/storms/tick")
+async def force_tick():
     from app.main import _schedule_kafka_publish
 
     sim = get_simulator()
-    snapshot = await __import__("asyncio").to_thread(sim.step)
-    payload = snapshot.model_dump(mode="json")
+    await __import__("asyncio").to_thread(sim.step)
+    payload = sim.public_snapshot()
     await storm_broadcast.broadcast_json(payload)
     _schedule_kafka_publish(payload)
-    return snapshot
+    return JSONResponse(payload)
 
 
 @router.websocket("/internal/v1/storms/ws")
 async def storms_ws(websocket: WebSocket) -> None:
     await storm_broadcast.connect(websocket)
     try:
-        snapshot = get_simulator().snapshot()
-        await websocket.send_text(snapshot.model_dump_json())
+        await websocket.send_json(get_simulator().public_snapshot())
         while True:
             # Keep the socket alive; clients are receive-only for now.
             await websocket.receive_text()
