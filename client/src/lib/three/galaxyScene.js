@@ -116,6 +116,16 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 
   const plate = await createPoliticalPlate(galaxy)
   root.add(plate)
+  const polityAnchors = (galaxy.polities || [])
+    .map((polity) => {
+      const systems = galaxy.systems.filter((system) => system.stem === polity.stem)
+      if (!systems.length) return null
+      const x = systems.reduce((sum, system) => sum + system.x, 0) / systems.length
+      const y = systems.reduce((sum, system) => sum + system.y, 0) / systems.length
+      const z = systems.reduce((sum, system) => sum + system.z, 0) / systems.length
+      return { polity, x, y, z, systemCount: systems.length }
+    })
+    .filter(Boolean)
 
   const positions = new Float32Array(galaxy.systems.length * 3)
   const colors = new Float32Array(galaxy.systems.length * 3)
@@ -581,6 +591,20 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
       }
     })
     callbacks.onLabels?.(labels, zoom)
+    const polityLabels = polityAnchors.map((anchor) => {
+      const projected = projectSystem(anchor)
+      return {
+        stem: anchor.polity.stem,
+        nameEn: anchor.polity.nameEn,
+        nameRu: anchor.polity.nameRu,
+        color: anchor.polity.color,
+        systemCount: anchor.systemCount,
+        x: projected.x,
+        y: projected.y,
+        visible: projected.visible,
+      }
+    })
+    callbacks.onPolityLabels?.(polityLabels)
   }
 
   function projectSystem(system) {
@@ -628,6 +652,12 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     selectedId = id
     callbacks.onSelect?.(id ? galaxy.byId.get(id) : null)
     emitLabels()
+  }
+
+  function setPoliticalBorders(visible) {
+    if (plate.material?.uniforms?.uShowBorders) {
+      plate.material.uniforms.uShowBorders.value = visible ? 1 : 0
+    }
   }
 
   function focusSystem(system, { enterSystem = false } = {}) {
@@ -819,6 +849,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     edgeMat.dispose()
     plate.geometry.dispose()
     plate.material.map?.dispose()
+    plate.material.uniforms?.uMap?.value?.dispose()
     plate.material.dispose()
     renderer.dispose()
   }
@@ -875,6 +906,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     focusSystem,
     setSelected,
     setStorms,
+    setPoliticalBorders,
     resetView,
     dispose,
   }
@@ -891,10 +923,57 @@ function createPoliticalPlate(galaxy) {
 }
 
 function makePlateMeshFromTexture(texture) {
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
+  const width = texture.image?.width || 1024
+  const height = texture.image?.height || 1024
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uMap: { value: texture },
+      uTexel: { value: new THREE.Vector2(1 / width, 1 / height) },
+      uShowBorders: { value: 1 },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D uMap;
+      uniform vec2 uTexel;
+      uniform float uShowBorders;
+      varying vec2 vUv;
+
+      float isBorder(vec4 sampleColor) {
+        vec3 cream = vec3(0.949, 0.922, 0.820);
+        float distanceToCream = distance(sampleColor.rgb, cream);
+        return (1.0 - step(0.16, distanceToCream)) * step(0.45, sampleColor.a);
+      }
+
+      void main() {
+        vec4 color = texture2D(uMap, vUv);
+        if (uShowBorders < 0.5 && isBorder(color) > 0.5) {
+          vec2 step2 = uTexel * 2.5;
+          vec4 samples[4];
+          samples[0] = texture2D(uMap, vUv + vec2(step2.x, 0.0));
+          samples[1] = texture2D(uMap, vUv - vec2(step2.x, 0.0));
+          samples[2] = texture2D(uMap, vUv + vec2(0.0, step2.y));
+          samples[3] = texture2D(uMap, vUv - vec2(0.0, step2.y));
+          vec4 fill = vec4(0.0);
+          float count = 0.0;
+          for (int i = 0; i < 4; i++) {
+            float keep = 1.0 - isBorder(samples[i]);
+            fill += samples[i] * keep;
+            count += keep;
+          }
+          if (count > 0.0) color = fill / count;
+        }
+        gl_FragColor = color;
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }
+    `,
     transparent: true,
-    opacity: 1,
     depthWrite: false,
     fog: false,
     side: THREE.DoubleSide,

@@ -9,6 +9,8 @@
     onHover = undefined,
     onEnterSystem = undefined,
     onLabels = undefined,
+    onPolityLabels = undefined,
+    showPoliticalBorders = true,
     focusRequest = null,
     resetToken = 0,
   } = $props()
@@ -26,6 +28,7 @@
         onHover,
         onEnterSystem,
         onLabels,
+        onPolityLabels,
       })
       if (cancelled) {
         api?.dispose()
@@ -33,6 +36,7 @@
         return
       }
       if (stormSnapshot) api.setStorms(stormSnapshot)
+      api.setPoliticalBorders(showPoliticalBorders)
     })()
     return () => {
       cancelled = true
@@ -64,6 +68,11 @@
   $effect(() => {
     if (!api) return
     api.setStorms(stormSnapshot)
+  })
+
+  $effect(() => {
+    if (!api) return
+    api.setPoliticalBorders(showPoliticalBorders)
   })
 </script>
 

@@ -13,6 +13,8 @@
     onPolityFilter = undefined,
     onReset = undefined,
     onBackToGalaxy = undefined,
+    onPoliticalBorders = undefined,
+    showPoliticalBorders = true,
     mode = 'galaxy',
   } = $props()
 
@@ -76,6 +78,19 @@
     <button type="button" class="ghost" onclick={() => onReset?.()}>
       {locale === 'en' ? 'Reset view' : 'Сброс'}
     </button>
+    {#if mode === 'galaxy'}
+      <button
+        type="button"
+        class="ghost"
+        class:active={showPoliticalBorders}
+        aria-pressed={showPoliticalBorders}
+        onclick={() => onPoliticalBorders?.(!showPoliticalBorders)}
+      >
+        {locale === 'en'
+          ? `Borders: ${showPoliticalBorders ? 'on' : 'off'}`
+          : `Границы: ${showPoliticalBorders ? 'вкл' : 'выкл'}`}
+      </button>
+    {/if}
     {#if mode === 'system'}
       <button type="button" class="primary" onclick={() => onBackToGalaxy?.()}>
         {locale === 'en' ? 'Galaxy view' : 'К галактике'}
@@ -309,6 +324,7 @@
   }
 
   button.ghost:hover,
+  button.ghost.active,
   select:hover,
   input:focus {
     border-color: rgba(190, 220, 255, 0.55);

@@ -2,22 +2,28 @@
   import { onDestroy, onMount } from 'svelte'
   import GalaxyScene from './components/GalaxyScene.svelte'
   import MapHud from './components/MapHud.svelte'
+  import RealmMapPage from './components/RealmMapPage.svelte'
+  import RealmNavigation from './components/RealmNavigation.svelte'
   import SystemDetailView from './components/SystemDetailView.svelte'
   import { loadGalaxy, loadSystemDetail, systemLabel } from './lib/galaxy/loadGalaxy.js'
   import { estimateZoom } from './lib/galaxy/labelLod.js'
   import { connectStormSocket, stormForSystem } from './lib/galaxy/stormsApi.js'
   import { fetchAssetManifest } from './lib/galaxy/assetsApi.js'
   import { applyAssetManifest, mapTexturePath } from './lib/galaxy/modelCatalog.js'
+  import { pageFromPath } from './lib/realms/realmCatalog.js'
 
   let galaxy = $state(null)
   let error = $state('')
   let loading = $state(true)
   let locale = $state('ru')
+  let page = $state(pageFromPath(window.location.pathname))
   let selected = $state(null)
   let detail = $state(null)
   let polityFilter = $state('')
   let mode = $state('galaxy')
   let labels = $state([])
+  let polityLabels = $state([])
+  let showPoliticalBorders = $state(true)
   let focusRequest = $state(null)
   let resetToken = $state(0)
   let zoom = $state(1)
@@ -28,7 +34,18 @@
 
   const selectedStorm = $derived(stormForSystem(stormSnapshot, selected?.id))
 
+  function handleRouteChange() {
+    page = pageFromPath(window.location.pathname)
+  }
+
+  function navigate(nextPage, path) {
+    if (window.location.pathname !== path) window.history.pushState({}, '', path)
+    page = nextPage
+    if (nextPage === 'universe') mode = 'galaxy'
+  }
+
   onMount(async () => {
+    window.addEventListener('popstate', handleRouteChange)
     try {
       try {
         applyAssetManifest(await fetchAssetManifest())
@@ -53,6 +70,7 @@
   })
 
   onDestroy(() => {
+    window.removeEventListener('popstate', handleRouteChange)
     stormSocket?.close()
     stormSocket = null
   })
@@ -119,7 +137,9 @@
   }
 </script>
 
-{#if loading}
+{#if page !== 'universe'}
+  <RealmMapPage realmId={page} {locale} />
+{:else if loading}
   <main class="boot">Загрузка галактики…</main>
 {:else if error}
   <main class="boot error">{error}</main>
@@ -133,13 +153,25 @@
           {focusRequest}
           {resetToken}
           {stormSnapshot}
+          {showPoliticalBorders}
           onSelect={handleSelect}
           onEnterSystem={handleEnterSystem}
           onLabels={handleLabels}
+          onPolityLabels={(nextLabels) => (polityLabels = nextLabels)}
         />
       {/key}
 
       <div class="labels" aria-hidden="true">
+        {#each polityLabels as label}
+          {#if label.visible}
+            <div
+              class="polity-label"
+              style={`left:${label.x}px;top:${label.y}px;--polity-color:${label.color || '#dce8ff'}`}
+            >
+              {locale === 'en' ? label.nameEn : label.nameRu}
+            </div>
+          {/if}
+        {/each}
         {#each labels as label}
           {#if label.visible}
             <div
@@ -176,10 +208,12 @@
       {detail}
       {polityFilter}
       {mode}
+      {showPoliticalBorders}
       storm={selectedStorm}
       stormCount={stormSnapshot?.storms?.length || 0}
       {stormStatus}
       onLocale={(value) => (locale = value)}
+      onPoliticalBorders={(value) => (showPoliticalBorders = value)}
       onPolityFilter={(value) => {
         polityFilter = value
         selected = null
@@ -194,8 +228,15 @@
       onBackToGalaxy={() => {
         mode = 'galaxy'
       }}
-    />  </main>
+    />
+  </main>
 {/if}
+
+<RealmNavigation
+  current={page}
+  {locale}
+  onNavigate={navigate}
+/>
 
 <style>
   :global(:root) {
@@ -268,6 +309,24 @@
     white-space: nowrap;
     color: #d5e4ff;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .polity-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    max-width: 15rem;
+    color: color-mix(in srgb, var(--polity-color) 42%, #f3f6ff);
+    font-size: clamp(0.68rem, 1.1vw, 1.05rem);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    line-height: 1.15;
+    text-align: center;
+    text-transform: uppercase;
+    white-space: normal;
+    text-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.95),
+      0 0 9px rgba(0, 0, 0, 0.9);
+    opacity: 0.82;
   }
 
   .label.capital {
