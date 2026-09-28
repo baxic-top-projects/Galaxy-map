@@ -23,8 +23,13 @@ textureLoader.setCrossOrigin('anonymous')
 const glbCache = new Map()
 const texCache = new Map()
 
-/** Soft cap for planet / satellite mesh construction tasks. */
-const MESH_BUILD_CONCURRENCY = 6
+// Network downloads may use the shared six-slot gate, but geometry creation and
+// shader setup happen on the browser's main thread. Keep that work narrow.
+const MESH_BUILD_CONCURRENCY = 2
+
+function yieldToFrame() {
+  return new Promise((resolve) => requestAnimationFrame(resolve))
+}
 
 function loadTexture(url) {
   if (texCache.has(url)) return texCache.get(url)
@@ -574,8 +579,10 @@ async function createTexturedSphere({ typeKey, radius, kind, lightColor }) {
   }
 
   const group = new THREE.Group()
+  const widthSegments = isStarLike ? 48 : 32
+  const heightSegments = isStarLike ? 32 : 24
   const surface = new THREE.Mesh(
-    new THREE.SphereGeometry(radius, 64, 48),
+    new THREE.SphereGeometry(radius, widthSegments, heightSegments),
     new THREE.MeshStandardMaterial({
       map: texture || null,
       color: texture ? 0xffffff : starColor(key),
@@ -1103,6 +1110,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   const zAxis = new THREE.Vector3(0, 0, 1)
   let stormBoundary = null
   let stormRadius = 10
+  let currentStorm = callbacks.storm || null
 
   function clearStormBoundary() {
     if (!stormBoundary) return
@@ -1119,8 +1127,16 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
 
   function applyStorm(storm) {
     if (disposed) return
+    currentStorm = storm || null
+    if (!storm || !(Number(storm.intensity) > 0.05)) {
+      clearStormBoundary()
+      return
+    }
+    if (stormBoundary && Math.abs(stormBoundary.userData.radius - stormRadius) < 0.001) {
+      stormBoundary.userData.setStorm?.(storm)
+      return
+    }
     clearStormBoundary()
-    if (!storm || !(Number(storm.intensity) > 0.05)) return
     stormBoundary = createStormBoundary({
       radius: stormRadius,
       color: storm.color,
@@ -1130,6 +1146,10 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     })
     stormBoundary.userData.radius = stormRadius
     root.add(stormBoundary)
+  }
+
+  function setStorm(storm) {
+    applyStorm(storm)
   }
 
   async function build() {
@@ -1265,6 +1285,8 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     }
 
     await mapPool(planets, MESH_BUILD_CONCURRENCY, async (planet, index) => {
+      await yieldToFrame()
+      if (disposed) return
       const orbit = planetOrbits[index]
       const radius = planetRadii[index]
       const mesh = await createBodyMesh({
@@ -1307,7 +1329,9 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
         planetType: planet.planetType,
       })
 
-      await mapPool(planet.satellites || [], MESH_BUILD_CONCURRENCY, async (satellite, satelliteIndex) => {
+      await mapPool(planet.satellites || [], 1, async (satellite, satelliteIndex) => {
+        await yieldToFrame()
+        if (disposed) return
         const satelliteRadius = Math.max(
           0.075,
           radius * (satellite.planetTypeKey === 'gas_giant' ? 0.34 : 0.26),
@@ -1387,7 +1411,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     controls.update()
 
     stormRadius = Math.max(span * 0.88, farthest + 1.1)
-    applyStorm(callbacks.storm)
+    applyStorm(currentStorm)
 
     // Stellaris-style hyperlane arrows toward connected systems.
     const neighbors = neighborSystems(detail, callbacks.galaxy)
@@ -1498,8 +1522,11 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
 
   window.addEventListener('resize', resize)
   resize()
+  // Storm feedback appears immediately; build() later adjusts it to the final
+  // system radius without waiting for every S3 asset.
+  applyStorm(currentStorm)
   build()
   raf = requestAnimationFrame(frame)
 
-  return { dispose, resize }
+  return { dispose, resize, setStorm }
 }
