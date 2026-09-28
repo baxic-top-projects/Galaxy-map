@@ -102,15 +102,15 @@ def render_label_block(
 
 def fit_label(
     polity: dict,
-    territory_mask: np.ndarray,
+    safe_mask: np.ndarray,
+    occupied: np.ndarray,
     center_x: int,
     center_y: int,
 ) -> tuple[Image.Image, int, int] | None:
     scale = SIDE / 1024
     suzerain = polity.get("kind") == "suzerain"
     maximum = round((15 if suzerain else 9) * scale)
-    minimum = max(4, round((4 if suzerain else 3) * scale))
-    safe_mask = distance_transform_edt(territory_mask) >= max(2, round(1.5 * scale))
+    minimum = max(3, round((3 if suzerain else 2) * scale))
 
     for size in range(maximum, minimum - 1, -1):
         stroke_width = max(1, round((3 if suzerain else 2) * scale * size / maximum))
@@ -126,7 +126,10 @@ def fit_label(
             if left < 0 or top < 0 or right > SIDE or bottom > SIDE:
                 continue
             letters = np.asarray(block.getchannel("A")) > 0
-            if np.all(safe_mask[top:bottom, left:right][letters]):
+            if (
+                np.all(safe_mask[top:bottom, left:right][letters])
+                and not np.any(occupied[top:bottom, left:right][letters])
+            ):
                 return block, left, top
     return None
 
@@ -186,6 +189,7 @@ def build_overlay(polities: list[dict], systems: list[dict]) -> Image.Image:
     output[border, 3] = 255
 
     image = Image.fromarray(output, "RGBA")
+    occupied = np.zeros((SIDE, SIDE), dtype=bool)
     system_pixels: dict[str, list[tuple[int, int]]] = {}
     for system in systems:
         stem = system.get("stem")
@@ -201,7 +205,17 @@ def build_overlay(polities: list[dict], systems: list[dict]) -> Image.Image:
             system_pixels.setdefault(stem, []).append((px, py))
 
     decoded = 0
-    for index, polity in enumerate(polities):
+    owner_sizes = np.bincount(owner[owner >= 0], minlength=len(polities))
+    placement_order = sorted(
+        range(len(polities)),
+        key=lambda item: (
+            polities[item].get("kind") == "suzerain",
+            int(owner_sizes[item]),
+        ),
+        reverse=True,
+    )
+    for index in placement_order:
+        polity = polities[index]
         mask = binary_fill_holes(binary_closing(owner == index, iterations=3))
         if int(mask.sum()) < 20:
             print(f"WARNING: no territory decoded for {polity['stem']}")
@@ -235,20 +249,56 @@ def build_overlay(polities: list[dict], systems: list[dict]) -> Image.Image:
             py_float, px_float = center_of_mass(label_mask)
             py, px = int(round(py_float)), int(round(px_float))
 
-        fitted = fit_label(polity, label_mask, px, py)
-        if fitted is None:
-            distance = distance_transform_edt(label_mask)
-            py, px = np.unravel_index(int(np.argmax(distance)), distance.shape)
-            fitted = fit_label(polity, label_mask, int(px), int(py))
+        distance = distance_transform_edt(label_mask)
+        safe_mask = distance >= max(2, round(1.5 * SIDE / 1024))
+        candidates = [(px, py)]
+        center_y, center_x = center_of_mass(label_mask)
+        candidates.append((int(round(center_x)), int(round(center_y))))
+        sample = distance[::16, ::16]
+        sample_count = min(32, sample.size)
+        sample_indices = np.argpartition(sample.ravel(), -sample_count)[-sample_count:]
+        sample_indices = sample_indices[np.argsort(sample.ravel()[sample_indices])[::-1]]
+        candidates.extend(
+            (int(sample_x * 16), int(sample_y * 16))
+            for sample_y, sample_x in (
+                np.unravel_index(int(sample_index), sample.shape)
+                for sample_index in sample_indices
+            )
+        )
+
+        fitted = None
+        for candidate_x, candidate_y in candidates:
+            fitted = fit_label(
+                polity,
+                safe_mask,
+                occupied,
+                candidate_x,
+                candidate_y,
+            )
+            if fitted is not None:
+                break
         if fitted is None:
             distance = distance_transform_edt(mask)
             py, px = np.unravel_index(int(np.argmax(distance)), distance.shape)
-            fitted = fit_label(polity, mask, int(px), int(py))
+            fitted = fit_label(
+                polity,
+                distance >= max(2, round(1.5 * SIDE / 1024)),
+                occupied,
+                int(px),
+                int(py),
+            )
         if fitted is None:
             print(f"WARNING: label cannot fit inside {polity['stem']}")
             continue
         block, left, top = fitted
         image.alpha_composite(block, (left, top))
+        letters = np.asarray(block.getchannel("A")) > 0
+        new_occupied = np.zeros_like(occupied)
+        new_occupied[top:top + block.height, left:left + block.width] = letters
+        occupied |= binary_dilation(
+            new_occupied,
+            iterations=max(2, round(2 * SIDE / 1024)),
+        )
         decoded += 1
     print(f"Decoded and labeled {decoded}/{len(polities)} exact painted territories")
     return image
