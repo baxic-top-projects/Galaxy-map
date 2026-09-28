@@ -68,6 +68,8 @@ engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
     future=True,
+    # Fail fast instead of hanging startup/health checks on an unreachable DB.
+    connect_args={"connect_timeout": 10},
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 

@@ -10,9 +10,17 @@ router = APIRouter()
 
 @router.get("/health")
 def health():
+    sync = sync_status()
+    # Don't touch the DB until background init/sync settles: a slow or unreachable
+    # Postgres would otherwise block this endpoint past the container healthcheck timeout.
+    if sync.get("status") in ("running", "failed"):
+        return {
+            "status": "ok" if sync["status"] == "running" else "degraded",
+            "service": "catalog-service",
+            "hasSystems": None,
+            "db": "pending" if sync["status"] == "running" else "error",
+            "sync": sync,
+        }
     payload = catalog_query.health()
-    payload["sync"] = sync_status()
-    # Stay healthy while background sync runs if DB is reachable.
-    if payload.get("status") == "empty" and payload["sync"].get("status") == "running":
-        payload["status"] = "ok"
+    payload["sync"] = sync
     return payload

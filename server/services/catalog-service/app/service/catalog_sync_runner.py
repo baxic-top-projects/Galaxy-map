@@ -5,6 +5,7 @@ import threading
 from typing import Any
 
 from app.config.settings import Settings
+from app.db.models import init_db
 from app.service.catalog_seed_service import CatalogSeedService
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,8 @@ def _set_state(**kwargs: Any) -> None:
         _state.update(kwargs)
 
 
-def run_sync_in_background(settings: Settings) -> None:
-    """Start catalog sync without blocking the HTTP server."""
+def run_sync_in_background(settings: Settings, *, seed: bool = True) -> None:
+    """Create tables and (optionally) sync the catalog without blocking the HTTP server."""
     with _lock:
         if _state["status"] == "running":
             logger.info("Catalog sync already running")
@@ -38,6 +39,10 @@ def run_sync_in_background(settings: Settings) -> None:
 
     def worker() -> None:
         try:
+            init_db()
+            if not seed:
+                _set_state(status="idle", result=None, error=None)
+                return
             result = CatalogSeedService(settings).sync_on_startup()
             _set_state(status="ok", result=result, error=None)
             logger.info("Catalog sync result: %s", result)

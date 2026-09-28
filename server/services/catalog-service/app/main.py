@@ -8,7 +8,6 @@ from fastapi import FastAPI
 from app.config.settings import settings
 from app.controller.catalog_controller import router as catalog_router
 from app.controller.health_controller import router as health_router
-from app.db.models import init_db
 from app.service.catalog_sync_runner import run_sync_in_background
 
 logger = logging.getLogger(__name__)
@@ -16,10 +15,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    init_db()
-    if settings.seed_on_startup:
-        run_sync_in_background(settings)
-        logger.info("Catalog sync started in background")
+    # DB init + sync run off the event loop so /health answers even if Postgres is slow.
+    run_sync_in_background(settings, seed=settings.seed_on_startup)
+    logger.info("Catalog DB init%s started in background", " + sync" if settings.seed_on_startup else "")
     yield
 
 
