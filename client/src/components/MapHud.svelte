@@ -13,8 +13,8 @@
     onPolityFilter = undefined,
     onReset = undefined,
     onBackToGalaxy = undefined,
-    onPoliticalBorders = undefined,
-    showPoliticalBorders = true,
+    onPoliticalMap = undefined,
+    showPoliticalMap = true,
     mode = 'galaxy',
   } = $props()
 
@@ -82,13 +82,13 @@
       <button
         type="button"
         class="ghost"
-        class:active={showPoliticalBorders}
-        aria-pressed={showPoliticalBorders}
-        onclick={() => onPoliticalBorders?.(!showPoliticalBorders)}
+        class:active={showPoliticalMap}
+        aria-pressed={showPoliticalMap}
+        onclick={() => onPoliticalMap?.(!showPoliticalMap)}
       >
         {locale === 'en'
-          ? `Borders: ${showPoliticalBorders ? 'on' : 'off'}`
-          : `Границы: ${showPoliticalBorders ? 'вкл' : 'выкл'}`}
+          ? `Political map: ${showPoliticalMap ? 'on' : 'off'}`
+          : `Политкарта: ${showPoliticalMap ? 'вкл' : 'выкл'}`}
       </button>
     {/if}
     {#if mode === 'system'}

@@ -120,10 +120,22 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     .map((polity) => {
       const systems = galaxy.systems.filter((system) => system.stem === polity.stem)
       if (!systems.length) return null
-      const x = systems.reduce((sum, system) => sum + system.x, 0) / systems.length
-      const y = systems.reduce((sum, system) => sum + system.y, 0) / systems.length
-      const z = systems.reduce((sum, system) => sum + system.z, 0) / systems.length
-      return { polity, x, y, z, systemCount: systems.length }
+      const meanX = systems.reduce((sum, system) => sum + system.x, 0) / systems.length
+      const meanY = systems.reduce((sum, system) => sum + system.y, 0) / systems.length
+      // Keep the label inside its polity instead of allowing an arithmetic
+      // centroid to land in a foreign enclave or an empty concavity.
+      const anchor = systems.reduce((best, system) => {
+        const distance = (system.x - meanX) ** 2 + (system.y - meanY) ** 2
+        return !best || distance < best.distance ? { system, distance } : best
+      }, null)?.system
+      return {
+        polity,
+        x: anchor?.x ?? meanX,
+        y: anchor?.y ?? meanY,
+        // Labels belong to the flat political plate, not to systems' 3D depth.
+        z: -0.78 / GALAXY_SCALE,
+        systemCount: systems.length,
+      }
     })
     .filter(Boolean)
 
@@ -597,6 +609,8 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
         stem: anchor.polity.stem,
         nameEn: anchor.polity.nameEn,
         nameRu: anchor.polity.nameRu,
+        label: anchor.polity.label,
+        kind: anchor.polity.kind,
         color: anchor.polity.color,
         systemCount: anchor.systemCount,
         x: projected.x,
@@ -654,10 +668,8 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     emitLabels()
   }
 
-  function setPoliticalBorders(visible) {
-    if (plate.material?.uniforms?.uShowBorders) {
-      plate.material.uniforms.uShowBorders.value = visible ? 1 : 0
-    }
+  function setPoliticalMap(visible) {
+    plate.visible = !!visible
   }
 
   function focusSystem(system, { enterSystem = false } = {}) {
@@ -847,10 +859,21 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     stormEyes = []
     edgeGeom.dispose()
     edgeMat.dispose()
-    plate.geometry.dispose()
-    plate.material.map?.dispose()
-    plate.material.uniforms?.uMap?.value?.dispose()
-    plate.material.dispose()
+    const plateGeometries = new Set()
+    const plateMaterials = new Set()
+    const plateTextures = new Set()
+    plate.traverse((child) => {
+      if (child.geometry) plateGeometries.add(child.geometry)
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      for (const material of materials) {
+        if (!material) continue
+        plateMaterials.add(material)
+        if (material.map) plateTextures.add(material.map)
+      }
+    })
+    plateGeometries.forEach((geometry) => geometry.dispose())
+    plateMaterials.forEach((material) => material.dispose())
+    plateTextures.forEach((texture) => texture.dispose())
     renderer.dispose()
   }
 
@@ -906,7 +929,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     focusSystem,
     setSelected,
     setStorms,
-    setPoliticalBorders,
+    setPoliticalMap,
     resetView,
     dispose,
   }
@@ -923,56 +946,8 @@ function createPoliticalPlate(galaxy) {
 }
 
 function makePlateMeshFromTexture(texture) {
-  const width = texture.image?.width || 1024
-  const height = texture.image?.height || 1024
-  const material = new THREE.ShaderMaterial({
-    uniforms: {
-      uMap: { value: texture },
-      uTexel: { value: new THREE.Vector2(1 / width, 1 / height) },
-      uShowBorders: { value: 1 },
-    },
-    vertexShader: `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform sampler2D uMap;
-      uniform vec2 uTexel;
-      uniform float uShowBorders;
-      varying vec2 vUv;
-
-      float isBorder(vec4 sampleColor) {
-        vec3 cream = vec3(0.949, 0.922, 0.820);
-        float distanceToCream = distance(sampleColor.rgb, cream);
-        return (1.0 - step(0.16, distanceToCream)) * step(0.45, sampleColor.a);
-      }
-
-      void main() {
-        vec4 color = texture2D(uMap, vUv);
-        if (uShowBorders < 0.5 && isBorder(color) > 0.5) {
-          vec2 step2 = uTexel * 2.5;
-          vec4 samples[4];
-          samples[0] = texture2D(uMap, vUv + vec2(step2.x, 0.0));
-          samples[1] = texture2D(uMap, vUv - vec2(step2.x, 0.0));
-          samples[2] = texture2D(uMap, vUv + vec2(0.0, step2.y));
-          samples[3] = texture2D(uMap, vUv - vec2(0.0, step2.y));
-          vec4 fill = vec4(0.0);
-          float count = 0.0;
-          for (int i = 0; i < 4; i++) {
-            float keep = 1.0 - isBorder(samples[i]);
-            fill += samples[i] * keep;
-            count += keep;
-          }
-          if (count > 0.0) color = fill / count;
-        }
-        gl_FragColor = color;
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }
-    `,
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
     transparent: true,
     depthWrite: false,
     fog: false,
@@ -983,6 +958,156 @@ function makePlateMeshFromTexture(texture) {
   mesh.position.z = -0.8
   mesh.raycast = () => {}
   return mesh
+}
+
+// Kept as an offline-capable splitter for future independent border styling.
+// Runtime political-map toggling hides the complete plate and does not need it.
+function makeSplitPlateMeshFromTexture(texture) {
+  const image = texture.image
+  const width = image?.width || 1024
+  const height = image?.height || 1024
+  const sourceCanvas = document.createElement('canvas')
+  sourceCanvas.width = width
+  sourceCanvas.height = height
+  const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true })
+  sourceContext.drawImage(image, 0, 0, width, height)
+  const sourceImage = sourceContext.getImageData(0, 0, width, height)
+  const source = sourceImage.data
+  const borderMask = new Uint8Array(width * height)
+
+  const colorDistance = (offset, r, g, b) =>
+    Math.hypot(source[offset] - r, source[offset + 1] - g, source[offset + 2] - b)
+
+  for (let index = 0; index < borderMask.length; index += 1) {
+    const offset = index * 4
+    if (
+      source[offset + 3] > 100 &&
+      (colorDistance(offset, 247, 240, 214) < 24 ||
+        colorDistance(offset, 242, 235, 209) < 24)
+    ) {
+      borderMask[index] = 1
+    }
+  }
+
+  // Include anti-aliased pixels around the solid cream centerline.
+  const solidMask = borderMask.slice()
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const index = y * width + x
+      if (!solidMask[index]) continue
+      for (let dy = -2; dy <= 2; dy += 1) {
+        for (let dx = -2; dx <= 2; dx += 1) {
+          borderMask[(y + dy) * width + x + dx] = 1
+        }
+      }
+    }
+  }
+
+  const fillImage = new ImageData(new Uint8ClampedArray(source), width, height)
+  const borderImage = new ImageData(width, height)
+  const fill = fillImage.data
+  const border = borderImage.data
+  const directions = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ]
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x
+      if (!borderMask[index]) continue
+      const offset = index * 4
+      border[offset] = source[offset]
+      border[offset + 1] = source[offset + 1]
+      border[offset + 2] = source[offset + 2]
+      border[offset + 3] = source[offset + 3]
+
+      let red = 0
+      let green = 0
+      let blue = 0
+      let alpha = 0
+      let samples = 0
+      for (const [dx, dy] of directions) {
+        for (let radius = 3; radius <= 12; radius += 1) {
+          const sampleX = x + dx * radius
+          const sampleY = y + dy * radius
+          if (sampleX < 0 || sampleX >= width || sampleY < 0 || sampleY >= height) break
+          const sampleIndex = sampleY * width + sampleX
+          if (borderMask[sampleIndex]) continue
+          const sampleOffset = sampleIndex * 4
+          red += source[sampleOffset]
+          green += source[sampleOffset + 1]
+          blue += source[sampleOffset + 2]
+          alpha += source[sampleOffset + 3]
+          samples += 1
+          break
+        }
+      }
+      if (samples > 0) {
+        fill[offset] = red / samples
+        fill[offset + 1] = green / samples
+        fill[offset + 2] = blue / samples
+        fill[offset + 3] = alpha / samples
+      }
+    }
+  }
+
+  const fillCanvas = document.createElement('canvas')
+  fillCanvas.width = width
+  fillCanvas.height = height
+  fillCanvas.getContext('2d').putImageData(fillImage, 0, 0)
+  const borderCanvas = document.createElement('canvas')
+  borderCanvas.width = width
+  borderCanvas.height = height
+  borderCanvas.getContext('2d').putImageData(borderImage, 0, 0)
+
+  const makeCanvasTexture = (canvas) => {
+    const canvasTexture = new THREE.CanvasTexture(canvas)
+    canvasTexture.colorSpace = THREE.SRGBColorSpace
+    canvasTexture.generateMipmaps = false
+    canvasTexture.minFilter = THREE.LinearFilter
+    canvasTexture.magFilter = THREE.LinearFilter
+    return canvasTexture
+  }
+
+  const fillTexture = makeCanvasTexture(fillCanvas)
+  const borderTexture = makeCanvasTexture(borderCanvas)
+  texture.dispose()
+  const span = GALAXY_SCALE * 2 * MAP_LIM
+  const group = new THREE.Group()
+  const fillMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(span, span),
+    new THREE.MeshBasicMaterial({
+      map: fillTexture,
+      transparent: true,
+      depthWrite: false,
+      fog: false,
+      side: THREE.DoubleSide,
+    }),
+  )
+  fillMesh.position.z = -0.8
+  fillMesh.raycast = () => {}
+  const borderMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(span, span),
+    new THREE.MeshBasicMaterial({
+      map: borderTexture,
+      transparent: true,
+      depthWrite: false,
+      fog: false,
+      side: THREE.DoubleSide,
+    }),
+  )
+  borderMesh.position.z = -0.79
+  borderMesh.raycast = () => {}
+  group.add(fillMesh, borderMesh)
+  group.userData.borderLayer = borderMesh
+  return group
 }
 
 function createProceduralPoliticalPlate(galaxy) {

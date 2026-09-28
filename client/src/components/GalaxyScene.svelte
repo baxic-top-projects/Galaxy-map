@@ -10,7 +10,7 @@
     onEnterSystem = undefined,
     onLabels = undefined,
     onPolityLabels = undefined,
-    showPoliticalBorders = true,
+    showPoliticalMap = true,
     focusRequest = null,
     resetToken = 0,
   } = $props()
@@ -36,7 +36,7 @@
         return
       }
       if (stormSnapshot) api.setStorms(stormSnapshot)
-      api.setPoliticalBorders(showPoliticalBorders)
+      api.setPoliticalMap(showPoliticalMap)
     })()
     return () => {
       cancelled = true
@@ -72,7 +72,7 @@
 
   $effect(() => {
     if (!api) return
-    api.setPoliticalBorders(showPoliticalBorders)
+    api.setPoliticalMap(showPoliticalMap)
   })
 </script>
 

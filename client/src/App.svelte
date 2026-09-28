@@ -23,7 +23,7 @@
   let mode = $state('galaxy')
   let labels = $state([])
   let polityLabels = $state([])
-  let showPoliticalBorders = $state(true)
+  let showPoliticalMap = $state(true)
   let focusRequest = $state(null)
   let resetToken = $state(0)
   let zoom = $state(1)
@@ -135,6 +135,13 @@
     labels = nextLabels
     zoom = nextZoom ?? estimateZoom(8)
   }
+
+  function polityMapLabel(label) {
+    const text = locale === 'en' ? label.nameEn : label.label || label.nameRu
+    const words = String(text || '').trim().split(/\s+/)
+    if (words.length < 2) return words[0] || ''
+    return `${words[0]}\n${words.slice(1).join(' ')}`
+  }
 </script>
 
 {#if page !== 'universe'}
@@ -153,7 +160,7 @@
           {focusRequest}
           {resetToken}
           {stormSnapshot}
-          {showPoliticalBorders}
+          {showPoliticalMap}
           onSelect={handleSelect}
           onEnterSystem={handleEnterSystem}
           onLabels={handleLabels}
@@ -163,12 +170,13 @@
 
       <div class="labels" aria-hidden="true">
         {#each polityLabels as label}
-          {#if label.visible}
+          {#if label.visible && showPoliticalMap}
             <div
               class="polity-label"
+              class:suzerain={label.kind === 'suzerain'}
               style={`left:${label.x}px;top:${label.y}px;--polity-color:${label.color || '#dce8ff'}`}
             >
-              {locale === 'en' ? label.nameEn : label.nameRu}
+              {polityMapLabel(label)}
             </div>
           {/if}
         {/each}
@@ -208,12 +216,12 @@
       {detail}
       {polityFilter}
       {mode}
-      {showPoliticalBorders}
+      {showPoliticalMap}
       storm={selectedStorm}
       stormCount={stormSnapshot?.storms?.length || 0}
       {stormStatus}
       onLocale={(value) => (locale = value)}
-      onPoliticalBorders={(value) => (showPoliticalBorders = value)}
+      onPoliticalMap={(value) => (showPoliticalMap = value)}
       onPolityFilter={(value) => {
         polityFilter = value
         selected = null
@@ -314,19 +322,24 @@
   .polity-label {
     position: absolute;
     transform: translate(-50%, -50%);
-    max-width: 15rem;
-    color: color-mix(in srgb, var(--polity-color) 42%, #f3f6ff);
-    font-size: clamp(0.68rem, 1.1vw, 1.05rem);
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    line-height: 1.15;
+    max-width: 12rem;
+    color: #fff;
+    font-size: clamp(0.56rem, 0.72vw, 0.82rem);
+    font-weight: 400;
+    letter-spacing: 0.025em;
+    line-height: 1.12;
     text-align: center;
     text-transform: uppercase;
-    white-space: normal;
+    white-space: pre-line;
     text-shadow:
       0 1px 3px rgba(0, 0, 0, 0.95),
       0 0 9px rgba(0, 0, 0, 0.9);
     opacity: 0.82;
+  }
+
+  .polity-label.suzerain {
+    font-size: clamp(0.75rem, 1.05vw, 1.05rem);
+    font-weight: 700;
   }
 
   .label.capital {
