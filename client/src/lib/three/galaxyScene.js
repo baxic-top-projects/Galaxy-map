@@ -6,19 +6,26 @@ import { estimateZoom, pickLabels } from '../galaxy/labelLod.js'
 
 const GALAXY_SCALE = 42
 const MAP_LIM = 1.06
-const TERRITORY_PLATE_URL = '/textures/galaxy_territory_plate.png?v=36'
+const TERRITORY_PLATE_URL = '/textures/galaxy_territory_plate.png?v=40'
 const textureLoader = new THREE.TextureLoader()
 
-function loadTexture(url) {
+function loadTexture(url, { crisp = false } = {}) {
   return new Promise((resolve, reject) => {
     textureLoader.load(
       url,
       (texture) => {
         texture.colorSpace = THREE.SRGBColorSpace
         texture.anisotropy = 8
-        texture.generateMipmaps = true
-        texture.minFilter = THREE.LinearMipmapLinearFilter
-        texture.magFilter = THREE.LinearFilter
+        if (crisp) {
+          // Keep cream polity borders from being washed into territory paint by mipmaps.
+          texture.generateMipmaps = false
+          texture.minFilter = THREE.LinearFilter
+          texture.magFilter = THREE.LinearFilter
+        } else {
+          texture.generateMipmaps = true
+          texture.minFilter = THREE.LinearMipmapLinearFilter
+          texture.magFilter = THREE.LinearFilter
+        }
         resolve(texture)
       },
       undefined,
@@ -573,7 +580,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 
 function createPoliticalPlate(galaxy) {
   // Prefer the canon territory plate (same paint as galaxy_political_map.png).
-  return loadTexture(TERRITORY_PLATE_URL)
+  return loadTexture(TERRITORY_PLATE_URL, { crisp: true })
     .then((texture) => makePlateMeshFromTexture(texture))
     .catch(() => createProceduralPoliticalPlate(galaxy))
 }
