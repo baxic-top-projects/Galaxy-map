@@ -83,7 +83,13 @@
     let cancelled = false
     loadSystemDetail(current)
       .then((data) => {
-        if (!cancelled) detail = data
+        if (!cancelled) {
+          detail = {
+            ...data,
+            canonicalStem: data.stem,
+            stem: current.stem,
+          }
+        }
       })
       .catch(() => {
         if (!cancelled) detail = null

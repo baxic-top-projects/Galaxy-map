@@ -1,3 +1,5 @@
+import visualOwnership from './visualOwnership.json'
+
 /**
  * @typedef {{ id: string, token: string, stem: string|null, kind: string, nameEn: string, nameRu: string, starTypeKey: string, sectorId: string, capital: boolean, x: number, y: number, z: number, worldCount: number, shard: string }} GalaxySystem
  * @typedef {{ stem: string, nameEn: string, nameRu: string, bloc: string, kind: string, color: string, label: string }} Polity
@@ -26,10 +28,23 @@ export async function loadGalaxy(baseUrl = DEFAULT_API_BASE) {
     throw new Error(`Failed to load galaxy index: ${response.status}`)
   }
   const data = await response.json()
-  const byId = new Map(data.systems.map((system) => [system.id, system]))
+  const systems = data.systems.map((system) => {
+    const visualStem = visualOwnership[system.id]
+    if (!visualStem || visualStem === system.stem) return system
+    return { ...system, canonicalStem: system.stem, stem: visualStem }
+  })
+  const search = data.search.map((entry) => {
+    const visualStem = visualOwnership[entry.id]
+    return visualStem && visualStem !== entry.stem
+      ? { ...entry, canonicalStem: entry.stem, stem: visualStem }
+      : entry
+  })
+  const byId = new Map(systems.map((system) => [system.id, system]))
   const polityByStem = new Map(data.polities.map((polity) => [polity.stem, polity]))
   return {
     ...data,
+    systems,
+    search,
     byId,
     polityByStem,
   }

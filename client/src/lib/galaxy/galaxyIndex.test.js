@@ -76,6 +76,45 @@ describe('loadGalaxy API client', () => {
     expect(system.worlds[0].token).toBe('Mira')
   })
 
+  test('uses painted territory ownership for mismatched systems', async () => {
+    const payload = {
+      meta: {},
+      polities: [
+        { stem: 'Varis_Republic', nameEn: 'Varis Republic' },
+        { stem: 'Tessar_Syndicate', nameEn: 'Tessar Syndicate' },
+      ],
+      systems: [
+        {
+          id: 'Varis_Republic:Thalyx',
+          stem: 'Varis_Republic',
+          token: 'Thalyx',
+        },
+      ],
+      edgesCanon: [],
+      edgesDisplay: [],
+      search: [
+        {
+          id: 'Varis_Republic:Thalyx',
+          stem: 'Varis_Republic',
+          kind: 'system',
+        },
+      ],
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => payload,
+      })),
+    )
+
+    const galaxy = await loadGalaxy('http://gateway.test')
+    const system = galaxy.byId.get('Varis_Republic:Thalyx')
+    expect(system.stem).toBe('Tessar_Syndicate')
+    expect(system.canonicalStem).toBe('Varis_Republic')
+    expect(galaxy.search[0].stem).toBe('Tessar_Syndicate')
+  })
+
   test('labels prefer locale', () => {
     const system = { nameEn: 'Alpha', nameRu: 'Альфа' }
     const polity = { nameEn: 'Empire', nameRu: 'Империя' }
