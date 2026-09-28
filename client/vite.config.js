@@ -8,6 +8,8 @@ export default defineConfig({
   },
   assetsInclude: ['**/*.glb'],
   build: {
+    // three.js is isolated in its own vendor chunk (~640 kB minified)
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
         manualChunks(id) {
