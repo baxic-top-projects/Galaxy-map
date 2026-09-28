@@ -11,7 +11,11 @@ textureLoader.setCrossOrigin('anonymous')
 
 function territoryPlateUrl() {
   // Resolve at use-time so applyAssetManifest / VITE_ASSETS_BASE are already applied.
-  return mapTexturePath('galaxy_territory_plate.png', 'v=42')
+  return mapTexturePath('galaxy_territory_plate.png', 'v=43')
+}
+
+function basePlateUrl() {
+  return mapTexturePath('galaxy_base_plate.png', 'v=1')
 }
 
 function polityAnchorsForGalaxy(galaxy) {
@@ -134,8 +138,11 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   keyLight.position.set(20, -30, 50)
   scene.add(keyLight)
 
-  const plate = await createPoliticalPlate(galaxy)
-  root.add(plate)
+  const [basePlate, plate] = await Promise.all([
+    createBasePlate(),
+    createPoliticalPlate(galaxy),
+  ])
+  root.add(basePlate, plate)
 
   const positions = new Float32Array(galaxy.systems.length * 3)
   const colors = new Float32Array(galaxy.systems.length * 3)
@@ -844,15 +851,17 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     const plateGeometries = new Set()
     const plateMaterials = new Set()
     const plateTextures = new Set()
-    plate.traverse((child) => {
-      if (child.geometry) plateGeometries.add(child.geometry)
-      const materials = Array.isArray(child.material) ? child.material : [child.material]
-      for (const material of materials) {
-        if (!material) continue
-        plateMaterials.add(material)
-        if (material.map) plateTextures.add(material.map)
-      }
-    })
+    for (const mapPlate of [basePlate, plate]) {
+      mapPlate.traverse((child) => {
+        if (child.geometry) plateGeometries.add(child.geometry)
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        for (const material of materials) {
+          if (!material) continue
+          plateMaterials.add(material)
+          if (material.map) plateTextures.add(material.map)
+        }
+      })
+    }
     plateGeometries.forEach((geometry) => geometry.dispose())
     plateMaterials.forEach((material) => material.dispose())
     plateTextures.forEach((texture) => texture.dispose())
@@ -925,6 +934,14 @@ function createPoliticalPlate(galaxy) {
       console.warn('Galaxy territory plate failed, using procedural fallback', territoryPlateUrl(), err)
       return createProceduralPoliticalPlate(galaxy)
     })
+}
+
+function createBasePlate() {
+  return loadTexture(basePlateUrl(), { crisp: true }).then((texture) => {
+    const mesh = makePlateMeshFromTexture(texture)
+    mesh.position.z = -0.82
+    return mesh
+  })
 }
 
 function makePlateMeshFromTexture(texture, galaxy = null) {

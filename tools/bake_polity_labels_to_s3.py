@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import io
-import json
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import boto3
@@ -39,7 +39,6 @@ GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
 TEXTURE_KEY = "textures/galaxy_territory_plate.png"
 MAP_LIMIT = 1.06
 LOCAL_BASE_PLATE = ROOT.parent / "EfolsMiradinsPact" / "assets" / "galaxy_territory_plate.png"
-LOCAL_LABEL_POSITIONS = ROOT.parent / "EfolsMiradinsPact" / "assets" / "galaxy_polity_labels.json"
 
 
 def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -59,20 +58,58 @@ def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
 def _anchors(payload: dict, image: Image.Image) -> list[tuple[dict, float, float]]:
     """Find the fattest interior point of each nearest-system territory."""
     polities = payload.get("polities", [])
-    if LOCAL_LABEL_POSITIONS.is_file():
-        positions = json.loads(LOCAL_LABEL_POSITIONS.read_text(encoding="utf-8"))
-        return [
-            (polity, float(positions[polity["stem"]]["x"]), float(positions[polity["stem"]]["y"]))
-            for polity in polities
-            if polity.get("stem") in positions
-        ]
-
     polity_index = {polity["stem"]: index for index, polity in enumerate(polities)}
     systems = [
         system
         for system in payload.get("systems", [])
         if system.get("stem") in polity_index
     ]
+    width, height = image.size
+    pixels = np.asarray(image, dtype=np.uint8)
+    rgb = pixels[..., :3].astype(np.int16)
+    alpha = pixels[..., 3]
+    cream = np.asarray([247, 240, 214], dtype=np.int16)
+    border = (np.linalg.norm(rgb - cream, axis=2) < 48) & (alpha > 100)
+    # Remove anti-aliased edge pixels too, otherwise neighboring cells can leak together.
+    border = binary_dilation(border, iterations=1)
+    interior = (alpha >= 16) & ~border
+    components, component_count = component_labels(
+        interior,
+        structure=generate_binary_structure(2, 1),
+    )
+    component_votes: dict[int, Counter[str]] = defaultdict(Counter)
+    for system in systems:
+        px = int(round(((float(system["x"]) + MAP_LIMIT) / (MAP_LIMIT * 2)) * (width - 1)))
+        py = int(round((1 - (float(system["y"]) + MAP_LIMIT) / (MAP_LIMIT * 2)) * (height - 1)))
+        px = min(width - 1, max(0, px))
+        py = min(height - 1, max(0, py))
+        component = int(components[py, px])
+        if component > 0:
+            component_votes[component][system["stem"]] += 1
+
+    components_by_stem: dict[str, list[int]] = defaultdict(list)
+    for component, votes in component_votes.items():
+        if votes:
+            components_by_stem[votes.most_common(1)[0][0]].append(component)
+
+    visual_anchors = []
+    for polity in polities:
+        candidates = components_by_stem.get(polity["stem"], [])
+        if not candidates:
+            continue
+        component = max(candidates, key=lambda item: int(np.sum(components == item)))
+        mask = components == component
+        interior_distance = distance_transform_edt(mask)
+        py, px = np.unravel_index(int(np.argmax(interior_distance)), interior_distance.shape)
+        x = (px / max(width - 1, 1)) * MAP_LIMIT * 2 - MAP_LIMIT
+        y = MAP_LIMIT - (py / max(height - 1, 1)) * MAP_LIMIT * 2
+        visual_anchors.append((polity, float(x), float(y)))
+
+    print(
+        f"Matched {len(visual_anchors)}/{len(polities)} labels directly to PNG territories; "
+        "missing labels will use the territory reconstruction"
+    )
+
     points = np.asarray(
         [[float(system["x"]), float(system["y"])] for system in systems],
         dtype=np.float64,
@@ -83,7 +120,6 @@ def _anchors(payload: dict, image: Image.Image) -> list[tuple[dict, float, float
     )
     tree = cKDTree(points)
 
-    width, height = image.size
     xs = np.linspace(-MAP_LIMIT, MAP_LIMIT, width, dtype=np.float64)
     ys = np.linspace(MAP_LIMIT, -MAP_LIMIT, height, dtype=np.float64)
     own = np.full((height, width), -1, dtype=np.int32)
@@ -144,8 +180,11 @@ def _anchors(payload: dict, image: Image.Image) -> list[tuple[dict, float, float
                     values, hits = np.unique(neighbors, return_counts=True)
                     own[island] = int(values[int(np.argmax(hits))])
 
-    anchors = []
+    visual_stems = {polity["stem"] for polity, _x, _y in visual_anchors}
+    anchors = list(visual_anchors)
     for index, polity in enumerate(polities):
+        if polity["stem"] in visual_stems:
+            continue
         mask = own == index
         if int(mask.sum()) < 20:
             continue
