@@ -38,6 +38,8 @@ ROLE_RE = re.compile(r"- Role:\s*(.+)")
 
 STAR_TYPE_KEYS = {
     "binary class g": "binary_class_g",
+    "triple class g": "triple_class_g",
+    "trinary class g": "triple_class_g",
     "class m giant": "class_m_giant",
     "class m": "class_m",
     "class k": "class_k",

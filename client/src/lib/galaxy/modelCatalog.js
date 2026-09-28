@@ -2,6 +2,8 @@
 
 const STAR_FALLBACK = {
   binary_class_g: 'class_g',
+  triple_class_g: 'class_g',
+  trinary_class_g: 'class_g',
   class_m_giant: 'class_m',
   neutron_star: 'pulsar',
 }
@@ -81,6 +83,8 @@ export function starColor(typeKey) {
       return 0xffb347
     case 'class_g':
     case 'binary_class_g':
+    case 'triple_class_g':
+    case 'trinary_class_g':
       return 0xffe08a
     case 'class_f':
       return 0xfff4c8

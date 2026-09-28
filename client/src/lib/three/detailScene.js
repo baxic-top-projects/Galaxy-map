@@ -10,7 +10,6 @@ import {
   resolveStarTypeKey,
   starColor,
   starFallbackKey,
-  starModelPath,
   starPreviewPath,
   starTypeArtPath,
 } from '../galaxy/modelCatalog.js'
@@ -75,6 +74,103 @@ function measureRadialExtents(object) {
   return { rMin, rMax }
 }
 
+function addBeltDust(group, inner, outer) {
+  const uniforms = { uTime: { value: 0 } }
+  const dust = new THREE.Mesh(
+    new THREE.RingGeometry(inner, outer, 192, 8),
+    new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: `
+        varying vec2 vBelt;
+        void main() {
+          vBelt = position.xy;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        varying vec2 vBelt;
+        float hash21(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+        float smoothNoise(vec2 p) {
+          vec2 cell = floor(p);
+          vec2 local = fract(p);
+          local = local * local * (3.0 - 2.0 * local);
+          float a = hash21(cell);
+          float b = hash21(cell + vec2(1.0, 0.0));
+          float c = hash21(cell + vec2(0.0, 1.0));
+          float d = hash21(cell + vec2(1.0, 1.0));
+          return mix(mix(a, b, local.x), mix(c, d, local.x), local.y);
+        }
+        void main() {
+          vec2 drift = vBelt + vec2(uTime * 0.003, -uTime * 0.002);
+          float coarse = smoothNoise(drift * 10.0);
+          float fine = smoothNoise(drift * 32.0 + 19.7);
+          float flecks = smoothstep(0.72, 0.94, coarse * fine);
+          float alpha = 0.018 + flecks * 0.14;
+          vec3 color = mix(vec3(0.34, 0.29, 0.23), vec3(0.76, 0.68, 0.52), flecks);
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    }),
+  )
+  dust.rotation.x = -Math.PI / 2
+  dust.position.y = 0.015
+  dust.raycast = () => {}
+  group.add(dust)
+
+  const particleCount = Math.min(900, Math.max(260, Math.round((outer - inner) * 520)))
+  const particlePositions = new Float32Array(particleCount * 3)
+  let seed = 0x9e3779b9
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
+    return seed / 0x100000000
+  }
+  for (let index = 0; index < particleCount; index += 1) {
+    const angle = random() * Math.PI * 2
+    const radial = Math.sqrt(inner * inner + random() * (outer * outer - inner * inner))
+    particlePositions[index * 3] = Math.cos(angle) * radial
+    particlePositions[index * 3 + 1] = (random() - 0.5) * 0.13
+    particlePositions[index * 3 + 2] = Math.sin(angle) * radial
+  }
+  const particleGeometry = new THREE.BufferGeometry()
+  particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3))
+  const particles = new THREE.Points(
+    particleGeometry,
+    new THREE.ShaderMaterial({
+      vertexShader: `
+        void main() {
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = clamp(22.0 / max(-mv.z, 1.0), 1.15, 3.2);
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: `
+        void main() {
+          float distanceToCenter = length(gl_PointCoord - vec2(0.5));
+          if (distanceToCenter > 0.5) discard;
+          float alpha = (1.0 - smoothstep(0.18, 0.5, distanceToCenter)) * 0.52;
+          gl_FragColor = vec4(0.78, 0.72, 0.62, alpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }),
+  )
+  particles.raycast = () => {}
+  group.add(particles)
+
+  group.userData.updateVisual = (time) => {
+    uniforms.uTime.value = time
+  }
+}
+
 /**
  * Textured Meshy asteroid-belt GLB scaled so its inner edge stays outside planet orbits.
  */
@@ -121,6 +217,7 @@ async function createAsteroidBelt(featureKey = 'asteroid_belt', { minInner = 4 }
     group.userData.beltOuter = beltOuter
     group.userData.beltOrbit = beltMid
     group.userData.beltSpin = { mesh: group, speed: 0.035 / Math.sqrt(Math.max(beltMid, 1)) }
+    addBeltDust(group, beltInner, beltOuter)
     return group
   }
 
@@ -141,10 +238,308 @@ async function createAsteroidBelt(featureKey = 'asteroid_belt', { minInner = 4 }
   group.userData.beltInner = minInner
   group.userData.beltOuter = minInner + 0.7
   group.userData.beltOrbit = mid
+  group.userData.beltSpin = { mesh: group, speed: 0.035 / Math.sqrt(Math.max(mid, 1)) }
+  addBeltDust(group, minInner, minInner + 0.7)
   return group
 }
 
-async function createTexturedSphere({ typeKey, radius, kind }) {
+function createBlackHoleVisual(radius, kind) {
+  const group = new THREE.Group()
+  const isWell = kind === 'well'
+  const hot = new THREE.Color(isWell ? 0xffc27a : 0xff9a52)
+  const warm = new THREE.Color(isWell ? 0xff6ea8 : 0xff3f70)
+
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(radius * 0.72, 64, 48),
+    new THREE.MeshBasicMaterial({ color: 0x000000 }),
+  )
+  core.renderOrder = 3
+
+  const diskUniforms = {
+    uTime: { value: 0 },
+    uHot: { value: hot },
+    uWarm: { value: warm },
+  }
+  const disk = new THREE.Mesh(
+    new THREE.RingGeometry(radius * 0.76, radius * 2.35, 192, 12),
+    new THREE.ShaderMaterial({
+      uniforms: diskUniforms,
+      vertexShader: `
+        varying vec2 vDisk;
+        void main() {
+          vDisk = position.xy;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uHot;
+        uniform vec3 uWarm;
+        varying vec2 vDisk;
+        void main() {
+          float r = length(vDisk) / ${radius.toFixed(6)};
+          float angle = atan(vDisk.y, vDisk.x);
+          float inner = smoothstep(0.76, 0.84, r);
+          float outer = 1.0 - smoothstep(1.65, 2.35, r);
+          float diskMask = inner * outer;
+          float spiral = 0.5 + 0.5 * sin(angle * 7.0 - uTime * 1.7 + r * 13.0);
+          float grain = 0.5 + 0.5 * sin(angle * 19.0 + r * 31.0 + uTime * 0.8);
+          float photon = exp(-pow((r - 0.84) / 0.075, 2.0));
+          float flow = 0.32 + spiral * 0.42 + grain * 0.16;
+          float alpha = diskMask * flow + photon * 0.72;
+          vec3 color = mix(uWarm, uHot, clamp(photon + (2.35 - r) * 0.42, 0.0, 1.0));
+          color *= 0.62 + photon * 1.5 + spiral * 0.28;
+          if (alpha < 0.015) discard;
+          gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.94));
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    }),
+  )
+  disk.rotation.x = -Math.PI / 2
+  disk.scale.z = 0.22
+  disk.renderOrder = 1
+
+  const lensUniforms = {
+    uTime: { value: 0 },
+    uHot: { value: hot },
+    uWarm: { value: warm },
+  }
+  const lens = new THREE.Mesh(
+    new THREE.PlaneGeometry(radius * 4.5, radius * 4.5),
+    new THREE.ShaderMaterial({
+      uniforms: lensUniforms,
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv * 2.0 - 1.0;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uHot;
+        uniform vec3 uWarm;
+        varying vec2 vUv;
+        void main() {
+          float r = length(vUv);
+          float angle = atan(vUv.y, vUv.x);
+          float photon = exp(-pow((r - 0.345) / 0.018, 2.0));
+          float lensArc = exp(-pow((r - 0.43) / 0.065, 2.0));
+          lensArc *= 0.45 + 0.55 * pow(abs(sin(angle)), 2.0);
+          float corona = exp(-r * 4.6) * smoothstep(0.30, 0.39, r);
+          float shimmer = 0.88 + 0.12 * sin(angle * 11.0 + uTime * 1.25);
+          float alpha = (photon * 0.92 + lensArc * 0.32 + corona * 0.18) * shimmer;
+          vec3 color = mix(uWarm, uHot, clamp(photon + corona, 0.0, 1.0));
+          if (alpha < 0.008) discard;
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    }),
+  )
+  lens.renderOrder = 2
+  lens.raycast = () => {}
+
+  group.add(disk, lens, core)
+  group.userData.disableSpin = true
+  group.userData.updateVisual = (time, camera) => {
+    diskUniforms.uTime.value = time
+    lensUniforms.uTime.value = time
+    lens.quaternion.copy(camera.quaternion)
+  }
+  return group
+}
+
+function planetAtmosphereColor(key) {
+  if (key === 'toxic') return 0x91d86b
+  if (key === 'molten') return 0xff6a32
+  if (key === 'desert' || key === 'arid' || key === 'savanna') return 0xffc078
+  if (key === 'frozen' || key === 'arctic' || key === 'alpine') return 0xa9dcff
+  if (key === 'gas_giant') return 0xe4b982
+  if (key === 'ecumenopolis') return 0x7ac8ff
+  return 0x75bfff
+}
+
+function addSurfaceEffects(group, surface, radius, key, isStarLike, lightColor = 0xffffff) {
+  const cloudTypes = new Set([
+    'continental',
+    'ocean',
+    'tropical',
+    'gaia',
+    'savanna',
+    'arid',
+    'tundra',
+    'alpine',
+    'gas_giant',
+    'toxic',
+  ])
+  const oldMaterial = surface.material
+  const uniforms = {
+    uMap: { value: oldMaterial.map || null },
+    uHasMap: { value: oldMaterial.map ? 1 : 0 },
+    uTime: { value: 0 },
+    uStar: { value: isStarLike ? 1 : 0 },
+    uClouds: { value: !isStarLike && cloudTypes.has(key) ? 1 : 0 },
+    uGas: { value: key === 'gas_giant' ? 1 : 0 },
+    uBase: {
+      value: new THREE.Color(isStarLike ? starColor(key) : oldMaterial.color || 0xffffff),
+    },
+    uAtmosphere: { value: new THREE.Color(planetAtmosphereColor(key)) },
+    uLightColor: { value: new THREE.Color(lightColor) },
+  }
+
+  surface.material = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vNormal;
+      varying vec3 vView;
+      varying vec3 vWorldPosition;
+      varying vec3 vWorldNormal;
+      void main() {
+        vUv = uv;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vNormal = normalize(normalMatrix * normal);
+        vView = normalize(-mv.xyz);
+        vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D uMap;
+      uniform float uHasMap;
+      uniform float uTime;
+      uniform float uStar;
+      uniform float uClouds;
+      uniform float uGas;
+      uniform vec3 uBase;
+      uniform vec3 uAtmosphere;
+      uniform vec3 uLightColor;
+      varying vec2 vUv;
+      varying vec3 vNormal;
+      varying vec3 vView;
+      varying vec3 vWorldPosition;
+      varying vec3 vWorldNormal;
+      void main() {
+        // Type art is a square portrait with black space and baked lighting,
+        // not an equirectangular map. Sample only the central surface.
+        vec2 textureUv = vec2(0.255) + vUv * 0.49;
+        vec3 texel = texture2D(uMap, textureUv).rgb;
+        float bakedLuma = dot(texel, vec3(0.2126, 0.7152, 0.0722));
+        float exposureCorrection = clamp(0.58 / max(bakedLuma, 0.08), 0.72, 1.65);
+        // Suppress broad portrait lighting on planets while retaining local
+        // color/detail. Stars stay fully emissive.
+        texel *= mix(exposureCorrection, 1.0, uStar);
+        // Star source files are portraits (and may contain two stars or a tiny
+        // neutron star), so they cannot serve as spherical maps. Stars use
+        // their canonical class color plus procedural plasma; planets retain
+        // the sampled surface art.
+        float useSurfaceMap = uHasMap * (1.0 - uStar);
+        vec3 base = mix(uBase, texel, useSurfaceMap);
+        float fresnel = pow(1.0 - max(dot(vNormal, vView), 0.0), 2.4);
+        float plasmaA = 0.5 + 0.5 * sin(vUv.x * 52.0 + vUv.y * 21.0 - uTime * 0.9);
+        float plasmaB = 0.5 + 0.5 * sin(vUv.y * 73.0 - vUv.x * 17.0 + uTime * 0.55);
+        float plasma = plasmaA * plasmaB;
+
+        float bands = 0.5 + 0.5 * sin(vUv.y * 82.0 + sin(vUv.x * 18.0 + uTime * 0.16) * 2.2);
+        float cells = 0.5 + 0.5 * sin(vUv.x * 41.0 - vUv.y * 29.0 + uTime * 0.22);
+        float cloudPattern = mix(bands * cells, bands, uGas);
+        float cloud = smoothstep(0.60, 0.84, cloudPattern) * uClouds;
+
+        vec3 lightDirection = normalize(-vWorldPosition);
+        float starFacing = dot(normalize(vWorldNormal), lightDirection);
+        float daylight = smoothstep(-0.08, 0.16, starFacing);
+        float diffuse = max(starFacing, 0.0);
+        vec3 planetColor = mix(base, vec3(0.96), cloud * 0.22);
+        vec3 nightSide = planetColor * 0.025;
+        vec3 daySide = planetColor * (0.42 + diffuse * 1.18) * mix(vec3(1.0), uLightColor, 0.48);
+        planetColor = mix(nightSide, daySide, daylight);
+        planetColor += uAtmosphere * fresnel * (0.045 + daylight * 0.235);
+
+        // Preserve the sampled star hue: the shader changes only its
+        // brightness/structure, never paints a separate corona color.
+        vec3 starColorOut = base * (0.88 + plasma * 0.64 + fresnel * 0.68);
+        vec3 color = mix(planetColor, starColorOut, uStar);
+        gl_FragColor = vec4(color, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }
+    `,
+    transparent: false,
+    depthWrite: true,
+  })
+  oldMaterial.dispose()
+
+  let corona = null
+  let coronaUniforms = null
+  if (isStarLike) {
+    coronaUniforms = {
+      uTime: { value: 0 },
+      uColor: { value: new THREE.Color(starColor(key)) },
+    }
+    corona = new THREE.Mesh(
+      new THREE.PlaneGeometry(radius * 4.2, radius * 4.2),
+      new THREE.ShaderMaterial({
+        uniforms: coronaUniforms,
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv * 2.0 - 1.0;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          uniform vec3 uColor;
+          varying vec2 vUv;
+          void main() {
+            float r = length(vUv);
+            float angle = atan(vUv.y, vUv.x);
+            float outside = smoothstep(0.31, 0.38, r);
+            float fade = 1.0 - smoothstep(0.38, 1.0, r);
+            float broadRays = 0.5 + 0.5 * sin(angle * 17.0 - uTime * 0.16);
+            float middleRays = 0.5 + 0.5 * sin(angle * 31.0 + uTime * 0.31);
+            float fineRays = 0.5 + 0.5 * sin(angle * 53.0 - uTime * 0.22);
+            float hairRays = 0.5 + 0.5 * sin(angle * 79.0 + uTime * 0.12);
+            float microA = 0.5 + 0.5 * sin(angle * 521.0 + uTime * 0.43);
+            float microB = 0.5 + 0.5 * sin(angle * 997.0 - uTime * 0.29);
+            float microC = 0.5 + 0.5 * sin(angle * 1597.0 + uTime * 0.17);
+            float microRays = (microA + microB + microC) / 3.0;
+            float denseRays = broadRays * 0.16 + middleRays * 0.18 + fineRays * 0.18 + hairRays * 0.14 + microRays * 0.34;
+            float corona = exp(-r * 3.5) * outside;
+            float alpha = outside * fade * (0.20 + denseRays * 0.52);
+            alpha += corona * 0.46;
+            if (alpha < 0.006) discard;
+            gl_FragColor = vec4(uColor * (0.90 + denseRays * 0.72), alpha);
+          }
+        `,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+      }),
+    )
+    corona.renderOrder = 2
+    corona.raycast = () => {}
+    group.add(corona)
+  }
+
+  group.userData.updateVisual = (time, camera) => {
+    uniforms.uTime.value = time
+    if (coronaUniforms) coronaUniforms.uTime.value = time
+    if (corona) corona.quaternion.copy(camera.quaternion)
+  }
+}
+
+async function createTexturedSphere({ typeKey, radius, kind, lightColor }) {
   const isStarLike = kind === 'star' || kind === 'black_hole' || kind === 'well'
   const key = isStarLike ? resolveStarTypeKey(typeKey, kind) : resolvePlanetTypeKey(typeKey)
   const previewUrl = isStarLike ? starPreviewPath(key) : planetPreviewPath(key)
@@ -162,30 +557,8 @@ async function createTexturedSphere({ typeKey, radius, kind }) {
     }
   }
 
-  if (kind === 'black_hole' || kind === 'well') {
-    const group = new THREE.Group()
-    const core = new THREE.Mesh(
-      new THREE.SphereGeometry(radius * 0.7, 48, 32),
-      new THREE.MeshBasicMaterial({ color: 0x000000 }),
-    )
-    let haloTexture = texture
-    const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(radius, 48, 32),
-      new THREE.MeshStandardMaterial({
-        map: haloTexture || null,
-        color: haloTexture ? 0xffffff : kind === 'well' ? 0xff88cc : 0xff5588,
-        emissive: new THREE.Color(kind === 'well' ? 0xff66aa : 0xff3366),
-        emissiveIntensity: 0.45,
-        transparent: true,
-        opacity: 0.85,
-        roughness: 0.4,
-      }),
-    )
-    group.add(core, glow)
-    return group
-  }
-
-  return new THREE.Mesh(
+  const group = new THREE.Group()
+  const surface = new THREE.Mesh(
     new THREE.SphereGeometry(radius, 64, 48),
     new THREE.MeshStandardMaterial({
       map: texture || null,
@@ -197,28 +570,57 @@ async function createTexturedSphere({ typeKey, radius, kind }) {
       metalness: 0.05,
     }),
   )
+  surface.castShadow = !isStarLike
+  surface.receiveShadow = !isStarLike
+  group.add(surface)
+  addSurfaceEffects(group, surface, radius, key, isStarLike, lightColor)
+  return group
 }
 
-async function createBodyMesh({ kind, typeKey, radius, preferGlb = false }) {
+async function createMultipleStarVisual(radius, lightColor, count) {
+  const group = new THREE.Group()
+  const componentRadius = radius * (count === 3 ? 0.52 : 0.64)
+  const separation = radius * (count === 3 ? 0.78 : 0.72)
+  const stars = await Promise.all(
+    Array.from({ length: count }, (_, index) => createTexturedSphere({
+      typeKey: 'class_g',
+      radius: componentRadius * (1.0 - index * 0.035),
+      kind: 'star',
+      lightColor,
+    })),
+  )
+  group.add(...stars)
+  group.userData.disableSpin = true
+  group.userData.updateVisual = (time, camera) => {
+    const angle = time * 0.22
+    stars.forEach((star, index) => {
+      const componentAngle = angle + (index / count) * Math.PI * 2
+      star.position.set(
+        Math.cos(componentAngle) * separation,
+        count === 3 && index === 2 ? radius * 0.1 : 0,
+        Math.sin(componentAngle) * separation,
+      )
+      star.userData.updateVisual?.(time, camera)
+    })
+  }
+  return group
+}
+
+async function createBodyMesh({ kind, typeKey, radius, lightColor }) {
   const isStarLike = kind === 'star' || kind === 'black_hole' || kind === 'well'
   const key = isStarLike ? resolveStarTypeKey(typeKey, kind) : resolvePlanetTypeKey(typeKey)
 
-  // Stars/planets: textured spheres from canon type art. Optional GLB for black holes only.
-  if (preferGlb && (kind === 'black_hole' || kind === 'well')) {
-    const modelUrl = starModelPath(key)
-    const scene = await loadGlb(modelUrl)
-    if (scene) {
-      const root = scene.clone(true)
-      const box = new THREE.Box3().setFromObject(root)
-      const size = new THREE.Vector3()
-      box.getSize(size)
-      const maxDim = Math.max(size.x, size.y, size.z) || 1
-      root.scale.setScalar((radius * 2) / maxDim)
-      return root
-    }
+  // Black holes are layered shader effects; the old GLB baked its rings into
+  // a rotating mesh and looked flat from oblique camera angles.
+  if (kind === 'black_hole' || kind === 'well') return createBlackHoleVisual(radius, kind)
+  if (kind === 'star' && key === 'binary_class_g') {
+    return createMultipleStarVisual(radius, lightColor, 2)
+  }
+  if (kind === 'star' && (key === 'triple_class_g' || key === 'trinary_class_g')) {
+    return createMultipleStarVisual(radius, lightColor, 3)
   }
 
-  return createTexturedSphere({ typeKey: key, radius, kind })
+  return createTexturedSphere({ typeKey: key, radius, kind, lightColor })
 }
 
 function collectBodies(detail) {
@@ -320,6 +722,8 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
   renderer.setClearColor(0x03050c, 1)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75))
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
   const scene = new THREE.Scene()
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200)
@@ -452,9 +856,25 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   canvas.addEventListener('pointerdown', onPointerDown)
   canvas.addEventListener('pointerup', onPointerUp)
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.75))
-  const light = new THREE.PointLight(0xffffff, detail.kind === 'black_hole' || detail.kind === 'well' ? 1.2 : 2.4, 100)
-  light.position.set(0, 0, 0.2)
+  const hostKind = detail.kind === 'black_hole' || detail.kind === 'well' ? detail.kind : 'star'
+  const hostDescription = String(detail.starType || '').toLowerCase()
+  const resolvedHostTypeKey = resolveStarTypeKey(detail.starTypeKey, hostKind)
+  const hostTypeKey =
+    hostKind === 'star' && /(triple|trinary|three\s+suns|three\s+stars)/.test(hostDescription)
+      ? 'triple_class_g'
+      : resolvedHostTypeKey
+  const systemLightColor = new THREE.Color(
+    hostKind === 'star' ? starColor(hostTypeKey) : hostKind === 'well' ? 0xffb06a : 0xff7a62,
+  )
+  scene.add(new THREE.AmbientLight(0xffffff, 0.18))
+  const light = new THREE.PointLight(
+    systemLightColor,
+    hostKind === 'black_hole' || hostKind === 'well' ? 1.2 : 3.2,
+    100,
+  )
+  light.position.set(0, 0, 0)
+  light.castShadow = true
+  light.shadow.mapSize.set(1024, 1024)
   scene.add(light)
 
   const root = new THREE.Group()
@@ -468,14 +888,12 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   const zAxis = new THREE.Vector3(0, 0, 1)
 
   async function build() {
-    const hostKind = detail.kind === 'black_hole' || detail.kind === 'well' ? detail.kind : 'star'
-    const hostTypeKey = resolveStarTypeKey(detail.starTypeKey, hostKind)
     const hostRadius = hostKind === 'well' ? 2.1 : hostKind === 'black_hole' ? 1.55 : 1.35
     const host = await createBodyMesh({
       kind: hostKind,
       typeKey: hostTypeKey,
       radius: hostRadius,
-      preferGlb: hostKind === 'black_hole' || hostKind === 'well',
+      lightColor: systemLightColor,
     })
     root.add(host)
     animated.push({ mesh: host, orbit: 0, speed: 0 })
@@ -507,7 +925,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
           kind: 'planet',
           typeKey: planet.planetTypeKey,
           radius,
-          preferGlb: false,
+          lightColor: systemLightColor,
         })
         if (disposed) return
         const angle = (index / Math.max(planets.length, 1)) * Math.PI * 2
@@ -654,8 +1072,11 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     if (disposed) return
     raf = requestAnimationFrame(frame)
     frameCount += 1
+    const elapsed = performance.now() * 0.001
     for (const body of animated) {
+      body.mesh?.userData.updateVisual?.(elapsed, camera)
       if (body.beltSpin) {
+        body.beltSpin.mesh.userData.updateVisual?.(elapsed, camera)
         body.beltSpin.mesh.rotation.y += body.beltSpin.speed * 0.016
         continue
       }
@@ -663,7 +1084,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
         body.mesh.rotation.y += body.spin
       }
       if (!body.orbit) {
-        body.mesh.rotation.y += 0.0025
+        if (!body.mesh.userData.disableSpin) body.mesh.rotation.y += 0.0025
         continue
       }
       body.angle += body.speed * 0.016
