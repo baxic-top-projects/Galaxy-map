@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import field_validator
+import logging
+
+from pydantic import ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,8 +19,13 @@ def normalize_database_url(url: str) -> str:
     return value
 
 
+logger = logging.getLogger(__name__)
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="CATALOG_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="CATALOG_", env_file=".env", extra="ignore", env_ignore_empty=True
+    )
 
     host: str = "0.0.0.0"
     port: int = 8003
@@ -38,4 +45,18 @@ class Settings(BaseSettings):
         return value
 
 
-settings = Settings()
+def load_settings() -> Settings:
+    """Load settings, falling back to defaults for invalid values instead of crashing at import.
+
+    A ValidationError here would keep uvicorn from ever serving /health, so the
+    container would stay unhealthy and block every dependent service.
+    """
+    try:
+        return Settings()
+    except ValidationError as exc:
+        bad = {str(err["loc"][0]) for err in exc.errors() if err.get("loc")}
+        logger.error("Invalid catalog settings %s, using defaults for them: %s", sorted(bad), exc)
+        return Settings(**{name: Settings.model_fields[name].default for name in bad if name in Settings.model_fields})
+
+
+settings = load_settings()
