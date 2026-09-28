@@ -16,7 +16,12 @@ class Settings(BaseSettings):
     form_ticks: int = 4
     active_ticks: int = 18
     dissipate_ticks: int = 8
-    max_radius_hops: int = 4
+    max_radius_hops: int = 2
+    # Move the storm eye along hyperlanes every N ticks while active.
+    move_interval_ticks: int = 1
+    # Planned travel distance for a new storm path.
+    path_hops_min: int = 6
+    path_hops_max: int = 16
     host: str = "0.0.0.0"
     port: int = 8001
     # 0 = auto (os.cpu_count())

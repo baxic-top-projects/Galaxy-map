@@ -17,11 +17,15 @@ def tiny_galaxy(tmp_path: Path) -> Path:
             {"id": "A:One", "kind": "star", "x": 0.0, "y": 0.0, "z": 0.0},
             {"id": "A:Two", "kind": "star", "x": 0.1, "y": 0.0, "z": 0.0},
             {"id": "A:Three", "kind": "star", "x": 0.2, "y": 0.0, "z": 0.0},
+            {"id": "A:Four", "kind": "star", "x": 0.3, "y": 0.0, "z": 0.0},
+            {"id": "A:Five", "kind": "star", "x": 0.4, "y": 0.0, "z": 0.0},
             {"id": "A:Isle", "kind": "star", "x": 0.9, "y": 0.9, "z": 0.0},
         ],
         "edgesDisplay": [
             {"a": "A:One", "b": "A:Two"},
             {"a": "A:Two", "b": "A:Three"},
+            {"a": "A:Three", "b": "A:Four"},
+            {"a": "A:Four", "b": "A:Five"},
         ],
     }
     path = tmp_path / "galaxy-index.json"
@@ -36,17 +40,20 @@ def test_graph_spreads_only_along_hypercorridors(tiny_galaxy: Path):
     assert "A:Isle" not in hops
 
 
-def test_storm_lifecycle_and_spawn(tiny_galaxy: Path):
+def test_storm_migrates_along_hyperlanes(tiny_galaxy: Path):
     settings = Settings(
         galaxy_index_path=tiny_galaxy,
         seed=7,
         tick_seconds=1,
-        max_active_storms=2,
+        max_active_storms=1,
         spawn_chance=1.0,
         form_ticks=2,
-        active_ticks=4,
+        active_ticks=8,
         dissipate_ticks=2,
-        max_radius_hops=2,
+        max_radius_hops=1,
+        move_interval_ticks=1,
+        path_hops_min=2,
+        path_hops_max=4,
         worker_processes=1,
         kafka_enabled=False,
     )
@@ -57,27 +64,38 @@ def test_storm_lifecycle_and_spawn(tiny_galaxy: Path):
     assert len(first.storms) == 1
     storm = first.storms[0]
     assert storm.stage == "forming"
-    assert storm.originSystemId in {"A:One", "A:Two", "A:Three", "A:Isle"}
+    assert storm.currentSystemId == storm.originSystemId
+    assert len(storm.path) >= 2
 
-    for _ in range(2):
+    for _ in range(settings.form_ticks):
         sim.step()
     active = sim.snapshot().storms[0]
     assert active.stage == "active"
-    assert active.radiusHops >= 1
-    hops = GalaxyGraphService(tiny_galaxy).systems_within_hops(active.originSystemId, active.radiusHops)
-    for affected in active.affectedSystems:
-        assert affected.systemId in hops
-        assert affected.hopsFromOrigin == hops[affected.systemId]
+    origin = active.originSystemId
 
+    # While active the eye should leave the spawn system along the planned path.
+    moved = False
     for _ in range(settings.active_ticks):
-        sim.step()
-    dissipating = [item for item in sim.snapshot().storms if item.id == active.id]
-    assert dissipating
-    assert dissipating[0].stage == "dissipating"
+        snap = sim.step()
+        current = snap.storms[0]
+        assert current.currentSystemId in current.path
+        center_hops = GalaxyGraphService(tiny_galaxy).systems_within_hops(
+            current.currentSystemId,
+            current.radiusHops,
+        )
+        for affected in current.affectedSystems:
+            assert affected.systemId in center_hops
+        if current.currentSystemId != origin:
+            moved = True
+            break
+    assert moved, "storm eye did not migrate from origin"
 
-    for _ in range(settings.dissipate_ticks + 1):
+    # Finish lifecycle.
+    for _ in range(settings.active_ticks + settings.dissipate_ticks + 2):
         sim.step()
-    assert all(item.id != active.id for item in sim.snapshot().storms)
+        if not any(item.id == storm.id for item in sim.snapshot().storms):
+            break
+    assert all(item.id != storm.id for item in sim.snapshot().storms)
     sim.close()
 
 
@@ -88,18 +106,24 @@ def test_parallel_workers_advance_storms(tiny_galaxy: Path):
         max_active_storms=3,
         spawn_chance=1.0,
         form_ticks=1,
-        active_ticks=3,
+        active_ticks=5,
         dissipate_ticks=1,
-        max_radius_hops=2,
+        max_radius_hops=1,
+        move_interval_ticks=1,
+        path_hops_min=2,
+        path_hops_max=4,
         worker_processes=2,
         kafka_enabled=False,
     )
     sim = StormSimulationService(GalaxyGraphService(tiny_galaxy), settings)
     try:
-        for _ in range(4):
+        for _ in range(5):
             snap = sim.step()
-        assert snap.tick == 4
+        assert snap.tick == 5
         assert 1 <= len(snap.storms) <= 3
         assert snap.systems
+        for storm in snap.storms:
+            assert storm.currentSystemId
+            assert storm.path
     finally:
         sim.close()

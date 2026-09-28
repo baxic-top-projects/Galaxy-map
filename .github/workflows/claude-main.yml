@@ -24,7 +24,7 @@ on:
         required: false
         default: "1"
   workflow_run:
-    workflows: ["Deploy", "Client CI/CD"]
+    workflows: ["Deploy", "Client CI/CD", "Client CI"]
     types: [completed]
 
 # Do not cancel an in-progress Claude fix when another event fires.

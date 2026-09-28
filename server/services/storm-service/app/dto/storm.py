@@ -19,6 +19,9 @@ class StormDto(BaseModel):
     type: StormType
     stage: StormStage
     originSystemId: str
+    currentSystemId: str
+    path: list[str] = Field(default_factory=list)
+    pathIndex: int = Field(ge=0, default=0)
     intensity: float = Field(ge=0.0, le=1.0)
     radiusHops: int = Field(ge=0)
     ageTicks: int = Field(ge=0)
