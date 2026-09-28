@@ -15,7 +15,7 @@
   } = $props()
 
   let canvas = $state(null)
-  let api = null
+  let api = $state(null)
 
   onMount(() => {
     let cancelled = false

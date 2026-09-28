@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 import io
+import json
 from pathlib import Path
 
 import boto3
+import numpy as np
 import requests
 from botocore.client import Config
 from PIL import Image, ImageDraw, ImageFont
+from scipy.ndimage import (
+    binary_closing,
+    binary_dilation,
+    distance_transform_edt,
+    generate_binary_structure,
+    label as component_labels,
+)
+from scipy.spatial import cKDTree
 
 try:
     from dotenv import dotenv_values
@@ -28,6 +38,8 @@ ENV_PATH = ROOT / "server" / "services" / "asset-service" / ".env"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
 TEXTURE_KEY = "textures/galaxy_territory_plate.png"
 MAP_LIMIT = 1.06
+LOCAL_BASE_PLATE = ROOT.parent / "EfolsMiradinsPact" / "assets" / "galaxy_territory_plate.png"
+LOCAL_LABEL_POSITIONS = ROOT.parent / "EfolsMiradinsPact" / "assets" / "galaxy_polity_labels.json"
 
 
 def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -44,26 +56,102 @@ def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 
-def _anchors(payload: dict) -> list[tuple[dict, float, float]]:
-    systems_by_stem: dict[str, list[dict]] = {}
-    for system in payload.get("systems", []):
-        stem = system.get("stem")
-        if stem:
-            systems_by_stem.setdefault(stem, []).append(system)
+def _anchors(payload: dict, image: Image.Image) -> list[tuple[dict, float, float]]:
+    """Find the fattest interior point of each nearest-system territory."""
+    polities = payload.get("polities", [])
+    if LOCAL_LABEL_POSITIONS.is_file():
+        positions = json.loads(LOCAL_LABEL_POSITIONS.read_text(encoding="utf-8"))
+        return [
+            (polity, float(positions[polity["stem"]]["x"]), float(positions[polity["stem"]]["y"]))
+            for polity in polities
+            if polity.get("stem") in positions
+        ]
+
+    polity_index = {polity["stem"]: index for index, polity in enumerate(polities)}
+    systems = [
+        system
+        for system in payload.get("systems", [])
+        if system.get("stem") in polity_index
+    ]
+    points = np.asarray(
+        [[float(system["x"]), float(system["y"])] for system in systems],
+        dtype=np.float64,
+    )
+    owners = np.asarray(
+        [polity_index[system["stem"]] for system in systems],
+        dtype=np.int32,
+    )
+    tree = cKDTree(points)
+
+    width, height = image.size
+    xs = np.linspace(-MAP_LIMIT, MAP_LIMIT, width, dtype=np.float64)
+    ys = np.linspace(MAP_LIMIT, -MAP_LIMIT, height, dtype=np.float64)
+    own = np.full((height, width), -1, dtype=np.int32)
+    nearest_distance = np.full((height, width), np.inf, dtype=np.float64)
+    alpha = np.asarray(image.getchannel("A"), dtype=np.uint8)
+
+    # Query in strips to avoid allocating a full multi-million-row coordinate array.
+    strip = 96
+    for y0 in range(0, height, strip):
+        y1 = min(height, y0 + strip)
+        xx, yy = np.meshgrid(xs, ys[y0:y1])
+        query = np.column_stack([xx.ravel(), yy.ravel()])
+        distance, nearest = tree.query(query, k=1, workers=-1)
+        own[y0:y1] = owners[np.asarray(nearest, dtype=np.int64)].reshape(y1 - y0, width)
+        nearest_distance[y0:y1] = np.asarray(distance).reshape(y1 - y0, width)
+
+    nearest_neighbors = tree.query(points, k=2, workers=-1)[0][:, 1]
+    reach = float(np.median(nearest_neighbors)) * 2.35
+    xx, yy = np.meshgrid(xs, ys)
+    radius = np.hypot(xx, yy)
+    star_radius = float(np.max(np.hypot(points[:, 0], points[:, 1])))
+    content_radius = min(MAP_LIMIT * 0.995, star_radius + reach * 1.35)
+    angle = np.arctan2(yy, xx)
+    scallop = (
+        0.82
+        + 0.22 * (0.5 + 0.5 * np.sin(6.0 * angle) * np.cos(4.0 * angle))
+        + 0.10 * (0.5 + 0.5 * np.sin(11.0 * angle + 1.3))
+    )
+    reach_map = np.full((height, width), reach, dtype=np.float64)
+    rim = radius > 0.72
+    reach_map[rim] *= scallop[rim]
+    paintable = (radius <= content_radius) & (nearest_distance <= reach_map) & (alpha >= 16)
+    own[~paintable] = -1
+
+    for index in sorted(range(len(polities)), key=lambda item: int(np.sum(owners == item))):
+        mask = own == index
+        if int(mask.sum()) >= 80:
+            own[binary_closing(mask, iterations=2)] = index
+
+    four = generate_binary_structure(2, 1)
+    for _ in range(2):
+        for index in range(len(polities)):
+            mask = (own == index) & paintable
+            components, count = component_labels(mask, structure=four)
+            if count <= 1:
+                continue
+            sizes = np.bincount(components.ravel())
+            sizes[0] = 0
+            main = int(np.argmax(sizes))
+            for component in range(1, count + 1):
+                if component == main:
+                    continue
+                island = components == component
+                ring = binary_dilation(island, structure=four) & ~island & paintable
+                neighbors = own[ring]
+                neighbors = neighbors[(neighbors >= 0) & (neighbors != index)]
+                if neighbors.size:
+                    values, hits = np.unique(neighbors, return_counts=True)
+                    own[island] = int(values[int(np.argmax(hits))])
 
     anchors = []
-    for polity in payload.get("polities", []):
-        systems = systems_by_stem.get(polity.get("stem"), [])
-        if not systems:
+    for index, polity in enumerate(polities):
+        mask = own == index
+        if int(mask.sum()) < 20:
             continue
-        mean_x = sum(float(system["x"]) for system in systems) / len(systems)
-        mean_y = sum(float(system["y"]) for system in systems) / len(systems)
-        anchor = min(
-            systems,
-            key=lambda system: (float(system["x"]) - mean_x) ** 2
-            + (float(system["y"]) - mean_y) ** 2,
-        )
-        anchors.append((polity, float(anchor["x"]), float(anchor["y"])))
+        interior = distance_transform_edt(mask)
+        py, px = np.unravel_index(int(np.argmax(interior)), interior.shape)
+        anchors.append((polity, float(xs[px]), float(ys[py])))
     return anchors
 
 
@@ -86,15 +174,17 @@ def main() -> int:
     ).rstrip("/")
 
     galaxy = requests.get(GALAXY_API, timeout=60).json()
-    source_url = f"{public_base}/{TEXTURE_KEY}?source=labels-v1"
-    response = requests.get(source_url, timeout=120)
-    response.raise_for_status()
-    image = Image.open(io.BytesIO(response.content)).convert("RGBA")
+    if not LOCAL_BASE_PLATE.is_file():
+        raise SystemExit(
+            f"Missing clean base plate: {LOCAL_BASE_PLATE}. "
+            "Run EfolsMiradinsPact/tools/_render_galaxy_political_map.py first."
+        )
+    image = Image.open(LOCAL_BASE_PLATE).convert("RGBA")
     draw = ImageDraw.Draw(image)
     width, height = image.size
     scale = width / 1024
 
-    for polity, x, y in _anchors(galaxy):
+    for polity, x, y in _anchors(galaxy, image):
         lines = _label_lines(polity)
         if not lines:
             continue

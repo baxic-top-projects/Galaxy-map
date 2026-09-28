@@ -11,7 +11,7 @@ textureLoader.setCrossOrigin('anonymous')
 
 function territoryPlateUrl() {
   // Resolve at use-time so applyAssetManifest / VITE_ASSETS_BASE are already applied.
-  return mapTexturePath('galaxy_territory_plate.png', 'v=41')
+  return mapTexturePath('galaxy_territory_plate.png', 'v=42')
 }
 
 function polityAnchorsForGalaxy(galaxy) {
