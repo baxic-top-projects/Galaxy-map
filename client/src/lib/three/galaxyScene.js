@@ -12,11 +12,11 @@ textureLoader.setCrossOrigin('anonymous')
 
 function territoryPlateUrl() {
   // Resolve at use-time so applyAssetManifest / VITE_ASSETS_BASE are already applied.
-  return mapTexturePath('galaxy_territory_plate_clean.png', 'v=1')
+  return mapTexturePath('galaxy_territory_plate_clean.png', 'v=2')
 }
 
 function basePlateUrl() {
-  return mapTexturePath('galaxy_base_plate.png', 'v=1')
+  return mapTexturePath('galaxy_base_plate.png', 'v=2')
 }
 
 function loadTexture(url, { crisp = false } = {}) {
@@ -99,7 +99,8 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   controls.zoomSpeed = 1.15
   controls.minDistance = 4
   controls.maxDistance = 110
-  controls.maxPolarAngle = THREE.MathUtils.degToRad(78)
+  controls.minPolarAngle = 0.01
+  controls.maxPolarAngle = Math.PI - 0.01
   controls.target.set(0, 0, 0)
   controls.mouseButtons = {
     LEFT: THREE.MOUSE.PAN,
