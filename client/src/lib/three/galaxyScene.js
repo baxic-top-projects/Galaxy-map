@@ -679,7 +679,13 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     )
     const startTarget = controls.target.clone()
     const startPos = camera.position.clone()
-    const endPos = target.clone().add(new THREE.Vector3(0, -6.5, 4.8))
+    const viewOffset = startPos.clone().sub(startTarget)
+    if (viewOffset.lengthSq() < 1e-8) {
+      viewOffset.copy(overviewPosition).sub(overviewTarget)
+    }
+    // Move towards the selected system along the current line of sight.
+    // A fixed offset here would rotate the camera whenever a star is clicked.
+    const endPos = target.clone().add(viewOffset.setLength(8.1))
     const started = performance.now()
     focusTween = () => {
       const t = Math.min(1, (performance.now() - started) / 900)
