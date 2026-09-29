@@ -1,9 +1,10 @@
-"""Map every API system to the polity territory painted under its coordinates."""
+"""Map every API system to the polity territory painted on the political map."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
 
 import numpy as np
 import requests
@@ -14,20 +15,40 @@ from scipy.ndimage import binary_dilation
 ROOT = Path(__file__).resolve().parents[1]
 CANON_ASSETS = ROOT.parent / "EfolsMiradinsPact" / "assets"
 OUTPUT = ROOT / "client" / "src" / "lib" / "galaxy" / "visualOwnership.json"
+POLITICAL_MAP = CANON_ASSETS / "galaxy_political_map.png"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
-SIDE = 2048
 MAP_LIMIT = 1.06
 
 
+def political_colors() -> dict[str, np.ndarray]:
+    tools = CANON_ASSETS.parent / "tools"
+    sys.path.insert(0, str(tools))
+    from _render_galaxy_political_map import POLITY_ROWS, polity_color
+
+    colors = {}
+    raih_index = 0
+    miradin_index = 0
+    for stem, _ru, _en, _name_ru, bloc, kind, _arch in POLITY_ROWS:
+        index = raih_index if bloc == "raih" else miradin_index
+        colors[stem] = np.asarray(
+            polity_color(stem, bloc, kind, index),
+            dtype=np.float32,
+        )
+        if bloc == "raih":
+            raih_index += 1
+        elif bloc == "miradin":
+            miradin_index += 1
+    return colors
+
+
 def decode_owner(polities: list[dict]) -> np.ndarray:
-    territory = np.asarray(
-        Image.open(CANON_ASSETS / "galaxy_territory_plate.png").convert("RGBA"),
-        dtype=np.uint8,
-    )
+    territory_image = Image.open(POLITICAL_MAP).convert("RGBA")
+    width, height = territory_image.size
+    territory = np.asarray(territory_image, dtype=np.uint8)
     base = np.asarray(
         Image.open(CANON_ASSETS / "galaxy_base_plate.png")
         .convert("RGB")
-        .resize((SIDE, SIDE), Image.Resampling.LANCZOS),
+        .resize((width, height), Image.Resampling.LANCZOS),
         dtype=np.float32,
     ) / 255.0 * 0.78
     rgb = territory[..., :3].astype(np.float32) / 255.0
@@ -43,15 +64,18 @@ def decode_owner(polities: list[dict]) -> np.ndarray:
         & (alpha >= 16)
         & ~border
     )
-    owner = np.full((SIDE, SIDE), -1, dtype=np.int16)
-    best_error = np.full((SIDE, SIDE), np.inf, dtype=np.float32)
+    owner = np.full((height, width), -1, dtype=np.int16)
+    best_error = np.full((height, width), np.inf, dtype=np.float32)
+    map_colors = political_colors()
 
     for index, polity in enumerate(polities):
-        value = polity["color"].lstrip("#")
-        color = np.asarray(
-            [int(value[offset:offset + 2], 16) for offset in (0, 2, 4)],
-            dtype=np.float32,
-        ) / 255.0
+        color = map_colors.get(polity["stem"])
+        if color is None:
+            value = polity["color"].lstrip("#")
+            color = np.asarray(
+                [int(value[offset:offset + 2], 16) for offset in (0, 2, 4)],
+                dtype=np.float32,
+            ) / 255.0
         direction = color - base
         amount = np.clip(
             np.sum(delta * direction, axis=2)
@@ -67,12 +91,13 @@ def decode_owner(polities: list[dict]) -> np.ndarray:
 
 
 def visual_owner(owner: np.ndarray, x: float, y: float) -> int | None:
-    px = round(((x + MAP_LIMIT) / (MAP_LIMIT * 2)) * (SIDE - 1))
-    py = round((1 - (y + MAP_LIMIT) / (MAP_LIMIT * 2)) * (SIDE - 1))
+    height, width = owner.shape
+    px = round(((x + MAP_LIMIT) / (MAP_LIMIT * 2)) * (width - 1))
+    py = round((1 - (y + MAP_LIMIT) / (MAP_LIMIT * 2)) * (height - 1))
     for radius in (4, 8, 16, 32):
         values = owner[
-            max(0, py - radius):min(SIDE, py + radius + 1),
-            max(0, px - radius):min(SIDE, px + radius + 1),
+            max(0, py - radius):min(height, py + radius + 1),
+            max(0, px - radius):min(width, px + radius + 1),
         ].ravel()
         values = values[values >= 0]
         if values.size:
@@ -88,6 +113,12 @@ def main() -> int:
     overrides = {}
     unresolved = []
     for system in galaxy.get("systems", []):
+        if (
+            system.get("kind") == "well"
+            or system.get("token") == "AxisWell"
+            or system.get("id") == "AxisWell"
+        ):
+            continue
         index = visual_owner(owner, float(system["x"]), float(system["y"]))
         if index is None:
             unresolved.append(system["id"])

@@ -7,6 +7,8 @@ import io
 import json
 import math
 from pathlib import Path
+import subprocess
+import sys
 
 import boto3
 import numpy as np
@@ -14,16 +16,17 @@ import requests
 from botocore.client import Config
 from dotenv import dotenv_values
 from PIL import Image, ImageDraw, ImageFont
-from scipy.ndimage import binary_dilation
+from scipy.ndimage import binary_dilation, label
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CANON = ROOT.parent / "EfolsMiradinsPact" / "assets"
-TERRITORY_PLATE = CANON / "galaxy_territory_plate.png"
+POLITICAL_MAP = CANON / "galaxy_political_map.png"
 BASE_PLATE = CANON / "galaxy_base_plate.png"
+LOCAL_TERRITORY_OUTPUT = CANON / "galaxy_territory_plate.png"
 ENV_PATH = ROOT / "server" / "services" / "asset-service" / ".env"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
-TEXTURE_KEY = "textures/galaxy_territory_plate_clean.png"
+TEXTURE_KEY = "textures/galaxy_territory_plate.png"
 SIDE = 2048
 ANCHORS_PATH = ROOT / "tools" / "polity_label_anchors.json"
 CANONICAL_RENDERER = ROOT.parent / "EfolsMiradinsPact" / "tools" / "_render_galaxy_political_map.py"
@@ -141,8 +144,29 @@ def canonical_labels() -> dict[str, str]:
     raise RuntimeError("SHORT_RU not found in canonical renderer")
 
 
+def political_colors() -> dict[str, np.ndarray]:
+    tools = CANON.parent / "tools"
+    sys.path.insert(0, str(tools))
+    from _render_galaxy_political_map import POLITY_ROWS, polity_color
+
+    colors = {}
+    raih_index = 0
+    miradin_index = 0
+    for stem, _ru, _en, _name_ru, bloc, kind, _arch in POLITY_ROWS:
+        index = raih_index if bloc == "raih" else miradin_index
+        colors[stem] = np.asarray(
+            polity_color(stem, bloc, kind, index),
+            dtype=np.float32,
+        )
+        if bloc == "raih":
+            raih_index += 1
+        elif bloc == "miradin":
+            miradin_index += 1
+    return colors
+
+
 def build_overlay(polities: list[dict]) -> Image.Image:
-    territory = Image.open(TERRITORY_PLATE).convert("RGBA").resize(
+    territory = Image.open(POLITICAL_MAP).convert("RGBA").resize(
         (SIDE, SIDE), Image.Resampling.LANCZOS
     )
     base = Image.open(BASE_PLATE).convert("RGB").resize(
@@ -156,6 +180,13 @@ def build_overlay(polities: list[dict]) -> Image.Image:
     cream = np.asarray([247, 240, 214], dtype=np.float32) / 255.0
     border = (np.linalg.norm(rgb - cream, axis=2) < (52 / 255)) & (alpha > 80)
     border = binary_dilation(border, iterations=1)
+    # The border network is connected. Discard detached cream labels, title,
+    # stars and legend symbols from the rendered political map.
+    components, component_count = label(border)
+    if component_count:
+        sizes = np.bincount(components.ravel())
+        sizes[0] = 0
+        border = components == int(np.argmax(sizes))
     delta = rgb - base_rgb
     changed = np.linalg.norm(delta, axis=2) > (2.5 / 255)
     usable = changed & (alpha >= 16) & ~border
@@ -164,13 +195,16 @@ def build_overlay(polities: list[dict]) -> Image.Image:
     best_error = np.full((SIDE, SIDE), np.inf, dtype=np.float32)
     best_amount = np.zeros((SIDE, SIDE), dtype=np.float32)
     colors: list[np.ndarray] = []
+    map_colors = political_colors()
 
     for index, polity in enumerate(polities):
-        value = str(polity.get("color") or "#000000").lstrip("#")
-        color = np.asarray(
-            [int(value[offset:offset + 2], 16) for offset in (0, 2, 4)],
-            dtype=np.float32,
-        ) / 255.0
+        color = map_colors.get(polity["stem"])
+        if color is None:
+            value = str(polity.get("color") or "#000000").lstrip("#")
+            color = np.asarray(
+                [int(value[offset:offset + 2], 16) for offset in (0, 2, 4)],
+                dtype=np.float32,
+            ) / 255.0
         colors.append(color)
         direction = color - base_rgb
         amount = np.clip(
@@ -185,6 +219,8 @@ def build_overlay(polities: list[dict]) -> Image.Image:
         best_error[better] = error[better]
         best_amount[better] = amount[better]
 
+    # Reject text, markers and corridors whose colors do not fit polity paint.
+    owner[best_error > 0.0025] = -1
     output = np.zeros((SIDE, SIDE, 4), dtype=np.uint8)
     for index, color in enumerate(colors):
         mask = owner == index
@@ -200,24 +236,19 @@ def build_overlay(polities: list[dict]) -> Image.Image:
 
 
 def main() -> int:
+    # Rebuild both canonical outputs from one ownership field. This is the only
+    # lossless way to match borders hidden by labels and the legend in the
+    # flattened political PNG.
+    political_map_bytes = POLITICAL_MAP.read_bytes()
+    territory_map_bytes = LOCAL_TERRITORY_OUTPUT.read_bytes()
     try:
-        response = requests.get(GALAXY_API, timeout=10)
-        response.raise_for_status()
-        polities = response.json().get("polities", [])
-    except requests.RequestException:
-        from export_galaxy import _rgb_hex, build_rows
-
-        polities = [
-            {
-                "stem": row["stem"],
-                "nameEn": row["name_en"],
-                "nameRu": row["name_ru"],
-                "kind": row["kind"],
-                "color": _rgb_hex(row["color"]),
-            }
-            for row in build_rows()
-        ]
-        print("Galaxy API unavailable; using canonical local polity data")
+        subprocess.run([sys.executable, str(CANONICAL_RENDERER)], check=True)
+        generated_territory = LOCAL_TERRITORY_OUTPUT.read_bytes()
+    finally:
+        # EfolsMiradinsPact is an input only. The renderer writes both files, so
+        # restore them after capturing the clean generated territory texture.
+        POLITICAL_MAP.write_bytes(political_map_bytes)
+        LOCAL_TERRITORY_OUTPUT.write_bytes(territory_map_bytes)
     env = dotenv_values(ENV_PATH)
     bucket = env.get("ASSET_S3_BUCKET") or "galaxybucket"
     endpoint = env.get("ASSET_S3_ENDPOINT_URL") or "https://storage.yandexcloud.net"
@@ -229,7 +260,7 @@ def main() -> int:
         aws_secret_access_key=env.get("ASSET_S3_SECRET_ACCESS_KEY"),
         config=Config(signature_version="s3v4"),
     )
-    image = build_overlay(polities)
+    image = Image.open(io.BytesIO(generated_territory)).convert("RGBA")
     output = io.BytesIO()
     image.save(output, format="PNG", optimize=True)
     body = output.getvalue()
@@ -242,7 +273,7 @@ def main() -> int:
         ACL="public-read",
     )
     print(
-        f"Uploaded label-free overlay to s3://{bucket}/{TEXTURE_KEY} "
+        f"Uploaded political-map territory overlay to s3://{bucket}/{TEXTURE_KEY} "
         f"({len(body) / 1024 / 1024:.1f} MB)"
     )
     return 0

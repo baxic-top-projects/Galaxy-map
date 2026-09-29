@@ -110,9 +110,9 @@ describe('loadGalaxy API client', () => {
 
     const galaxy = await loadGalaxy('http://gateway.test')
     const system = galaxy.byId.get('Varis_Republic:Thalyx')
-    expect(system.stem).toBe('Tessar_Syndicate')
+    expect(system.stem).toBe('Remar_Federation')
     expect(system.canonicalStem).toBe('Varis_Republic')
-    expect(galaxy.search[0].stem).toBe('Tessar_Syndicate')
+    expect(galaxy.search[0].stem).toBe('Remar_Federation')
   })
 
   test('qualifies repeated world names with their unique system', async () => {
