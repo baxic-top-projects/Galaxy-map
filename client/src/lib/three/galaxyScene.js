@@ -109,7 +109,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   // The galaxy lies in the XY plane. OrbitControls otherwise assumes Y-up,
   // allowing a simple dolly to retain an almost edge-on, distorted view.
   camera.up.set(0, 0, 1)
-  camera.position.set(0, -58, 34)
+  camera.position.set(0, -12, 66)
 
   const controls = new OrbitControls(camera, canvas)
   controls.enableDamping = true
@@ -129,7 +129,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     ONE: THREE.TOUCH.PAN,
     TWO: THREE.TOUCH.DOLLY_PAN,
   }
-  const overviewPosition = new THREE.Vector3(0, -58, 34)
+  const overviewPosition = new THREE.Vector3(0, -12, 66)
   const overviewTarget = new THREE.Vector3(0, 0, 0)
 
   const root = new THREE.Group()
