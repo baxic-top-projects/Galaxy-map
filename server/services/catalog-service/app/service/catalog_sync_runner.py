@@ -6,6 +6,7 @@ from typing import Any
 
 from app.config.settings import Settings
 from app.db.models import init_db
+from app.service.catalog_cache_service import catalog_cache
 from app.service.catalog_seed_service import CatalogSeedService
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ def run_sync_in_background(settings: Settings, *, seed: bool = True) -> None:
                 _set_state(status="idle", result=None, error=None)
                 return
             result = CatalogSeedService(settings).sync_on_startup()
+            catalog_cache.clear()
             _set_state(status="ok", result=result, error=None)
             logger.info("Catalog sync result: %s", result)
         except Exception as exc:  # noqa: BLE001

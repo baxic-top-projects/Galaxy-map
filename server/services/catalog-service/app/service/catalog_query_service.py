@@ -3,11 +3,16 @@ from __future__ import annotations
 from fastapi import HTTPException
 from sqlalchemy import select
 
+from app.config.settings import settings
 from app.db.models import EdgeRow, GalaxyMetaRow, PolityRow, SearchEntryRow, SessionLocal, SystemRow
+from app.service.catalog_cache_service import CatalogCacheService, catalog_cache
 
 
 class CatalogQueryService:
     """Read galaxy catalog from Postgres."""
+
+    def __init__(self, cache: CatalogCacheService | None = None):
+        self.cache = cache or catalog_cache
 
     def health(self) -> dict:
         try:
@@ -18,6 +23,7 @@ class CatalogQueryService:
                     "service": "catalog-service",
                     "hasSystems": systems is not None,
                     "db": "ok",
+                    "redis": self.cache.status(),
                 }
         except Exception as exc:  # noqa: BLE001
             return {
@@ -25,10 +31,14 @@ class CatalogQueryService:
                 "service": "catalog-service",
                 "hasSystems": False,
                 "db": "error",
+                "redis": self.cache.status(),
                 "error": str(exc),
             }
 
     def get_galaxy_index(self) -> dict:
+        cached = self.cache.get_json("galaxy")
+        if cached is not None:
+            return cached
         with SessionLocal() as session:
             meta = session.get(GalaxyMetaRow, 1)
             polities = [row.payload for row in session.scalars(select(PolityRow).order_by(PolityRow.stem))]
@@ -61,7 +71,7 @@ class CatalogQueryService:
                 for row in session.scalars(select(EdgeRow).where(EdgeRow.graph == "display"))
             ]
             search = [row.payload for row in session.scalars(select(SearchEntryRow).order_by(SearchEntryRow.id))]
-            return {
+            result = {
                 "meta": meta.payload if meta else {},
                 "polities": polities,
                 "systems": systems,
@@ -69,18 +79,29 @@ class CatalogQueryService:
                 "edgesDisplay": edges_display,
                 "search": search,
             }
+            self.cache.set_json("galaxy", result, settings.redis_galaxy_ttl_seconds)
+            return result
 
     def get_system_by_id(self, system_id: str) -> dict:
+        key = f"system:id:{system_id}"
+        cached = self.cache.get_json(key)
+        if cached is not None:
+            return cached
         with SessionLocal() as session:
             row = session.get(SystemRow, system_id)
             if row is None:
                 raise HTTPException(status_code=404, detail="System not found")
+            self.cache.set_json(key, row.detail, settings.redis_system_ttl_seconds)
             return row.detail
 
     def get_system_by_shard(self, shard: str) -> dict:
         normalized = shard.lstrip("/")
         if not normalized.startswith("systems/"):
             normalized = f"systems/{normalized}"
+        key = f"system:shard:{normalized}"
+        cached = self.cache.get_json(key)
+        if cached is not None:
+            return cached
         with SessionLocal() as session:
             row = session.scalar(select(SystemRow).where(SystemRow.shard == normalized))
             if row is None:
@@ -89,6 +110,7 @@ class CatalogQueryService:
                 row = session.scalar(select(SystemRow).where(SystemRow.shard.endswith(bare)))
             if row is None:
                 raise HTTPException(status_code=404, detail="System shard not found")
+            self.cache.set_json(key, row.detail, settings.redis_system_ttl_seconds)
             return row.detail
 
 

@@ -93,6 +93,8 @@ services:
       - "8003"
     env_file:
       - ./server/services/catalog-service/.env
+    environment:
+      CATALOG_REDIS_URL: redis://redis:6379/0
     healthcheck:
       test:
         [
@@ -103,6 +105,36 @@ services:
       timeout: 5s
       retries: 10
       start_period: 60s
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - galaxy_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: galaxy-redis
+    expose:
+      - "6379"
+    command:
+      [
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "no",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "allkeys-lru",
+      ]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
     restart: unless-stopped
     networks:
       - galaxy_net

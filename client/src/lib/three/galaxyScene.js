@@ -886,26 +886,8 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     emitLabels()
   }
 
-  function onWheel(event) {
+  function onWheel() {
     focusTween = null
-    if (event.deltaY <= 0) return
-    const distance = cameraDistance()
-    const awayFromCenter = controls.target.length() > 2.5
-    if (distance >= 72 || awayFromCenter) {
-      const pull = THREE.MathUtils.clamp((distance - 55) / 40, 0.08, 0.35)
-      const previousTarget = controls.target.clone()
-      controls.target.lerp(overviewTarget, pull)
-      // Recenter by translating camera and target together. Changing only the
-      // target alters the viewing direction and makes zoom-out tilt the map.
-      camera.position.add(controls.target.clone().sub(previousTarget))
-      if (distance >= 95 || (awayFromCenter && distance >= 80)) {
-        if (selectedId) {
-          selectedId = null
-          callbacks.onSelect?.(null)
-          emitLabels()
-        }
-      }
-    }
   }
 
   window.addEventListener('resize', resize)

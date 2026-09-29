@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # When false (default), only insert missing systems + refresh index tables.
     # Set true to rewrite every system row from JSON on each boot.
     seed_full_sync: bool = False
+    redis_url: str = ""
+    redis_galaxy_ttl_seconds: int = 300
+    redis_system_ttl_seconds: int = 900
 
     @field_validator("database_url", mode="before")
     @classmethod
