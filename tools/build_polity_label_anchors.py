@@ -1,50 +1,61 @@
-"""Recalculate polity label anchors from EfolsMiradinsPact territory pixels."""
+"""Place polity labels at geometric centroids of their bounded regions."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from PIL import Image
-
-from bake_polity_labels_to_s3 import LOCAL_BASE_PLATE, MAP_LIMIT, _anchors
-from export_galaxy import _rgb_hex, build_rows
+import cv2
+import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[1]
+TERRITORY_MAP = (
+    ROOT.parent / "EfolsMiradinsPact" / "assets" / "galaxy_territory_plate.png"
+)
+SEED_ANCHORS = ROOT / "client" / "src" / "lib" / "galaxy" / "polityLabelAnchors.json"
 OUTPUTS = (
     ROOT / "tools" / "polity_label_anchors.json",
-    ROOT / "client" / "src" / "lib" / "galaxy" / "polityLabelAnchors.json",
+    SEED_ANCHORS,
 )
 
 
 def main() -> int:
-    polities = [
-        {
-            "stem": row["stem"],
-            "nameEn": row["name_en"],
-            "nameRu": row["name_ru"],
-            "kind": row["kind"],
-            "color": _rgb_hex(row["color"]),
-        }
-        for row in build_rows()
-    ]
-    image = Image.open(LOCAL_BASE_PLATE).convert("RGBA")
-    normalized = {
-        polity["stem"]: [
-            round((x + MAP_LIMIT) / (MAP_LIMIT * 2), 9),
-            round((MAP_LIMIT - y) / (MAP_LIMIT * 2), 9),
-        ]
-        for polity, x, y in _anchors({"polities": polities}, image)
-    }
-    if len(normalized) != len(polities):
-        raise RuntimeError(
-            f"Decoded only {len(normalized)}/{len(polities)} polity territories"
+    territory = cv2.imread(str(TERRITORY_MAP), cv2.IMREAD_UNCHANGED)
+    if territory is None or territory.shape[2] != 4:
+        raise RuntimeError(f"Cannot read RGBA territory map: {TERRITORY_MAP}")
+    image = territory[..., :3].copy()
+    alpha = territory[..., 3]
+    height, width = alpha.shape
+    seeds = json.loads(SEED_ANCHORS.read_text(encoding="utf-8"))
+    stems = list(seeds)
+
+    markers = np.zeros((height, width), dtype=np.int32)
+    markers[alpha < 8] = 1
+    for marker, stem in enumerate(stems, start=2):
+        x, y = seeds[stem]
+        cv2.circle(
+            markers,
+            (round(x * (width - 1)), round(y * (height - 1))),
+            4,
+            marker,
+            -1,
         )
+    cv2.watershed(image, markers)
+
+    normalized = {}
+    for marker, stem in enumerate(stems, start=2):
+        ys, xs = np.nonzero((markers == marker) & (alpha > 16))
+        if xs.size == 0:
+            raise RuntimeError(f"No bounded territory found for {stem}")
+        normalized[stem] = [
+            round(float(xs.mean() / (width - 1)), 9),
+            round(float(ys.mean() / (height - 1)), 9),
+        ]
     serialized = json.dumps(normalized, ensure_ascii=False, indent=2) + "\n"
     for output in OUTPUTS:
         output.write_text(serialized, encoding="utf-8")
-    print(f"Wrote {len(normalized)} polity anchors")
+    print(f"Wrote {len(normalized)} geometric territory centroids")
     return 0
 
 

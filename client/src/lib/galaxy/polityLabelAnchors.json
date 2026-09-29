@@ -1,206 +1,206 @@
 {
-  "Miradin_Empire": [
-    0.697117733,
-    0.491939424
-  ],
-  "Efol_Raih": [
-    0.278944797,
-    0.515388373
-  ],
   "Aquarian_Republic": [
-    0.170004885,
-    0.828041036
-  ],
-  "Arden_Protectorate": [
-    0.91011236,
-    0.285295554
-  ],
-  "Astrean_Consortium": [
-    0.043478261,
-    0.536394724
-  ],
-  "Brassian_Charter": [
-    0.259892526,
-    0.25012213
-  ],
-  "Celestar_Covenant": [
-    0.933561309,
-    0.407914021
-  ],
-  "Corvel_Republic": [
-    0.343429409,
-    0.065950171
-  ],
-  "Cyberlins": [
-    0.349291646,
-    0.109916952
-  ],
-  "Dalian_Federation": [
-    0.107474353,
-    0.339521251
-  ],
-  "Eidar_Commune": [
-    0.710796287,
-    0.667318026
-  ],
-  "Extragroks": [
-    0.321446019,
-    0.838299951
-  ],
-  "Fjorn_Dominion": [
-    0.194430874,
-    0.171958964
-  ],
-  "Grindar_Union": [
-    0.713727406,
-    0.912554958
-  ],
-  "Helion_League": [
-    0.692721055,
-    0.095749878
-  ],
-  "Illorian_Coronate": [
-    0.307767465,
-    0.208597948
-  ],
-  "Kair_Republic": [
-    0.77234978,
-    0.15828041
-  ],
-  "Kassar_League": [
-    0.081582804,
-    0.578407426
-  ],
-  "Kerven_Federation": [
-    0.043478261,
-    0.585735222
-  ],
-  "Lin_Republic": [
-    0.657059111,
-    0.298974108
-  ],
-  "Liorian_Republic": [
-    0.70444553,
-    0.20566683
-  ],
-  "Meridian_Chamber": [
-    0.657547631,
-    0.165119687
-  ],
-  "Morat_Syndicate": [
-    0.344894968,
-    0.84171959
-  ],
-  "Nerite_Concordat": [
-    0.121152907,
-    0.418172936
-  ],
-  "Noctis_Assembly": [
-    0.739618955,
-    0.337567171
-  ],
-  "Oris_Directorate": [
-    0.759648266,
-    0.269174402
-  ],
-  "Ortel_Republic": [
-    0.107474353,
-    0.266731803
-  ],
-  "Remar_Federation": [
-    0.928187592,
-    0.532975085
-  ],
-  "Ronar_Protectorate": [
-    0.082559844,
-    0.461162677
-  ],
-  "Solvian_Commune": [
-    0.056179775,
-    0.369320957
-  ],
-  "Surian_Coronate": [
-    0.806057645,
-    0.210552027
-  ],
-  "Teimar_Union": [
-    0.030288227,
-    0.485588666
-  ],
-  "Tessar_Syndicate": [
-    0.943820225,
-    0.43136297
-  ],
-  "Thalassian_Concordat": [
-    0.834391793,
-    0.720566683
-  ],
-  "Varis_Republic": [
-    0.61309233,
-    0.739618955
-  ],
-  "Velan_Commonwealth": [
-    0.861748901,
-    0.790425012
-  ],
-  "Vespar_Chamber": [
-    0.391304348,
-    0.638006839
-  ],
-  "Cryoforge_Plutonian_Republic": [
-    0.505129458,
-    0.143624817
-  ],
-  "Chronokeep_Plutonian_Republic": [
-    0.553981436,
-    0.18124084
-  ],
-  "Packclear_Nhar_Corporation": [
-    0.45383488,
-    0.094284319
-  ],
-  "Sharevault_Nhar_Corporation": [
-    0.525158769,
-    0.083048363
-  ],
-  "Dustcaravan_Martian_Republica": [
-    0.38739619,
-    0.888617489
-  ],
-  "Redjournal_Martian_Republica": [
-    0.54616512,
-    0.783097215
-  ],
-  "Houseward_Aldebaran_Empire": [
-    0.472887152,
-    0.731802638
+    0.344127279,
+    0.861123539
   ],
   "Courtmark_Aldebaran_Empire": [
-    0.581338544,
-    0.712261847
+    0.552226292,
+    0.902723696
   ],
-  "Slotfair_Veronian_Republic": [
-    0.448461163,
-    0.717147044
+  "Grindar_Union": [
+    0.668400598,
+    0.853453339
   ],
-  "Feedseal_Veronian_Republic": [
-    0.520762091,
-    0.705911089
-  ],
-  "Grainthrone_Zemlyania": [
-    0.479237909,
-    0.65950171
-  ],
-  "Landbook_Zemlyania": [
-    0.543722521,
-    0.642403517
+  "Houseward_Aldebaran_Empire": [
+    0.463497909,
+    0.908856473
   ],
   "Koty": [
-    0.470444553,
-    0.244748412
+    0.468231685,
+    0.239032378
+  ],
+  "Miradin_Empire": [
+    0.69649687,
+    0.489027034
+  ],
+  "Efol_Raih": [
+    0.340199998,
+    0.495075542
+  ],
+  "Arden_Protectorate": [
+    0.862835666,
+    0.294185925
+  ],
+  "Astrean_Consortium": [
+    0.127066403,
+    0.70511099
+  ],
+  "Brassian_Charter": [
+    0.095429414,
+    0.523439859
+  ],
+  "Celestar_Covenant": [
+    0.897987971,
+    0.370188084
+  ],
+  "Corvel_Republic": [
+    0.249349412,
+    0.27322863
+  ],
+  "Cyberlins": [
+    0.349709649,
+    0.129994274
+  ],
+  "Dalian_Federation": [
+    0.121873396,
+    0.323060089
+  ],
+  "Eidar_Commune": [
+    0.688944689,
+    0.670030016
+  ],
+  "Extragroks": [
+    0.223488517,
+    0.796739201
+  ],
+  "Fjorn_Dominion": [
+    0.243587193,
+    0.175194315
+  ],
+  "Helion_League": [
+    0.650837737,
+    0.110766288
+  ],
+  "Illorian_Coronate": [
+    0.325075251,
+    0.229310649
+  ],
+  "Kair_Republic": [
+    0.740123987,
+    0.162564955
+  ],
+  "Kassar_League": [
+    0.092263822,
+    0.601822681
+  ],
+  "Kerven_Federation": [
+    0.37627473,
+    0.695919901
+  ],
+  "Lin_Republic": [
+    0.646842296,
+    0.275557481
+  ],
+  "Liorian_Republic": [
+    0.650491829,
+    0.200388222
+  ],
+  "Meridian_Chamber": [
+    0.708026886,
+    0.336061034
+  ],
+  "Morat_Syndicate": [
+    0.324520084,
+    0.749149257
+  ],
+  "Nerite_Concordat": [
+    0.150268911,
+    0.376656937
+  ],
+  "Noctis_Assembly": [
+    0.779058078,
+    0.314392943
+  ],
+  "Oris_Directorate": [
+    0.722627606,
+    0.258971104
+  ],
+  "Ortel_Republic": [
+    0.17034817,
+    0.242418693
+  ],
+  "Remar_Federation": [
+    0.926975278,
+    0.554073074
+  ],
+  "Ronar_Protectorate": [
+    0.073839344,
+    0.434794477
+  ],
+  "Solvian_Commune": [
+    0.228755294,
+    0.343852984
+  ],
+  "Surian_Coronate": [
+    0.80975744,
+    0.222436861
+  ],
+  "Teimar_Union": [
+    0.29130293,
+    0.318138778
+  ],
+  "Tessar_Syndicate": [
+    0.914036821,
+    0.453550263
+  ],
+  "Thalassian_Concordat": [
+    0.850601106,
+    0.710310633
+  ],
+  "Varis_Republic": [
+    0.644009148,
+    0.717028315
+  ],
+  "Velan_Commonwealth": [
+    0.805232857,
+    0.785847058
+  ],
+  "Vespar_Chamber": [
+    0.37716688,
+    0.641257873
+  ],
+  "Cryoforge_Plutonian_Republic": [
+    0.447009488,
+    0.164298062
+  ],
+  "Chronokeep_Plutonian_Republic": [
+    0.554533813,
+    0.182618878
+  ],
+  "Packclear_Nhar_Corporation": [
+    0.465202088,
+    0.085686476
+  ],
+  "Sharevault_Nhar_Corporation": [
+    0.551889805,
+    0.090232375
+  ],
+  "Dustcaravan_Martian_Republica": [
+    0.452369195,
+    0.834825658
+  ],
+  "Redjournal_Martian_Republica": [
+    0.560509616,
+    0.803455397
+  ],
+  "Slotfair_Veronian_Republic": [
+    0.454259226,
+    0.754118173
+  ],
+  "Feedseal_Veronian_Republic": [
+    0.542750364,
+    0.713485566
+  ],
+  "Grainthrone_Zemlyania": [
+    0.478747698,
+    0.614617112
+  ],
+  "Landbook_Zemlyania": [
+    0.545759458,
+    0.627034007
   ],
   "Zergs": [
-    0.719589643,
-    0.757205667
+    0.721336534,
+    0.758059112
   ]
 }

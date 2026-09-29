@@ -15,6 +15,7 @@ from scipy.ndimage import binary_dilation
 ROOT = Path(__file__).resolve().parents[1]
 CANON_ASSETS = ROOT.parent / "EfolsMiradinsPact" / "assets"
 OUTPUT = ROOT / "client" / "src" / "lib" / "galaxy" / "visualOwnership.json"
+LABEL_ANCHORS = ROOT / "client" / "src" / "lib" / "galaxy" / "polityLabelAnchors.json"
 TERRITORY_MAP = CANON_ASSETS / "galaxy_territory_plate.png"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
 MAP_LIMIT = 1.06
@@ -110,6 +111,7 @@ def main() -> int:
     galaxy = requests.get(GALAXY_API, timeout=60).json()
     polities = galaxy.get("polities", [])
     owner = decode_owner(polities)
+    anchors = json.loads(LABEL_ANCHORS.read_text(encoding="utf-8"))
     overrides = {}
     unresolved = []
     for system in galaxy.get("systems", []):
@@ -124,6 +126,18 @@ def main() -> int:
             unresolved.append(system["id"])
             continue
         stem = polities[index]["stem"]
+        if stem == "Aquarian_Republic":
+            normalized_x = (float(system["x"]) + MAP_LIMIT) / (MAP_LIMIT * 2)
+            normalized_y = (MAP_LIMIT - float(system["y"])) / (MAP_LIMIT * 2)
+            nearest = min(
+                anchors,
+                key=lambda candidate: (
+                    (normalized_x - anchors[candidate][0]) ** 2
+                    + (normalized_y - anchors[candidate][1]) ** 2
+                ),
+            )
+            if nearest == "Astrean_Consortium":
+                stem = "Astrean_Consortium"
         if stem != system.get("stem"):
             overrides[system["id"]] = stem
 
