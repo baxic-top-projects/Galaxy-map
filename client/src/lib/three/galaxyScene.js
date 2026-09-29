@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { mapTexturePath, starColor } from '../galaxy/modelCatalog.js'
+import polityLabelAnchors from '../galaxy/polityLabelAnchors.json'
 import { buildSpatialIndex } from '../galaxy/spatialIndex.js'
 import { estimateZoom, pickLabels } from '../galaxy/labelLod.js'
 
@@ -11,31 +12,11 @@ textureLoader.setCrossOrigin('anonymous')
 
 function territoryPlateUrl() {
   // Resolve at use-time so applyAssetManifest / VITE_ASSETS_BASE are already applied.
-  return mapTexturePath('galaxy_territory_plate.png', 'v=57')
+  return mapTexturePath('galaxy_territory_plate_clean.png', 'v=1')
 }
 
 function basePlateUrl() {
   return mapTexturePath('galaxy_base_plate.png', 'v=1')
-}
-
-function polityAnchorsForGalaxy(galaxy) {
-  return (galaxy.polities || [])
-    .map((polity) => {
-      const systems = galaxy.systems.filter((system) => system.stem === polity.stem)
-      if (!systems.length) return null
-      const meanX = systems.reduce((sum, system) => sum + system.x, 0) / systems.length
-      const meanY = systems.reduce((sum, system) => sum + system.y, 0) / systems.length
-      const anchor = systems.reduce((best, system) => {
-        const distance = (system.x - meanX) ** 2 + (system.y - meanY) ** 2
-        return !best || distance < best.distance ? { system, distance } : best
-      }, null)?.system
-      return {
-        polity,
-        x: anchor?.x ?? meanX,
-        y: anchor?.y ?? meanY,
-      }
-    })
-    .filter(Boolean)
 }
 
 function loadTexture(url, { crisp = false } = {}) {
@@ -143,7 +124,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 
   const [basePlate, plate] = await Promise.all([
     createBasePlate(),
-    createPoliticalPlate(galaxy),
+    createPoliticalPlate(galaxy, callbacks.locale),
   ])
   root.add(basePlate, plate)
 
@@ -664,6 +645,10 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     plate.visible = !!visible
   }
 
+  function setLocale(locale) {
+    plate.userData.setLocale?.(locale)
+  }
+
   function focusSystem(system, { enterSystem = false } = {}) {
     if (!system) return
     setSelected(system.id)
@@ -902,14 +887,23 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   }
 
   function onWheel(event) {
+    focusTween = null
     if (event.deltaY <= 0) return
     const distance = cameraDistance()
     const awayFromCenter = controls.target.length() > 2.5
     if (distance >= 72 || awayFromCenter) {
       const pull = THREE.MathUtils.clamp((distance - 55) / 40, 0.08, 0.35)
+      const previousTarget = controls.target.clone()
       controls.target.lerp(overviewTarget, pull)
+      // Recenter by translating camera and target together. Changing only the
+      // target alters the viewing direction and makes zoom-out tilt the map.
+      camera.position.add(controls.target.clone().sub(previousTarget))
       if (distance >= 95 || (awayFromCenter && distance >= 80)) {
-        resetView(true)
+        if (selectedId) {
+          selectedId = null
+          callbacks.onSelect?.(null)
+          emitLabels()
+        }
       }
     }
   }
@@ -930,23 +924,105 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     setSelected,
     setStorms,
     setPoliticalMap,
+    setLocale,
     resetView,
     dispose,
   }
 }
 
-function createPoliticalPlate(galaxy) {
-  // Prefer the canon territory plate (same paint as galaxy_political_map.png).
+function createPoliticalPlate(galaxy, initialLocale = 'ru') {
+  const labels = createPolityLabelMesh(galaxy, initialLocale)
   return loadTexture(territoryPlateUrl(), { crisp: true })
     .then((texture) => {
-      const mesh = makePlateMeshFromTexture(texture)
-      mesh.renderOrder = -90
-      return mesh
+      const group = new THREE.Group()
+      const territories = makePlateMeshFromTexture(texture)
+      territories.renderOrder = -90
+      group.add(territories, labels)
+      group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
+      return group
     })
     .catch((err) => {
-      console.warn('Galaxy territory plate failed, using procedural fallback', territoryPlateUrl(), err)
-      return createProceduralPoliticalPlate(galaxy)
+      console.warn('Galaxy territory plate failed, using procedural fallback', err)
+      const group = new THREE.Group()
+      group.add(createProceduralPoliticalPlate(galaxy), labels)
+      group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
+      return group
     })
+}
+
+function splitLabel(text) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean)
+  if (words.length < 2) return words
+  let best = 1
+  let difference = Infinity
+  for (let split = 1; split < words.length; split += 1) {
+    const nextDifference = Math.abs(
+      words.slice(0, split).join(' ').length - words.slice(split).join(' ').length,
+    )
+    if (nextDifference < difference) {
+      best = split
+      difference = nextDifference
+    }
+  }
+  return [words.slice(0, best).join(' '), words.slice(best).join(' ')]
+}
+
+function createPolityLabelMesh(galaxy, initialLocale = 'ru') {
+  const size = 2048
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const context = canvas.getContext('2d')
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.generateMipmaps = false
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+
+  const draw = (locale) => {
+    context.clearRect(0, 0, size, size)
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.lineJoin = 'round'
+    for (const polity of galaxy.polities || []) {
+      const anchor = polityLabelAnchors[polity.stem]
+      if (!anchor) continue
+      const lines = splitLabel(locale === 'en' ? polity.nameEn : polity.nameRu)
+      if (!lines.length) continue
+      const suzerain = polity.kind === 'suzerain'
+      const fontSize = suzerain ? 22 : 10
+      const lineHeight = fontSize * 1.12
+      const x = anchor[0] * size
+      const y = anchor[1] * size
+      context.font = `${suzerain ? 700 : 400} ${fontSize}px "Segoe UI", Arial, sans-serif`
+      context.strokeStyle = 'rgba(0, 0, 0, 0.86)'
+      context.lineWidth = suzerain ? 5 : 4
+      context.fillStyle = '#ffffff'
+      lines.forEach((line, index) => {
+        const lineY = y + (index - (lines.length - 1) / 2) * lineHeight
+        context.strokeText(line, x, lineY)
+        context.fillText(line, x, lineY)
+      })
+    }
+    texture.needsUpdate = true
+  }
+
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    fog: false,
+    side: THREE.DoubleSide,
+  })
+  const span = GALAXY_SCALE * 2 * MAP_LIM
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, span), material)
+  mesh.position.z = -0.79
+  mesh.renderOrder = -80
+  mesh.raycast = () => {}
+  mesh.userData.setLocale = draw
+  draw(initialLocale)
+  return mesh
 }
 
 function createBasePlate() {
@@ -958,52 +1034,7 @@ function createBasePlate() {
   })
 }
 
-function makePlateMeshFromTexture(texture, galaxy = null) {
-  if (galaxy && texture.image) {
-    const width = texture.image.width || 1024
-    const height = texture.image.height || 1024
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const context = canvas.getContext('2d')
-    context.drawImage(texture.image, 0, 0, width, height)
-    const scale = width / 1024
-    context.textAlign = 'center'
-    context.textBaseline = 'middle'
-    context.lineJoin = 'round'
-
-    for (const anchor of polityAnchorsForGalaxy(galaxy)) {
-      const source = String(anchor.polity.label || anchor.polity.nameRu || '').trim()
-      if (!source) continue
-      let lines = source.split(/\n+/)
-      if (lines.length === 1) {
-        const words = source.split(/\s+/)
-        lines = words.length > 1 ? [words[0], words.slice(1).join(' ')] : words
-      }
-      const isSuzerain = anchor.polity.kind === 'suzerain'
-      const fontSize = (isSuzerain ? 15 : 8.5) * scale
-      const lineHeight = fontSize * 1.12
-      const x = ((anchor.x + MAP_LIM) / (MAP_LIM * 2)) * width
-      const y = (1 - (anchor.y + MAP_LIM) / (MAP_LIM * 2)) * height
-      context.font = `${isSuzerain ? 700 : 400} ${fontSize}px "Segoe UI", Arial, sans-serif`
-      context.strokeStyle = 'rgba(0, 0, 0, 0.82)'
-      context.lineWidth = (isSuzerain ? 3.2 : 2.4) * scale
-      context.fillStyle = '#ffffff'
-      lines.forEach((line, index) => {
-        const lineY = y + (index - (lines.length - 1) / 2) * lineHeight
-        context.strokeText(line, x, lineY)
-        context.fillText(line, x, lineY)
-      })
-    }
-
-    const bakedTexture = new THREE.CanvasTexture(canvas)
-    bakedTexture.colorSpace = THREE.SRGBColorSpace
-    bakedTexture.generateMipmaps = false
-    bakedTexture.minFilter = THREE.LinearFilter
-    bakedTexture.magFilter = THREE.LinearFilter
-    texture.dispose()
-    texture = bakedTexture
-  }
+function makePlateMeshFromTexture(texture) {
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     transparent: true,
@@ -1196,7 +1227,7 @@ function createProceduralPoliticalPlate(galaxy) {
   const owned = galaxy.systems.filter(
     (system) => system.kind === 'star' || system.kind === 'black_hole',
   )
-  if (!owned.length) return makePlateMeshFromCanvas(canvas2d, galaxy)
+  if (!owned.length) return makePlateMeshFromCanvas(canvas2d)
 
   const spatial = buildSpatialIndex(owned)
 
@@ -1267,12 +1298,12 @@ function createProceduralPoliticalPlate(galaxy) {
   }
 
   ctx.putImageData(image, 0, 0)
-  return makePlateMeshFromCanvas(canvas2d, galaxy)
+  return makePlateMeshFromCanvas(canvas2d)
 }
 
-function makePlateMeshFromCanvas(canvas2d, galaxy = null) {
+function makePlateMeshFromCanvas(canvas2d) {
   const texture = new THREE.CanvasTexture(canvas2d)
   texture.colorSpace = THREE.SRGBColorSpace
   texture.needsUpdate = true
-  return makePlateMeshFromTexture(texture, galaxy)
+  return makePlateMeshFromTexture(texture)
 }

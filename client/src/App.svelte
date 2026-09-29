@@ -175,6 +175,7 @@
           {resetToken}
           {stormSnapshot}
           {showPoliticalMap}
+          {locale}
           onSelect={handleSelect}
           onEnterSystem={handleEnterSystem}
           onLabels={handleLabels}

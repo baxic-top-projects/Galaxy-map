@@ -23,7 +23,7 @@ TERRITORY_PLATE = CANON / "galaxy_territory_plate.png"
 BASE_PLATE = CANON / "galaxy_base_plate.png"
 ENV_PATH = ROOT / "server" / "services" / "asset-service" / ".env"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
-TEXTURE_KEY = "textures/galaxy_territory_plate.png"
+TEXTURE_KEY = "textures/galaxy_territory_plate_clean.png"
 SIDE = 2048
 ANCHORS_PATH = ROOT / "tools" / "polity_label_anchors.json"
 CANONICAL_RENDERER = ROOT.parent / "EfolsMiradinsPact" / "tools" / "_render_galaxy_political_map.py"
@@ -196,38 +196,28 @@ def build_overlay(polities: list[dict]) -> Image.Image:
     output[border, 3] = 255
 
     image = Image.fromarray(output, "RGBA")
-    anchors = json.loads(ANCHORS_PATH.read_text(encoding="utf-8"))
-    labels = canonical_labels()
-    decoded = 0
-    for polity in polities:
-        stem = polity["stem"]
-        if stem not in anchors or stem not in labels:
-            print(f"WARNING: missing canonical label anchor for {stem}")
-            continue
-        x, y = anchors[stem]
-        suzerain = polity.get("kind") == "suzerain"
-        block = render_label_block(
-            labels[stem].splitlines(),
-            22 if suzerain else 10,
-            suzerain,
-            5 if suzerain else 4,
-        )
-        left = round(x * SIDE - block.width / 2)
-        top = round(y * SIDE - block.height / 2)
-        image.alpha_composite(block, (left, top))
-        decoded += 1
-    print(f"Placed {decoded}/{len(polities)} labels at canonical screenshot anchors")
     return image
 
 
 def main() -> int:
-    galaxy = requests.get(GALAXY_API, timeout=60).json()
-    polities = galaxy.get("polities", [])
-    image = build_overlay(polities)
-    output = io.BytesIO()
-    image.save(output, format="PNG", optimize=True)
-    body = output.getvalue()
+    try:
+        response = requests.get(GALAXY_API, timeout=10)
+        response.raise_for_status()
+        polities = response.json().get("polities", [])
+    except requests.RequestException:
+        from export_galaxy import _rgb_hex, build_rows
 
+        polities = [
+            {
+                "stem": row["stem"],
+                "nameEn": row["name_en"],
+                "nameRu": row["name_ru"],
+                "kind": row["kind"],
+                "color": _rgb_hex(row["color"]),
+            }
+            for row in build_rows()
+        ]
+        print("Galaxy API unavailable; using canonical local polity data")
     env = dotenv_values(ENV_PATH)
     bucket = env.get("ASSET_S3_BUCKET") or "galaxybucket"
     endpoint = env.get("ASSET_S3_ENDPOINT_URL") or "https://storage.yandexcloud.net"
@@ -239,6 +229,10 @@ def main() -> int:
         aws_secret_access_key=env.get("ASSET_S3_SECRET_ACCESS_KEY"),
         config=Config(signature_version="s3v4"),
     )
+    image = build_overlay(polities)
+    output = io.BytesIO()
+    image.save(output, format="PNG", optimize=True)
+    body = output.getvalue()
     client.put_object(
         Bucket=bucket,
         Key=TEXTURE_KEY,
@@ -247,7 +241,10 @@ def main() -> int:
         CacheControl="public, max-age=31536000, immutable",
         ACL="public-read",
     )
-    print(f"Uploaded transparent overlay ({len(body) / 1024 / 1024:.1f} MB)")
+    print(
+        f"Uploaded label-free overlay to s3://{bucket}/{TEXTURE_KEY} "
+        f"({len(body) / 1024 / 1024:.1f} MB)"
+    )
     return 0
 
 

@@ -10,6 +10,7 @@
     onEnterSystem = undefined,
     onLabels = undefined,
     showPoliticalMap = true,
+    locale = 'ru',
     focusRequest = null,
     resetToken = 0,
   } = $props()
@@ -27,6 +28,7 @@
         onHover,
         onEnterSystem,
         onLabels,
+        locale,
       })
       if (cancelled) {
         api?.dispose()
@@ -71,6 +73,11 @@
   $effect(() => {
     if (!api) return
     api.setPoliticalMap(showPoliticalMap)
+  })
+
+  $effect(() => {
+    if (!api) return
+    api.setLocale(locale)
   })
 </script>
 
