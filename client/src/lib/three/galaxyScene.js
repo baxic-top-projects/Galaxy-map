@@ -929,7 +929,11 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 function createPoliticalPlate(galaxy) {
   // Prefer the canon territory plate (same paint as galaxy_political_map.png).
   return loadTexture(territoryPlateUrl(), { crisp: true })
-    .then((texture) => makePlateMeshFromTexture(texture))
+    .then((texture) => {
+      const mesh = makePlateMeshFromTexture(texture)
+      mesh.renderOrder = -90
+      return mesh
+    })
     .catch((err) => {
       console.warn('Galaxy territory plate failed, using procedural fallback', territoryPlateUrl(), err)
       return createProceduralPoliticalPlate(galaxy)
@@ -940,6 +944,7 @@ function createBasePlate() {
   return loadTexture(basePlateUrl(), { crisp: true }).then((texture) => {
     const mesh = makePlateMeshFromTexture(texture)
     mesh.position.z = -0.82
+    mesh.renderOrder = -100
     return mesh
   })
 }
@@ -993,6 +998,7 @@ function makePlateMeshFromTexture(texture, galaxy = null) {
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     transparent: true,
+    depthTest: false,
     depthWrite: false,
     fog: false,
     side: THREE.DoubleSide,

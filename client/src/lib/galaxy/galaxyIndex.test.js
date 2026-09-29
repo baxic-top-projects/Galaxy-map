@@ -115,6 +115,36 @@ describe('loadGalaxy API client', () => {
     expect(galaxy.search[0].stem).toBe('Tessar_Syndicate')
   })
 
+  test('qualifies repeated world names with their unique system', async () => {
+    const payload = {
+      meta: {},
+      polities: [],
+      systems: [
+        { id: 'A:One', stem: 'A', token: 'One', nameEn: 'Alpha', nameRu: 'Альфа' },
+        { id: 'B:Two', stem: 'B', token: 'Two', nameEn: 'Beta', nameRu: 'Бета' },
+      ],
+      edgesCanon: [],
+      edgesDisplay: [],
+      search: [
+        { id: 'A:One', kind: 'world', token: 'Twin', nameEn: 'Twin', nameRu: 'Двойник' },
+        { id: 'B:Two', kind: 'world', token: 'Twin', nameEn: 'Twin', nameRu: 'Двойник' },
+      ],
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => payload,
+      })),
+    )
+
+    const galaxy = await loadGalaxy('http://gateway.test')
+    expect(galaxy.search[0].nameRu).toBe('Двойник')
+    expect(galaxy.search[1].nameRu).not.toBe('Двойник')
+    expect(galaxy.search[1].nameRu).not.toContain('(')
+    expect(new Set(galaxy.search.map((entry) => entry.nameRu)).size).toBe(2)
+  })
+
   test('labels prefer locale', () => {
     const system = { nameEn: 'Alpha', nameRu: 'Альфа' }
     const polity = { nameEn: 'Empire', nameRu: 'Империя' }

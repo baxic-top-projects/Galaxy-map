@@ -8,6 +8,87 @@ import visualOwnership from './visualOwnership.json'
  */
 
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || ''
+let activeWorldNames = new Map()
+const WORLD_PREFIXES = [
+  ['Ael', 'Аэль'], ['Ar', 'Ар'], ['Bel', 'Бел'], ['Cael', 'Каэль'],
+  ['Dra', 'Дра'], ['Eri', 'Эри'], ['Fen', 'Фен'], ['Gal', 'Гал'],
+  ['Iri', 'Ири'], ['Ka', 'Ка'], ['Lor', 'Лор'], ['Mer', 'Мер'],
+  ['Nai', 'Наи'], ['Or', 'Ор'], ['Phae', 'Фэй'], ['Qua', 'Ква'],
+  ['Rhy', 'Ри'], ['Sel', 'Сел'], ['Tal', 'Тал'], ['Vey', 'Вей'],
+]
+const WORLD_MIDDLES = [
+  ['dor', 'дор'], ['lan', 'лан'], ['mir', 'мир'], ['nor', 'нор'],
+  ['ras', 'рас'], ['the', 'те'], ['val', 'вал'], ['xen', 'ксен'],
+  ['yor', 'йор'], ['zen', 'зен'], ['cal', 'кал'], ['fir', 'фир'],
+  ['gol', 'гол'], ['hel', 'хел'], ['jor', 'жор'], ['kel', 'кел'],
+  ['lum', 'лум'], ['mor', 'мор'], ['ryl', 'рил'], ['syl', 'сил'],
+]
+const WORLD_SUFFIXES = [
+  ['a', 'а'], ['ae', 'ай'], ['an', 'ан'], ['ara', 'ара'],
+  ['ea', 'ея'], ['el', 'эль'], ['en', 'ен'], ['ia', 'ия'],
+  ['ion', 'ион'], ['is', 'ис'], ['on', 'он'], ['ora', 'ора'],
+  ['os', 'ос'], ['um', 'ум'], ['une', 'ун'], ['yx', 'икс'],
+  ['aris', 'арис'], ['eron', 'ерон'], ['iel', 'иэль'], ['oris', 'орис'],
+]
+
+function worldKey(systemId, token) {
+  return `${systemId}\u0000${token || ''}`
+}
+
+function hash32(value) {
+  let hash = 0x811c9dc5
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash >>> 0
+}
+
+function mintWorldName(key, usedEn, usedRu) {
+  for (let attempt = 0; attempt < 128; attempt += 1) {
+    let hash = hash32(`${key}:${attempt}`)
+    const prefix = WORLD_PREFIXES[hash % WORLD_PREFIXES.length]
+    hash = Math.floor(hash / WORLD_PREFIXES.length)
+    const middle = WORLD_MIDDLES[hash % WORLD_MIDDLES.length]
+    hash = Math.floor(hash / WORLD_MIDDLES.length)
+    const suffix = WORLD_SUFFIXES[hash % WORLD_SUFFIXES.length]
+    const nameEn = `${prefix[0]}${middle[0]}${suffix[0]}`
+    const nameRu = `${prefix[1]}${middle[1]}${suffix[1]}`
+    if (
+      !usedEn.has(nameEn.toLocaleLowerCase()) &&
+      !usedRu.has(nameRu.toLocaleLowerCase())
+    ) {
+      return { nameEn, nameRu }
+    }
+  }
+  throw new Error(`Unable to generate a unique world name for ${key}`)
+}
+
+function uniquifyWorldSearch(search) {
+  const usedEn = new Set()
+  const usedRu = new Set()
+  const namesByKey = new Map()
+  const updated = search.map((entry) => {
+    if (entry.kind !== 'world') return entry
+    const baseEn = entry.nameEn || entry.token || 'World'
+    const baseRu = entry.nameRu || entry.token || 'Мир'
+    let nameEn = baseEn
+    let nameRu = baseRu
+    if (usedEn.has(nameEn.toLocaleLowerCase()) || usedRu.has(nameRu.toLocaleLowerCase())) {
+      const minted = mintWorldName(worldKey(entry.id, entry.token), usedEn, usedRu)
+      nameEn = minted.nameEn
+      nameRu = minted.nameRu
+    }
+    usedEn.add(nameEn.toLocaleLowerCase())
+    usedRu.add(nameRu.toLocaleLowerCase())
+    namesByKey.set(worldKey(entry.id, entry.token), { nameEn, nameRu })
+    return nameEn === entry.nameEn && nameRu === entry.nameRu
+      ? entry
+      : { ...entry, nameEn, nameRu }
+  })
+  activeWorldNames = namesByKey
+  return updated
+}
 
 /**
  * @returns {Promise<{
@@ -33,13 +114,14 @@ export async function loadGalaxy(baseUrl = DEFAULT_API_BASE) {
     if (!visualStem || visualStem === system.stem) return system
     return { ...system, canonicalStem: system.stem, stem: visualStem }
   })
-  const search = data.search.map((entry) => {
+  const ownershipCorrectedSearch = data.search.map((entry) => {
     const visualStem = visualOwnership[entry.id]
     return visualStem && visualStem !== entry.stem
       ? { ...entry, canonicalStem: entry.stem, stem: visualStem }
       : entry
   })
   const byId = new Map(systems.map((system) => [system.id, system]))
+  const search = uniquifyWorldSearch(ownershipCorrectedSearch)
   const polityByStem = new Map(data.polities.map((polity) => [polity.stem, polity]))
   return {
     ...data,
@@ -65,7 +147,15 @@ export async function loadSystemDetail(systemOrId, baseUrl = DEFAULT_API_BASE) {
   if (!response.ok) {
     throw new Error(`Failed to load system detail: ${response.status}`)
   }
-  return response.json()
+  const detail = await response.json()
+  const worlds = (detail.worlds || []).map((world) => {
+    const names = activeWorldNames.get(worldKey(detail.id || key, world.token))
+    return names ? { ...world, ...names } : world
+  })
+  return {
+    ...detail,
+    worlds,
+  }
 }
 
 export function systemLabel(system, locale = 'ru') {
