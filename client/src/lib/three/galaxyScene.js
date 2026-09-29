@@ -106,6 +106,9 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   scene.fog = new THREE.FogExp2(0x05070f, 0.012)
 
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500)
+  // The galaxy lies in the XY plane. OrbitControls otherwise assumes Y-up,
+  // allowing a simple dolly to retain an almost edge-on, distorted view.
+  camera.up.set(0, 0, 1)
   camera.position.set(0, -58, 34)
 
   const controls = new OrbitControls(camera, canvas)
@@ -115,7 +118,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   controls.zoomSpeed = 1.15
   controls.minDistance = 4
   controls.maxDistance = 110
-  controls.maxPolarAngle = Math.PI * 0.495
+  controls.maxPolarAngle = THREE.MathUtils.degToRad(78)
   controls.target.set(0, 0, 0)
   controls.mouseButtons = {
     LEFT: THREE.MOUSE.PAN,

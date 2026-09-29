@@ -1247,7 +1247,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
       const belt = await createAsteroidBelt(featureKey, { minInner })
       if (disposed) return null
       root.add(belt)
-      if (belt.userData.beltSpin) {
+      if (hostKind !== 'junction' && belt.userData.beltSpin) {
         animated.push({ beltSpin: belt.userData.beltSpin })
       }
 

@@ -43,15 +43,30 @@
     if (nextPage === 'universe') mode = 'galaxy'
   }
 
+  async function loadGalaxyWithRetry(attempts = 3) {
+    let lastError
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        return await loadGalaxy()
+      } catch (err) {
+        lastError = err
+        if (attempt + 1 < attempts) {
+          await new Promise((resolve) => setTimeout(resolve, 750 * 2 ** attempt))
+        }
+      }
+    }
+    throw lastError
+  }
+
   onMount(async () => {
     window.addEventListener('popstate', handleRouteChange)
-    try {
-      try {
-        applyAssetManifest(await fetchAssetManifest())
-      } catch {
+    fetchAssetManifest()
+      .then((manifest) => applyAssetManifest(manifest))
+      .catch(() => {
         // Keep local /models fallbacks when asset-service is unavailable.
-      }
-      galaxy = await loadGalaxy()
+      })
+    try {
+      galaxy = await loadGalaxyWithRetry()
     } catch (err) {
       error = err instanceof Error ? err.message : String(err)
     } finally {

@@ -102,9 +102,16 @@ function uniquifyWorldSearch(search) {
  *   polityByStem: Map<string, Polity>
  * }>}
  */
-export async function loadGalaxy(baseUrl = DEFAULT_API_BASE) {
+export async function loadGalaxy(baseUrl = DEFAULT_API_BASE, { timeoutMs = 20000 } = {}) {
   const url = `${String(baseUrl).replace(/\/$/, '')}/api/v1/galaxy`
-  const response = await fetch(url)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  let response
+  try {
+    response = await fetch(url, { signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
   if (!response.ok) {
     throw new Error(`Failed to load galaxy index: ${response.status}`)
   }
