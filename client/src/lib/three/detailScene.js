@@ -978,6 +978,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     ONE: THREE.TOUCH.PAN,
     TWO: THREE.TOUCH.DOLLY_PAN,
   }
+  let galaxyExitDistance = controls.maxDistance * 0.9
 
   const pressedKeys = new Set()
   const panOffset = new THREE.Vector3()
@@ -993,7 +994,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     if (event.deltaY <= 0) return
     const distance = camera.position.distanceTo(controls.target)
     // After zooming out to the system overview, further scroll-back returns to the galaxy.
-    if (distance >= controls.maxDistance * 0.9) {
+    if (distance >= galaxyExitDistance) {
       callbacks.onZoomOut?.()
     }
   }
@@ -1446,7 +1447,8 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     const span = Math.max(hostKind === 'junction' ? 4.2 : 8, farthest + 2.4)
     camera.position.set(0, span * 0.95, span * 0.35)
     controls.target.set(0, 0, 0)
-    controls.maxDistance = Math.max(28, span * 2.2)
+    galaxyExitDistance = Math.max(24, span * 1.35)
+    controls.maxDistance = galaxyExitDistance * 1.08
     controls.update()
 
     stormRadius = Math.max(span * 0.88, farthest + 1.1)
