@@ -1,4 +1,4 @@
-"""Map every API system to the polity territory painted on the political map."""
+"""Map every API system to the exact canonical clean territory plate."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from scipy.ndimage import binary_dilation
 ROOT = Path(__file__).resolve().parents[1]
 CANON_ASSETS = ROOT.parent / "EfolsMiradinsPact" / "assets"
 OUTPUT = ROOT / "client" / "src" / "lib" / "galaxy" / "visualOwnership.json"
-POLITICAL_MAP = CANON_ASSETS / "galaxy_political_map.png"
+TERRITORY_MAP = CANON_ASSETS / "galaxy_territory_plate.png"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
 MAP_LIMIT = 1.06
 
@@ -42,7 +42,7 @@ def political_colors() -> dict[str, np.ndarray]:
 
 
 def decode_owner(polities: list[dict]) -> np.ndarray:
-    territory_image = Image.open(POLITICAL_MAP).convert("RGBA")
+    territory_image = Image.open(TERRITORY_MAP).convert("RGBA")
     width, height = territory_image.size
     territory = np.asarray(territory_image, dtype=np.uint8)
     base = np.asarray(

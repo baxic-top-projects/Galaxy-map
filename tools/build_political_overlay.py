@@ -236,19 +236,9 @@ def build_overlay(polities: list[dict]) -> Image.Image:
 
 
 def main() -> int:
-    # Rebuild both canonical outputs from one ownership field. This is the only
-    # lossless way to match borders hidden by labels and the legend in the
-    # flattened political PNG.
-    political_map_bytes = POLITICAL_MAP.read_bytes()
-    territory_map_bytes = LOCAL_TERRITORY_OUTPUT.read_bytes()
-    try:
-        subprocess.run([sys.executable, str(CANONICAL_RENDERER)], check=True)
-        generated_territory = LOCAL_TERRITORY_OUTPUT.read_bytes()
-    finally:
-        # EfolsMiradinsPact is an input only. The renderer writes both files, so
-        # restore them after capturing the clean generated territory texture.
-        POLITICAL_MAP.write_bytes(political_map_bytes)
-        LOCAL_TERRITORY_OUTPUT.write_bytes(territory_map_bytes)
+    # The canonical repository already contains the exact clean companion
+    # texture for galaxy_political_map.png. Publish it byte-for-byte.
+    generated_territory = LOCAL_TERRITORY_OUTPUT.read_bytes()
     env = dotenv_values(ENV_PATH)
     bucket = env.get("ASSET_S3_BUCKET") or "galaxybucket"
     endpoint = env.get("ASSET_S3_ENDPOINT_URL") or "https://storage.yandexcloud.net"
