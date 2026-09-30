@@ -174,7 +174,7 @@ def apply_spiral_extension() -> dict[str, int]:
         meta_payload.update(
             {
                 "mapLim": MAP_LIMIT,
-                "centralDiskR": 1.02,
+                "centralDiskR": 1.10,
                 "spiralArmCount": ARM_COUNT,
                 "spiralOuterRadius": OUTER_RADIUS,
                 "spiralSeed": GENERATOR_SEED,
