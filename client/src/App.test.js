@@ -38,6 +38,17 @@ describe('label LOD', () => {
     expect(estimateZoom(8)).toBe(1)
     expect(estimateZoom(2)).toBe(4)
   })
+
+  test('does not label unnamed frontier objects', () => {
+    const labels = pickLabels(
+      [
+        ...systems,
+        { id: 'frontier:arm-1:star-001', token: '', nameEn: '', nameRu: '', kind: 'star', x: 1, y: 0, z: 0 },
+      ],
+      { zoom: 8, selectedId: 'frontier:arm-1:star-001', maxLabels: 10 },
+    )
+    expect(labels.some((item) => item.system.id.startsWith('frontier:'))).toBe(false)
+  })
 })
 
 describe('spatial index', () => {

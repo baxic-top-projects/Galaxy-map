@@ -8,6 +8,7 @@ from app.config.settings import Settings
 from app.db.models import init_db
 from app.service.catalog_cache_service import catalog_cache
 from app.service.catalog_seed_service import CatalogSeedService
+from app.service.spiral_arm_service import apply_spiral_extension
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +42,9 @@ def run_sync_in_background(settings: Settings, *, seed: bool = True) -> None:
     def worker() -> None:
         try:
             init_db()
-            if not seed:
-                _set_state(status="idle", result=None, error=None)
-                return
-            result = CatalogSeedService(settings).sync_on_startup()
+            seed_result = CatalogSeedService(settings).sync_on_startup() if seed else None
+            arm_result = apply_spiral_extension()
+            result = {"seed": seed_result, "spiralArms": arm_result}
             catalog_cache.clear()
             _set_state(status="ok", result=result, error=None)
             logger.info("Catalog sync result: %s", result)

@@ -37,6 +37,7 @@ ROOT_TEXTURE_FILES = (
     "galaxy_territory_plate.png",
     "galaxy_political_map.png",
     "galaxy_base_plate.png",
+    "galaxy_base_plate_v5.png",
     "system_starfield.png",
 )
 

@@ -11,12 +11,17 @@ import { buildSpatialIndex } from '../galaxy/spatialIndex.js'
 import { estimateZoom, pickLabels } from '../galaxy/labelLod.js'
 
 const GALAXY_SCALE = 42
-const MAP_LIM = 1.06
+const DEFAULT_MAP_LIM = 1.06
 const textureLoader = new THREE.TextureLoader()
 textureLoader.setCrossOrigin('anonymous')
 
 function basePlateUrl() {
-  return mapTexturePath('galaxy_base_plate.png', 'v=4')
+  return mapTexturePath('galaxy_base_plate_v5.png', 'v=6')
+}
+
+function mapLimitFor(galaxy) {
+  const value = Number(galaxy?.meta?.mapLim)
+  return Number.isFinite(value) && value >= DEFAULT_MAP_LIM ? value : DEFAULT_MAP_LIM
 }
 
 function loadTexture(url, { crisp = false } = {}) {
@@ -74,6 +79,8 @@ function pointSizeFor(system) {
  * Create an imperative Three.js galaxy scene attached to a canvas.
  */
 export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
+  const mapLim = mapLimitFor(galaxy)
+  const overviewScale = mapLim / DEFAULT_MAP_LIM
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
@@ -90,7 +97,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   // The galaxy lies in the XY plane. OrbitControls otherwise assumes Y-up,
   // allowing a simple dolly to retain an almost edge-on, distorted view.
   camera.up.set(0, 0, 1)
-  camera.position.set(0, -12, 66)
+  camera.position.set(0, -12 * overviewScale, 66 * overviewScale)
 
   const controls = new OrbitControls(camera, canvas)
   controls.enableDamping = true
@@ -98,7 +105,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   controls.enableZoom = true
   controls.zoomSpeed = 1.15
   controls.minDistance = 4
-  controls.maxDistance = 110
+  controls.maxDistance = Math.max(110, 110 * overviewScale)
   controls.minPolarAngle = 0.01
   controls.maxPolarAngle = Math.PI - 0.01
   controls.target.set(0, 0, 0)
@@ -111,7 +118,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     ONE: THREE.TOUCH.PAN,
     TWO: THREE.TOUCH.DOLLY_PAN,
   }
-  const overviewPosition = new THREE.Vector3(0, -12, 66)
+  const overviewPosition = new THREE.Vector3(0, -12 * overviewScale, 66 * overviewScale)
   const overviewTarget = new THREE.Vector3(0, 0, 0)
 
   const root = new THREE.Group()
@@ -124,7 +131,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   scene.add(keyLight)
 
   const [basePlate, initialPlate] = await Promise.all([
-    createBasePlate(),
+    createBasePlate(mapLim),
     createPoliticalPlate(galaxy, callbacks.locale),
   ])
   let plate = initialPlate
@@ -956,16 +963,17 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 }
 
 function createPoliticalPlate(galaxy, initialLocale = 'ru') {
+  const mapLim = mapLimitFor(galaxy)
   const group = new THREE.Group()
   const territories = createProceduralPoliticalPlate(galaxy)
   territories.renderOrder = -90
   const anchors = resolvePolityLabelAnchors(
     territories.userData.labelAnchors || {},
-    centroidsFromSystems(galaxy, MAP_LIM),
+    centroidsFromSystems(galaxy, mapLim),
     polityLabelAnchors,
     galaxy.polities || [],
   )
-  const labels = createPolityLabelMesh(galaxy, initialLocale, anchors)
+  const labels = createPolityLabelMesh(galaxy, initialLocale, anchors, mapLim)
   group.add(territories, labels)
   group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
   group.userData.labelAnchors = anchors
@@ -989,7 +997,12 @@ function splitLabel(text) {
   return [words.slice(0, best).join(' '), words.slice(best).join(' ')]
 }
 
-function createPolityLabelMesh(galaxy, initialLocale = 'ru', anchors = polityLabelAnchors) {
+function createPolityLabelMesh(
+  galaxy,
+  initialLocale = 'ru',
+  anchors = polityLabelAnchors,
+  mapLim = mapLimitFor(galaxy),
+) {
   const size = 2048
   const canvas = document.createElement('canvas')
   canvas.width = size
@@ -1037,7 +1050,7 @@ function createPolityLabelMesh(galaxy, initialLocale = 'ru', anchors = polityLab
     fog: false,
     side: THREE.DoubleSide,
   })
-  const span = GALAXY_SCALE * 2 * MAP_LIM
+  const span = GALAXY_SCALE * 2 * mapLim
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, span), material)
   mesh.position.z = -0.79
   mesh.renderOrder = -80
@@ -1047,16 +1060,16 @@ function createPolityLabelMesh(galaxy, initialLocale = 'ru', anchors = polityLab
   return mesh
 }
 
-function createBasePlate() {
+function createBasePlate(mapLim = DEFAULT_MAP_LIM) {
   return loadTexture(basePlateUrl(), { crisp: true }).then((texture) => {
-    const mesh = makePlateMeshFromTexture(texture)
+    const mesh = makePlateMeshFromTexture(texture, mapLim)
     mesh.position.z = -0.82
     mesh.renderOrder = -100
     return mesh
   })
 }
 
-function makePlateMeshFromTexture(texture) {
+function makePlateMeshFromTexture(texture, mapLim = DEFAULT_MAP_LIM) {
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     transparent: true,
@@ -1065,7 +1078,7 @@ function makePlateMeshFromTexture(texture) {
     fog: false,
     side: THREE.DoubleSide,
   })
-  const span = GALAXY_SCALE * 2 * MAP_LIM
+  const span = GALAXY_SCALE * 2 * mapLim
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, span), material)
   mesh.position.z = -0.8
   mesh.raycast = () => {}
@@ -1074,7 +1087,7 @@ function makePlateMeshFromTexture(texture) {
 
 // Kept as an offline-capable splitter for future independent border styling.
 // Runtime political-map toggling hides the complete plate and does not need it.
-function makeSplitPlateMeshFromTexture(texture) {
+function makeSplitPlateMeshFromTexture(texture, mapLim = DEFAULT_MAP_LIM) {
   const image = texture.image
   const width = image?.width || 1024
   const height = image?.height || 1024
@@ -1191,7 +1204,7 @@ function makeSplitPlateMeshFromTexture(texture) {
   const fillTexture = makeCanvasTexture(fillCanvas)
   const borderTexture = makeCanvasTexture(borderCanvas)
   texture.dispose()
-  const span = GALAXY_SCALE * 2 * MAP_LIM
+  const span = GALAXY_SCALE * 2 * mapLim
   const group = new THREE.Group()
   const fillMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(span, span),
@@ -1223,7 +1236,9 @@ function makeSplitPlateMeshFromTexture(texture) {
 }
 
 function createProceduralPoliticalPlate(galaxy) {
-  const size = 900
+  const mapLim = mapLimitFor(galaxy)
+  const centralDiskR = Number(galaxy?.meta?.centralDiskR) || 1.02
+  const size = mapLim > DEFAULT_MAP_LIM ? 1200 : 900
   const canvas2d = document.createElement('canvas')
   canvas2d.width = size
   canvas2d.height = size
@@ -1231,8 +1246,7 @@ function createProceduralPoliticalPlate(galaxy) {
 
   const cx = size / 2
   const cy = size / 2
-  const diskR = size * 0.48
-  const lim = MAP_LIM
+  const lim = mapLim
   // Fixed claim radius around every host system (stars, black holes, junctions).
   // Large enough to keep interior cells contiguous (NN ~0.02–0.04), small enough
   // that rim fill hugs the constellation instead of the circular galaxy disk.
@@ -1252,7 +1266,7 @@ function createProceduralPoliticalPlate(galaxy) {
           system.kind === 'junction')),
   )
   if (!owned.length) {
-    const mesh = makePlateMeshFromCanvas(canvas2d)
+    const mesh = makePlateMeshFromCanvas(canvas2d, mapLim)
     mesh.userData.labelAnchors = {}
     return mesh
   }
@@ -1290,15 +1304,12 @@ function createProceduralPoliticalPlate(galaxy) {
 
   for (let py = 0; py < size; py += 1) {
     for (let px = 0; px < size; px += 1) {
-      const dx = px - cx
-      const dy = py - cy
-      const rr = Math.hypot(dx, dy)
-      if (rr > diskR) continue
-
       const gx = ((px + 0.5) / size) * 2 * lim - lim
       const gy = -(((py + 0.5) / size) * 2 * lim - lim)
+      const insideCentralDisk = Math.hypot(gx, gy) <= centralDiskR
       const nearest = spatial.queryNearestAny(gx, gy)
       if (!nearest) continue
+      if (!insideCentralDisk && !nearest.id.startsWith('frontier:')) continue
       const dist = Math.hypot(nearest.x - gx, nearest.y - gy)
       const idx = systemIndex.get(nearest.id)
       if (idx == null) continue
@@ -1376,14 +1387,14 @@ function createProceduralPoliticalPlate(galaxy) {
   }
 
   ctx.putImageData(image, 0, 0)
-  const mesh = makePlateMeshFromCanvas(canvas2d)
+  const mesh = makePlateMeshFromCanvas(canvas2d, mapLim)
   mesh.userData.labelAnchors = centroidsFromOwnerRaster(owner, systemMeta, size)
   return mesh
 }
 
-function makePlateMeshFromCanvas(canvas2d) {
+function makePlateMeshFromCanvas(canvas2d, mapLim = DEFAULT_MAP_LIM) {
   const texture = new THREE.CanvasTexture(canvas2d)
   texture.colorSpace = THREE.SRGBColorSpace
   texture.needsUpdate = true
-  return makePlateMeshFromTexture(texture)
+  return makePlateMeshFromTexture(texture, mapLim)
 }

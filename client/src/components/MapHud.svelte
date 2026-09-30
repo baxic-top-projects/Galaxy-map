@@ -116,11 +116,11 @@
   {#if selected}
     <h2>{systemLabel(selected, locale)}</h2>
     <p class="meta">
-      {#if selected.kind !== 'junction'}
+      {#if selected.kind !== 'junction' && selected.token}
         {selected.token}
       {/if}
       {#if selectedPolity}
-        {selected.kind !== 'junction' ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
+        {selected.kind !== 'junction' && selected.token ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
       {/if}
     </p>
     {#if canEditOwner}
@@ -132,6 +132,11 @@
           onchange={(event) => onOwnerChange?.(selected, event.currentTarget.value)}
           aria-label={locale === 'en' ? 'Owner polity' : 'Держава-владелец'}
         >
+          {#if !selected.stem}
+            <option value="" disabled>
+              {locale === 'en' ? 'Not assigned' : 'Не назначена'}
+            </option>
+          {/if}
           {#each galaxy?.polities || [] as polity}
             <option value={polity.stem}>{polityLabel(polity, locale)}</option>
           {/each}

@@ -156,7 +156,15 @@ export async function loadSystemDetail(systemOrId, baseUrl = DEFAULT_API_BASE) {
 }
 
 export function systemLabel(system, locale = 'ru') {
-  return locale === 'en' ? system.nameEn : system.nameRu
+  const label = locale === 'en' ? system.nameEn : system.nameRu
+  if (label?.trim()) return label
+  if (system.kind === 'black_hole') {
+    return locale === 'en' ? 'Unnamed black hole' : 'Безымянная чёрная дыра'
+  }
+  if (system.kind === 'junction') {
+    return locale === 'en' ? 'Hypercorridor junction' : 'Стык гиперкоридоров'
+  }
+  return locale === 'en' ? 'Unnamed star' : 'Безымянная звезда'
 }
 
 export function polityLabel(polity, locale = 'ru') {
