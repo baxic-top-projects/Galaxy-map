@@ -3,6 +3,7 @@
     user = null,
     locale = 'ru',
     onLogin = undefined,
+    onRegister = undefined,
     onProfile = undefined,
     onAdmin = undefined,
     onLogout = undefined,
@@ -36,9 +37,14 @@
 
 <div class="account" bind:this={root}>
   {#if !user}
-    <button class="login" type="button" onclick={() => onLogin?.()}>
-      {locale === 'en' ? 'Sign in' : 'Войти'}
-    </button>
+    <div class="guest-actions">
+      <button class="login" type="button" onclick={() => onLogin?.()}>
+        {locale === 'en' ? 'Sign in' : 'Войти'}
+      </button>
+      <button class="register" type="button" onclick={() => onRegister?.()}>
+        {locale === 'en' ? 'Register' : 'Регистрация'}
+      </button>
+    </div>
   {:else}
     <button
       class="user"
@@ -81,6 +87,8 @@
     cursor: pointer;
   }
   .login { border-radius: 8px; padding: 0.55rem 0.85rem; }
+  .guest-actions { display: flex; gap: 0.45rem; }
+  .register { border-radius: 8px; padding: 0.55rem 0.85rem; background: #285a9d; }
   .user {
     display: flex;
     align-items: center;

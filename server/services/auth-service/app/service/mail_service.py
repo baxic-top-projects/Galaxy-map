@@ -5,7 +5,6 @@ import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
-from urllib.parse import urlencode
 
 from app.config import settings
 
@@ -38,38 +37,39 @@ def _send(recipient: str, subject: str, body: str) -> None:
         smtp.send_message(message)
 
 
-def send_verification_email(recipient: str, display_name: str, token: str) -> None:
-    link = f"{settings.frontend_url_value}/verify-email?{urlencode({'token': token})}"
+def send_verification_email(recipient: str, display_name: str, code: str) -> None:
     _send(
         recipient,
-        "Verify your Galaxy account",
-        _template(display_name, "Verify your email", "Confirm email", link, "This link expires soon."),
-    )
-
-
-def send_reset_email(recipient: str, display_name: str, token: str) -> None:
-    link = f"{settings.frontend_url_value}/reset-password?{urlencode({'token': token})}"
-    _send(
-        recipient,
-        "Reset your Galaxy password",
-        _template(
+        "Код подтверждения Galaxy Map",
+        _code_template(
             display_name,
-            "Reset your password",
-            "Choose a new password",
-            link,
-            "If you did not request this, you can ignore this email.",
+            "Подтверждение почты",
+            code,
+            "Код действует 15 минут.",
         ),
     )
 
 
-def _template(name: str, heading: str, action: str, link: str, footer: str) -> str:
+def send_reset_email(recipient: str, display_name: str, code: str) -> None:
+    _send(
+        recipient,
+        "Код сброса пароля Galaxy Map",
+        _code_template(
+            display_name,
+            "Сброс пароля",
+            code,
+            "Код действует 15 минут. Если вы не запрашивали сброс, проигнорируйте письмо.",
+        ),
+    )
+
+
+def _code_template(name: str, heading: str, code: str, footer: str) -> str:
     return f"""<!doctype html>
 <html><body style="font-family:Arial,sans-serif;color:#172033">
 <div style="max-width:560px;margin:auto;padding:32px">
 <h1>{html.escape(heading)}</h1>
-<p>Hello {html.escape(name)},</p>
-<p><a href="{html.escape(link, quote=True)}"
-style="background:#4457ff;color:white;padding:12px 18px;text-decoration:none;border-radius:6px">
-{html.escape(action)}</a></p>
+<p>Здравствуйте, {html.escape(name)}.</p>
+<p>Ваш код:</p>
+<p style="font-size:32px;font-weight:700;letter-spacing:8px">{html.escape(code)}</p>
 <p style="color:#667085">{html.escape(footer)}</p>
 </div></body></html>"""

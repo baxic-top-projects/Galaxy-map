@@ -6,12 +6,13 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app import avatar_storage, mailer
-from app.api import require_internal_token
+from app.controller.auth_controller import require_internal_token
 from app.config import settings
 from app.db import Base, EmailToken, RefreshSession, User, get_db
 from app.main import app
-from app.security import hash_token
+from app.service import avatar_storage_service as avatar_storage
+from app.service import mail_service as mailer
+from app.service.auth_security_service import hash_token
 
 
 def _register(client: TestClient, email: str = "Person@Example.COM"):
@@ -25,15 +26,33 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _activate_and_login(client: TestClient, db_factory, email: str = "person@example.com"):
+    with db_factory() as db:
+        user = db.scalar(select(User).where(User.email == email.lower()))
+        user.email_verified = True
+        db.commit()
+    response = client.post(
+        "/internal/v1/auth/login",
+        json={"email": email, "password": "correct-horse-battery"},
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
 def test_register_login_me_and_duplicate(client, db_factory):
     response = _register(client)
     assert response.status_code == 201
     body = response.json()
-    assert body["expires_in"] == 900
-    assert body["user"]["email"] == "person@example.com"
-    assert body["user"]["role"] == "USER"
+    assert body["email"] == "person@example.com"
+    assert body["requires_email_verification"] is True
 
-    me = client.get("/internal/v1/auth/me", headers=_auth(body["access_token"]))
+    pending_login = client.post(
+        "/internal/v1/auth/login",
+        json={"email": "PERSON@example.com", "password": "correct-horse-battery"},
+    )
+    assert pending_login.json()["requires_email_verification"] is True
+    tokens = _activate_and_login(client, db_factory)
+    me = client.get("/internal/v1/auth/me", headers=_auth(tokens["access_token"]))
     assert me.status_code == 200
     assert me.json()["display_name"] == "Test Person"
     assert _register(client).status_code == 409
@@ -49,8 +68,9 @@ def test_register_login_me_and_duplicate(client, db_factory):
     ).status_code == 401
 
 
-def test_refresh_rotates_and_logout_revokes(client):
-    original = _register(client).json()["refresh_token"]
+def test_refresh_rotates_and_logout_revokes(client, db_factory):
+    _register(client)
+    original = _activate_and_login(client, db_factory)["refresh_token"]
     rotated = client.post("/internal/v1/auth/refresh", json={"refresh_token": original})
     assert rotated.status_code == 200
     replacement = rotated.json()["refresh_token"]
@@ -79,29 +99,38 @@ def test_email_verification_and_password_reset(client, monkeypatch):
         lambda _email, _name, token: sent.update(reset=token),
     )
     registered = _register(client).json()
+    assert registered["requires_email_verification"] is True
+    assert sent["verification"].isdigit() and len(sent["verification"]) == 6
     verify = client.post(
-        "/internal/v1/auth/verify-email", json={"token": sent["verification"]}
+        "/internal/v1/auth/verify-email",
+        json={"email": "person@example.com", "code": sent["verification"]},
     )
     assert verify.status_code == 200
     assert client.get(
-        "/internal/v1/auth/me", headers=_auth(registered["access_token"])
+        "/internal/v1/auth/me", headers=_auth(verify.json()["access_token"])
     ).json()["email_verified"] is True
     assert client.post(
-        "/internal/v1/auth/verify-email", json={"token": sent["verification"]}
+        "/internal/v1/auth/verify-email",
+        json={"email": "person@example.com", "code": sent["verification"]},
     ).status_code == 400
 
     forgot = client.post(
         "/internal/v1/auth/forgot-password", json={"email": "person@example.com"}
     )
     assert forgot.status_code == 200
+    assert sent["reset"].isdigit() and len(sent["reset"]) == 6
     reset = client.post(
         "/internal/v1/auth/reset-password",
-        json={"token": sent["reset"], "password": "a-brand-new-secure-password"},
+        json={
+            "email": "person@example.com",
+            "code": sent["reset"],
+            "password": "a-brand-new-secure-password",
+        },
     )
     assert reset.status_code == 200
     assert client.post(
         "/internal/v1/auth/refresh",
-        json={"refresh_token": registered["refresh_token"]},
+        json={"refresh_token": verify.json()["refresh_token"]},
     ).status_code == 401
     assert client.post(
         "/internal/v1/auth/login",
@@ -109,8 +138,9 @@ def test_email_verification_and_password_reset(client, monkeypatch):
     ).status_code == 200
 
 
-def test_profile_and_avatar_updates(client):
-    token = _register(client).json()["access_token"]
+def test_profile_and_avatar_updates(client, db_factory):
+    _register(client)
+    token = _activate_and_login(client, db_factory)["access_token"]
     profile = client.patch(
         "/internal/v1/auth/profile",
         headers=_auth(token),
@@ -126,8 +156,9 @@ def test_profile_and_avatar_updates(client):
     assert avatar.json()["avatar_key"] == "avatars/user.webp"
 
 
-def test_avatar_upload_and_delete(client, monkeypatch):
-    token = _register(client).json()["access_token"]
+def test_avatar_upload_and_delete(client, db_factory, monkeypatch):
+    _register(client)
+    token = _activate_and_login(client, db_factory)["access_token"]
 
     async def fake_upload(user_id, file):
         assert user_id
@@ -152,11 +183,12 @@ def test_avatar_upload_and_delete(client, monkeypatch):
 
 
 def test_admin_promotion_and_introspection(client, db_factory, monkeypatch):
-    admin_tokens = _register(client, "admin@example.com").json()
+    _register(client, "admin@example.com")
     _register(client, "target@example.com")
     with db_factory() as db:
         admin = db.scalar(select(User).where(User.email == "admin@example.com"))
         admin.role = "ADMIN"
+        admin.email_verified = True
         db.commit()
     admin_tokens = client.post(
         "/internal/v1/auth/login",

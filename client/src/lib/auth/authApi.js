@@ -78,13 +78,12 @@ export async function refreshSession(throwOnError = true) {
 }
 
 export async function login(email, password) {
-  return acceptSession(
-    await request(
-      '/login',
-      { method: 'POST', body: JSON.stringify({ email, password }) },
-      false,
-    ),
+  const payload = await request(
+    '/login',
+    { method: 'POST', body: JSON.stringify({ email, password }) },
+    false,
   )
+  return payload?.requires_email_verification ? payload : acceptSession(payload)
 }
 
 export async function registerAccount(payload) {
@@ -114,11 +113,11 @@ export async function exchangeGoogleCode(code) {
   )
 }
 
-export async function verifyEmail(token) {
-  return request('/verify-email', {
+export async function verifyEmail(email, code) {
+  return acceptSession(await request('/verify-email', {
     method: 'POST',
-    body: JSON.stringify({ token }),
-  })
+    body: JSON.stringify({ email, code }),
+  }))
 }
 
 export async function resendVerification(email) {
@@ -135,10 +134,10 @@ export async function forgotPassword(email) {
   })
 }
 
-export async function resetPassword(token, password) {
+export async function resetPassword(email, code, password) {
   return request('/reset-password', {
     method: 'POST',
-    body: JSON.stringify({ token, password }),
+    body: JSON.stringify({ email, code, password }),
   })
 }
 

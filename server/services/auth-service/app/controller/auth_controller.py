@@ -23,10 +23,11 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import avatar_storage, mailer
+from app.service import avatar_storage_service as avatar_storage
+from app.service import mail_service as mailer
 from app.config import settings
 from app.db import EmailToken, OAuthAccount, RefreshSession, RoleAudit, User, UserRole, get_db, utcnow
-from app.schemas import (
+from app.dto.auth import (
     AuthorizationResponse,
     AvatarPatch,
     EmailRequest,
@@ -34,16 +35,17 @@ from app.schemas import (
     LoginRequest,
     LogoutRequest,
     MessageResponse,
+    PendingVerificationResponse,
     ProfilePatch,
     PromoteRequest,
     RefreshRequest,
     RegisterRequest,
     ResetPasswordRequest,
     TokenPair,
-    TokenRequest,
     UserResponse,
+    VerifyEmailRequest,
 )
-from app.security import (
+from app.service.auth_security_service import (
     create_access_token,
     create_oauth_state,
     create_refresh_token,
@@ -100,7 +102,13 @@ def _issue_pair(db: Session, user: User, request: Request) -> TokenPair:
     )
 
 
-def _create_email_token(db: Session, user: User, purpose: str, minutes: int) -> str:
+def _create_email_token(
+    db: Session,
+    user: User,
+    purpose: str,
+    minutes: int,
+    plain: str | None = None,
+) -> str:
     now = utcnow()
     db.execute(
         update(EmailToken)
@@ -111,7 +119,7 @@ def _create_email_token(db: Session, user: User, purpose: str, minutes: int) -> 
         )
         .values(used_at=now)
     )
-    plain = random_token()
+    plain = plain or random_token()
     db.add(
         EmailToken(
             user_id=user.id,
@@ -124,12 +132,24 @@ def _create_email_token(db: Session, user: User, purpose: str, minutes: int) -> 
     return plain
 
 
-def _consume_email_token(db: Session, plain: str, purpose: str) -> tuple[EmailToken, User]:
+def _six_digit_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _consume_email_token(
+    db: Session,
+    plain: str,
+    purpose: str,
+    user_id: str | None = None,
+) -> tuple[EmailToken, User]:
+    conditions = [
+        EmailToken.token_hash == hash_token(plain),
+        EmailToken.purpose == purpose,
+    ]
+    if user_id is not None:
+        conditions.append(EmailToken.user_id == user_id)
     row = db.scalar(
-        select(EmailToken).where(
-            EmailToken.token_hash == hash_token(plain),
-            EmailToken.purpose == purpose,
-        ).with_for_update()
+        select(EmailToken).where(*conditions).with_for_update()
     )
     if row is None or row.used_at is not None or _aware(row.expires_at) <= utcnow():
         raise HTTPException(status_code=400, detail="Invalid or expired token")
@@ -167,7 +187,7 @@ def require_internal_token(x_internal_service_token: str | None = Header(default
         raise HTTPException(status_code=401, detail="Invalid internal service token")
 
 
-@router.post("/register", response_model=TokenPair, status_code=201)
+@router.post("/register", response_model=PendingVerificationResponse, status_code=201)
 def register(
     payload: RegisterRequest,
     request: Request,
@@ -187,18 +207,32 @@ def register(
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="An account with this email already exists") from exc
-    verification = _create_email_token(db, user, "VERIFY_EMAIL", settings.email_token_minutes)
+    verification = _create_email_token(
+        db,
+        user,
+        "VERIFY_EMAIL",
+        settings.email_token_minutes,
+        _six_digit_code(),
+    )
     background.add_task(mailer.send_verification_email, user.email, user.display_name, verification)
-    return _issue_pair(db, user, request)
+    return PendingVerificationResponse(
+        message="На вашу почту отправлен код подтверждения из 6 цифр.",
+        email=user.email,
+    )
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post("/login", response_model=TokenPair | PendingVerificationResponse)
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     user = _user_by_email(db, str(payload.email))
     if user is None:
         verify_password(payload.password, None)
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not user.email_verified:
+        return PendingVerificationResponse(
+            message="Требуется подтверждение email.",
+            email=user.email,
+        )
     return _issue_pair(db, user, request)
 
 
@@ -270,12 +304,21 @@ def me(user: User = Depends(current_user)):
     return user
 
 
-@router.post("/verify-email", response_model=MessageResponse)
-def verify_email(payload: TokenRequest, db: Session = Depends(get_db)):
-    _, user = _consume_email_token(db, payload.token, "VERIFY_EMAIL")
+@router.post("/verify-email", response_model=TokenPair)
+def verify_email(
+    payload: VerifyEmailRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = _user_by_email(db, str(payload.email))
+    if user is None:
+        raise HTTPException(status_code=400, detail="Неверный код подтверждения")
+    if user.email_verified:
+        raise HTTPException(status_code=400, detail="Email уже подтверждён")
+    _consume_email_token(db, payload.code, "VERIFY_EMAIL", user.id)
     user.email_verified = True
     db.commit()
-    return MessageResponse(message="Email verified")
+    return _issue_pair(db, user, request)
 
 
 @router.post("/resend-verification", response_model=MessageResponse)
@@ -286,7 +329,9 @@ def resend_verification(
 ):
     user = _user_by_email(db, str(payload.email))
     if user and not user.email_verified:
-        token = _create_email_token(db, user, "VERIFY_EMAIL", settings.email_token_minutes)
+        token = _create_email_token(
+            db, user, "VERIFY_EMAIL", settings.email_token_minutes, _six_digit_code()
+        )
         background.add_task(mailer.send_verification_email, user.email, user.display_name, token)
     return MessageResponse(message="If the account needs verification, an email has been sent")
 
@@ -299,14 +344,19 @@ def forgot_password(
 ):
     user = _user_by_email(db, str(payload.email))
     if user:
-        token = _create_email_token(db, user, "RESET_PASSWORD", settings.reset_token_minutes)
+        token = _create_email_token(
+            db, user, "RESET_PASSWORD", settings.reset_token_minutes, _six_digit_code()
+        )
         background.add_task(mailer.send_reset_email, user.email, user.display_name, token)
     return MessageResponse(message="If the account exists, a password reset email has been sent")
 
 
 @router.post("/reset-password", response_model=MessageResponse)
 def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
-    _, user = _consume_email_token(db, payload.token, "RESET_PASSWORD")
+    user = _user_by_email(db, str(payload.email))
+    if user is None:
+        raise HTTPException(status_code=400, detail="Неверный код")
+    _consume_email_token(db, payload.code, "RESET_PASSWORD", user.id)
     user.password_hash = hash_password(payload.password)
     db.execute(
         update(RefreshSession)

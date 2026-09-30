@@ -21,6 +21,7 @@
     showPoliticalMap = true,
     user = null,
     onLogin = undefined,
+    onRegister = undefined,
     onProfile = undefined,
     onAdmin = undefined,
     onLogout = undefined,
@@ -108,7 +109,7 @@
         {locale === 'en' ? 'Galaxy view' : 'К галактике'}
       </button>
     {/if}
-    <UserMenu {user} {locale} {onLogin} {onProfile} {onAdmin} {onLogout} />
+    <UserMenu {user} {locale} {onLogin} {onRegister} {onProfile} {onAdmin} {onLogout} />
   </div>
 </header>
 
@@ -284,6 +285,7 @@
     top: 1rem;
     left: 1rem;
     right: 1rem;
+    z-index: 20;
     display: flex;
     gap: 1rem;
     justify-content: space-between;

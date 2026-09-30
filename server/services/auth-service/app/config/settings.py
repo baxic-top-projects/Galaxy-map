@@ -28,8 +28,8 @@ class Settings(BaseSettings):
     jwt_audience: str = "galaxy-services"
     access_token_minutes: int = 15
     refresh_token_days: int = 30
-    email_token_minutes: int = 60
-    reset_token_minutes: int = 30
+    email_token_minutes: int = 15
+    reset_token_minutes: int = 15
     exchange_code_minutes: int = 2
     internal_service_token: SecretStr = SecretStr("")
     frontend_url: AnyHttpUrl = "http://localhost:3000"

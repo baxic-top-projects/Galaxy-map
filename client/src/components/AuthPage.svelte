@@ -4,6 +4,7 @@
     googleLoginUrl,
     login,
     registerAccount,
+    resendVerification,
     resetPassword,
     verifyEmail,
   } from '../lib/auth/authApi.js'
@@ -15,7 +16,8 @@
     onNavigate = undefined,
   } = $props()
 
-  let email = $state('')
+  let email = $state(new URLSearchParams(window.location.search).get('email') || '')
+  let code = $state('')
   let password = $state('')
   let displayName = $state('')
   let busy = $state(false)
@@ -28,21 +30,23 @@
     notice = ''
     try {
       if (mode === 'login') {
-        onAuthenticated?.(await login(email, password))
+        const result = await login(email, password)
+        if (result?.requires_email_verification) {
+          onNavigate?.(`/verify-email?email=${encodeURIComponent(result.email)}`)
+        } else {
+          onAuthenticated?.(result)
+        }
       } else if (mode === 'register') {
-        await registerAccount({ email, password, display_name: displayName })
-        notice = locale === 'en' ? 'Check your email to verify the account.' : 'Проверьте почту для подтверждения аккаунта.'
+        const result = await registerAccount({ email, password, display_name: displayName })
+        onNavigate?.(`/verify-email?email=${encodeURIComponent(result.email)}`)
       } else if (mode === 'forgot') {
         await forgotPassword(email)
-        notice = locale === 'en' ? 'Password reset email sent.' : 'Письмо для сброса пароля отправлено.'
+        onNavigate?.(`/reset-password?email=${encodeURIComponent(email)}`)
       } else if (mode === 'reset') {
-        const token = new URLSearchParams(window.location.search).get('token') || ''
-        await resetPassword(token, password)
+        await resetPassword(email, code, password)
         notice = locale === 'en' ? 'Password changed. You can sign in.' : 'Пароль изменён. Теперь можно войти.'
       } else if (mode === 'verify') {
-        const token = new URLSearchParams(window.location.search).get('token') || ''
-        await verifyEmail(token)
-        notice = locale === 'en' ? 'Email verified.' : 'Email подтверждён.'
+        onAuthenticated?.(await verifyEmail(email, code))
       }
     } catch (err) {
       error = err instanceof Error ? err.message : String(err)
@@ -51,9 +55,19 @@
     }
   }
 
-  $effect(() => {
-    if ((mode === 'verify') && !busy && !notice && !error) submit()
-  })
+  async function resendCode() {
+    busy = true
+    error = ''
+    try {
+      await resendVerification(email)
+      notice = locale === 'en' ? 'A new code was sent.' : 'Новый код отправлен.'
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err)
+    } finally {
+      busy = false
+    }
+  }
+
 </script>
 
 <main class="page">
@@ -71,18 +85,21 @@
               : (locale === 'en' ? 'Sign in' : 'Вход')}
     </h1>
 
-    {#if mode !== 'verify'}
-      <form onsubmit={(event) => { event.preventDefault(); submit() }}>
+    <form onsubmit={(event) => { event.preventDefault(); submit() }}>
         {#if mode === 'register'}
           <label>
             <span>{locale === 'en' ? 'Display name' : 'Имя'}</span>
             <input bind:value={displayName} required minlength="2" autocomplete="name" />
           </label>
         {/if}
-        {#if mode !== 'reset'}
+        <label>
+          <span>Email</span>
+          <input bind:value={email} required type="email" autocomplete="email" />
+        </label>
+        {#if mode === 'reset' || mode === 'verify'}
           <label>
-            <span>Email</span>
-            <input bind:value={email} required type="email" autocomplete="email" />
+            <span>{locale === 'en' ? 'Six-digit code' : 'Шестизначный код'}</span>
+            <input bind:value={code} required pattern="[0-9]{6}" maxlength="6" inputmode="numeric" autocomplete="one-time-code" />
           </label>
         {/if}
         {#if mode === 'login' || mode === 'register' || mode === 'reset'}
@@ -94,7 +111,12 @@
         <button class="primary" disabled={busy} type="submit">
           {busy ? (locale === 'en' ? 'Please wait…' : 'Подождите…') : (locale === 'en' ? 'Continue' : 'Продолжить')}
         </button>
-      </form>
+    </form>
+
+    {#if mode === 'verify'}
+      <button class="link" disabled={busy} type="button" onclick={resendCode}>
+        {locale === 'en' ? 'Send a new code' : 'Отправить новый код'}
+      </button>
     {/if}
 
     {#if mode === 'login'}

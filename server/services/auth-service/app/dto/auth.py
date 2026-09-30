@@ -32,7 +32,14 @@ class TokenRequest(BaseModel):
     token: str = Field(min_length=20)
 
 
-class ResetPasswordRequest(TokenRequest):
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(pattern=r"^\d{6}$")
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(pattern=r"^\d{6}$")
     password: str = Field(min_length=12, max_length=128)
 
 
@@ -84,6 +91,11 @@ class TokenPair(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class PendingVerificationResponse(MessageResponse):
+    email: EmailStr
+    requires_email_verification: bool = True
 
 
 class AuthorizationResponse(BaseModel):
