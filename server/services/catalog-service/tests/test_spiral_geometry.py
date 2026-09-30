@@ -8,8 +8,10 @@ from app.service.spiral_geometry import (
     BLACK_HOLES_PER_ARM,
     ID_PREFIX,
     JUNCTIONS_PER_ARM,
+    OBJECTS_PER_ARM,
     OUTER_RADIUS,
     STARS_PER_ARM,
+    arm_center,
     arm_edges,
     generate_arm_objects,
 )
@@ -34,6 +36,28 @@ def test_spiral_object_counts_and_stable_bounds():
             "black_hole": BLACK_HOLES_PER_ARM,
             "junction": JUNCTIONS_PER_ARM,
         }
+
+
+def test_arm_distribution_is_wide_at_disk_and_tapers_toward_tip():
+    deviations = {"base": [], "tip": []}
+    for obj in generate_arm_objects():
+        progress = (obj.ordinal + 0.5) / OBJECTS_PER_ARM
+        center_x, center_y = arm_center(obj.arm - 1, progress)
+        radius = hypot(center_x, center_y)
+        normal_x = -center_y / radius
+        normal_y = center_x / radius
+        deviation = abs(
+            (obj.x - center_x) * normal_x + (obj.y - center_y) * normal_y
+        )
+        if obj.ordinal < 40:
+            deviations["base"].append(deviation)
+        elif obj.ordinal >= OBJECTS_PER_ARM - 40:
+            deviations["tip"].append(deviation)
+
+    base_mean = sum(deviations["base"]) / len(deviations["base"])
+    tip_mean = sum(deviations["tip"]) / len(deviations["tip"])
+    assert max(deviations["base"]) > 0.05
+    assert base_mean > tip_mean * 2
 
 
 def test_each_arm_is_connected_without_cross_arm_corridors():

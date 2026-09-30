@@ -10,10 +10,12 @@ BLACK_HOLES_PER_ARM = 5
 JUNCTIONS_PER_ARM = 3
 OBJECTS_PER_ARM = STARS_PER_ARM + BLACK_HOLES_PER_ARM + JUNCTIONS_PER_ARM
 INNER_RADIUS = 1.02
-OUTER_RADIUS = 1.70
+OUTER_RADIUS = 1.55
 MAP_LIMIT = 1.80
-SPIRAL_TURN_RADIANS = -1.80
+SPIRAL_TURN_RADIANS = -1.40
 ARM_PHASE_RADIANS = -math.pi / 6
+ARM_HALF_WIDTH_BASE = 0.11
+ARM_HALF_WIDTH_TIP = 0.018
 GENERATOR_SEED = 20260930
 ID_PREFIX = "frontier:"
 
@@ -72,11 +74,17 @@ def generate_arm_objects() -> list[ArmObject]:
             center_x, center_y = arm_center(arm, progress)
             radius = math.hypot(center_x, center_y)
             angle = math.atan2(center_y, center_x)
-            # A narrow deterministic lane around the shared arm curve keeps the
-            # stars organic while the generated background remains aligned.
-            lane = (slot % 3) - 1
-            normal_offset = lane * 0.013 + (_unit_hash(object_id, 0) - 0.5) * 0.009
-            radial_offset = (_unit_hash(object_id, 4) - 0.5) * 0.006
+            # Treat the arm as a curved triangle: its center follows the spiral
+            # while its two sides converge linearly toward the outer tip.
+            half_width = (
+                ARM_HALF_WIDTH_TIP
+                + (ARM_HALF_WIDTH_BASE - ARM_HALF_WIDTH_TIP)
+                * (1.0 - progress)
+            )
+            across_arm = _unit_hash(object_id, 0) * 2.0 - 1.0
+            normal_offset = across_arm * half_width
+            radial_jitter = 0.018 * (1.0 - progress) + 0.006 * progress
+            radial_offset = (_unit_hash(object_id, 4) - 0.5) * radial_jitter
             radius += radial_offset
             x = radius * math.cos(angle) - normal_offset * math.sin(angle)
             y = radius * math.sin(angle) + normal_offset * math.cos(angle)
