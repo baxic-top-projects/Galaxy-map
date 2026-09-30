@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import requests
 from PIL import Image
-from scipy.ndimage import binary_dilation, label
+from scipy.ndimage import binary_dilation, distance_transform_edt, label
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,6 +113,18 @@ def decode_owner(polities: list[dict]) -> np.ndarray:
     for region, indices in indices_by_region.items():
         if len(indices) == 1:
             owner[regions == region] = indices[0]
+
+    missing_owner = owner < 0
+    if np.any(missing_owner):
+        _distance, nearest = distance_transform_edt(
+            missing_owner,
+            return_distances=True,
+            return_indices=True,
+        )
+        owner[missing_owner] = owner[
+            nearest[0][missing_owner],
+            nearest[1][missing_owner],
+        ]
     return owner
 
 
@@ -120,6 +132,8 @@ def visual_owner(owner: np.ndarray, x: float, y: float) -> int | None:
     height, width = owner.shape
     px = round(((x + MAP_LIMIT) / (MAP_LIMIT * 2)) * (width - 1))
     py = round((1 - (y + MAP_LIMIT) / (MAP_LIMIT * 2)) * (height - 1))
+    if 0 <= px < width and 0 <= py < height and owner[py, px] >= 0:
+        return int(owner[py, px])
     for radius in (4, 8, 16, 32):
         values = owner[
             max(0, py - radius):min(height, py + radius + 1),
