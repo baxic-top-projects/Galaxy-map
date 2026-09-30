@@ -252,3 +252,16 @@ export function resolvePolityLabelAnchors(painted, fromSystems, seed, polities) 
   }
   return out
 }
+
+/**
+ * Scale label text by the territory's linear size (sqrt of raster area).
+ * @param {number} area
+ * @param {number} largestArea
+ * @param {number} minSize
+ * @param {number} maxSize
+ */
+export function polityLabelFontSize(area, largestArea, minSize = 8, maxSize = 22) {
+  if (!(area > 0) || !(largestArea > 0)) return minSize
+  const ratio = Math.min(1, area / largestArea)
+  return minSize + (maxSize - minSize) * Math.sqrt(ratio)
+}

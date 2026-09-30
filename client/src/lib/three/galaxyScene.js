@@ -5,6 +5,7 @@ import polityLabelAnchors from '../galaxy/polityLabelAnchors.json'
 import {
   centroidsFromOwnerRaster,
   centroidsFromSystems,
+  polityLabelFontSize,
   resolvePolityLabelAnchors,
 } from '../galaxy/polityTerritoryAnchors.js'
 import { buildSpatialIndex } from '../galaxy/spatialIndex.js'
@@ -981,7 +982,13 @@ async function createPoliticalPlate(galaxy, initialLocale = 'ru') {
     polityLabelAnchors,
     galaxy.polities || [],
   )
-  const labels = createPolityLabelMesh(galaxy, initialLocale, anchors, mapLim)
+  const labels = createPolityLabelMesh(
+    galaxy,
+    initialLocale,
+    anchors,
+    mapLim,
+    territories.userData.territoryAreas || {},
+  )
   group.add(territories, labels)
   group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
   group.userData.labelAnchors = anchors
@@ -1010,6 +1017,7 @@ function createPolityLabelMesh(
   initialLocale = 'ru',
   anchors = polityLabelAnchors,
   mapLim = mapLimitFor(galaxy),
+  territoryAreas = {},
 ) {
   const size = 2048
   const canvas = document.createElement('canvas')
@@ -1018,6 +1026,7 @@ function createPolityLabelMesh(
   const context = canvas.getContext('2d')
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
+  const largestTerritoryArea = Math.max(0, ...Object.values(territoryAreas))
   texture.generateMipmaps = false
   texture.minFilter = THREE.LinearFilter
   texture.magFilter = THREE.LinearFilter
@@ -1033,7 +1042,10 @@ function createPolityLabelMesh(
       const lines = splitLabel(locale === 'en' ? polity.nameEn : polity.nameRu)
       if (!lines.length) continue
       const suzerain = polity.kind === 'suzerain'
-      const fontSize = suzerain ? 22 : 10
+      const fontSize = polityLabelFontSize(
+        territoryAreas[polity.stem] || 0,
+        largestTerritoryArea,
+      )
       const lineHeight = fontSize * 1.12
       const x = anchor[0] * size
       const y = anchor[1] * size
@@ -1286,6 +1298,7 @@ async function createProceduralPoliticalPlate(galaxy) {
   if (!owned.length) {
     const mesh = makePlateMeshFromCanvas(canvas2d, mapLim)
     mesh.userData.labelAnchors = {}
+    mesh.userData.territoryAreas = {}
     return mesh
   }
 
@@ -1300,6 +1313,7 @@ async function createProceduralPoliticalPlate(galaxy) {
   const data = image.data
   const owner = new Int32Array(size * size)
   owner.fill(-1)
+  const territoryAreas = {}
 
   const systemIndex = new Map(owned.map((system, index) => [system.id, index]))
   const systemMeta = owned.map((system) => {
@@ -1370,6 +1384,7 @@ async function createProceduralPoliticalPlate(galaxy) {
       const currentMeta = systemMeta[current]
       const currentStem = currentMeta.polityStem
       if (currentMeta.isWell) continue
+      territoryAreas[currentStem] = (territoryAreas[currentStem] || 0) + 1
 
       const neighborIndexes = []
       if (px > 0) neighborIndexes.push(i - 1)
@@ -1416,6 +1431,7 @@ async function createProceduralPoliticalPlate(galaxy) {
   ctx.putImageData(image, 0, 0)
   const mesh = makePlateMeshFromCanvas(canvas2d, mapLim)
   mesh.userData.labelAnchors = centroidsFromOwnerRaster(owner, systemMeta, size)
+  mesh.userData.territoryAreas = territoryAreas
   return mesh
 }
 

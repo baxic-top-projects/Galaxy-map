@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   centroidsFromOwnerRaster,
   centroidsFromSystems,
+  polityLabelFontSize,
   resolvePolityLabelAnchors,
 } from './polityTerritoryAnchors.js'
 
@@ -52,5 +53,11 @@ describe('polityTerritoryAnchors', () => {
     expect(resolved.A).toEqual([0.1, 0.1])
     expect(resolved.B).toEqual([0.3, 0.3])
     expect(resolved.C).toEqual([0.6, 0.6])
+  })
+
+  test('polityLabelFontSize shrinks with territory area', () => {
+    expect(polityLabelFontSize(10000, 10000)).toBe(22)
+    expect(polityLabelFontSize(2500, 10000)).toBe(15)
+    expect(polityLabelFontSize(0, 10000)).toBe(8)
   })
 })
