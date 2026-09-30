@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
 
-from app.service.catalog_query_service import catalog_query
+from fastapi import APIRouter, Body, HTTPException
+
+from app.service.catalog_query_service import SystemOwnerUpdate, catalog_query
 
 router = APIRouter()
 
@@ -10,6 +12,14 @@ router = APIRouter()
 @router.get("/internal/v1/galaxy")
 def get_galaxy():
     return catalog_query.get_galaxy_index()
+
+
+@router.patch("/internal/v1/systems/{system_id:path}/owner")
+def patch_system_owner(
+    system_id: str,
+    payload: Annotated[SystemOwnerUpdate, Body()],
+):
+    return catalog_query.update_system_owner(system_id, payload.stem.strip())
 
 
 @router.get("/internal/v1/systems/{system_id:path}")

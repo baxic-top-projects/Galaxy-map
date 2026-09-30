@@ -13,10 +13,12 @@
     locale = 'ru',
     focusRequest = null,
     resetToken = 0,
+    ownershipRevision = 0,
   } = $props()
 
   let canvas = $state(null)
   let api = $state(null)
+  let lastOwnershipRevision = 0
 
   onMount(() => {
     let cancelled = false
@@ -35,6 +37,7 @@
         api = null
         return
       }
+      lastOwnershipRevision = ownershipRevision
       if (stormSnapshot) api.setStorms(stormSnapshot)
       api.setPoliticalMap(showPoliticalMap)
     })()
@@ -78,6 +81,15 @@
   $effect(() => {
     if (!api) return
     api.setLocale(locale)
+  })
+
+  $effect(() => {
+    if (!api || ownershipRevision === lastOwnershipRevision) return
+    lastOwnershipRevision = ownershipRevision
+    if (selectedId) {
+      const system = galaxy.byId.get(selectedId)
+      if (system?.stem) api.setSystemOwner(selectedId, system.stem)
+    }
   })
 </script>
 

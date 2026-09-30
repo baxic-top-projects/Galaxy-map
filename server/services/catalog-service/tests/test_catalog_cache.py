@@ -39,11 +39,32 @@ def test_cache_round_trip_and_clear():
     assert cache.get_json("galaxy") is None
 
 
-def test_catalog_uses_cached_payload_without_database():
+def test_catalog_uses_cached_payload_without_database(monkeypatch):
     cache = CatalogCacheService(client=FakeRedis())
     cache.set_json("galaxy", {"systems": [{"id": "cached"}]}, 60)
     cache.set_json("system:id:cached", {"id": "cached", "worlds": []}, 60)
     catalog = CatalogQueryService(cache=cache)
+
+    class FakeSession:
+        def scalars(self, _statement):
+            return []
+
+        def get(self, _model, _key):
+            return None
+
+        def rollback(self):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(
+        "app.service.catalog_query_service.SessionLocal",
+        FakeSession,
+    )
 
     assert catalog.get_galaxy_index()["systems"][0]["id"] == "cached"
     assert catalog.get_system_by_id("cached")["id"] == "cached"

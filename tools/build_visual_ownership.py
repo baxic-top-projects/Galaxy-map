@@ -119,22 +119,34 @@ def decode_owner(polities: list[dict]) -> np.ndarray:
         region = int(regions[py, px])
         if region > 0:
             indices_by_region.setdefault(region, []).append(index)
+    bounded_owner = np.full((height, width), -1, dtype=np.int16)
     for region, indices in indices_by_region.items():
+        mask = regions == region
         if len(indices) == 1:
-            owner[regions == region] = indices[0]
+            bounded_owner[mask] = indices[0]
+        else:
+            bounded_owner[mask] = owner[mask]
 
-    missing_owner = owner < 0
+    missing_owner = bounded_owner < 0
     if np.any(missing_owner):
+        anchor_owner = np.full((height, width), -1, dtype=np.int16)
+        for index, polity in enumerate(polities):
+            anchor = anchors.get(polity["stem"])
+            if not anchor:
+                continue
+            px = round(float(anchor[0]) * (width - 1))
+            py = round(float(anchor[1]) * (height - 1))
+            anchor_owner[py, px] = index
         _distance, nearest = distance_transform_edt(
-            missing_owner,
+            anchor_owner < 0,
             return_distances=True,
             return_indices=True,
         )
-        owner[missing_owner] = owner[
+        bounded_owner[missing_owner] = anchor_owner[
             nearest[0][missing_owner],
             nearest[1][missing_owner],
         ]
-    return owner
+    return bounded_owner
 
 
 def visual_owner(owner: np.ndarray, x: float, y: float) -> int | None:
@@ -159,8 +171,7 @@ def main() -> int:
     galaxy = requests.get(GALAXY_API, timeout=60).json()
     polities = galaxy.get("polities", [])
     owner = decode_owner(polities)
-    anchors = json.loads(LABEL_ANCHORS.read_text(encoding="utf-8"))
-    overrides = {}
+    ownership = {}
     unresolved = []
     for system in galaxy.get("systems", []):
         if (
@@ -174,23 +185,10 @@ def main() -> int:
             unresolved.append(system["id"])
             continue
         stem = polities[index]["stem"]
-        if stem == "Aquarian_Republic":
-            normalized_x = (float(system["x"]) + MAP_LIMIT) / (MAP_LIMIT * 2)
-            normalized_y = (MAP_LIMIT - float(system["y"])) / (MAP_LIMIT * 2)
-            nearest = min(
-                anchors,
-                key=lambda candidate: (
-                    (normalized_x - anchors[candidate][0]) ** 2
-                    + (normalized_y - anchors[candidate][1]) ** 2
-                ),
-            )
-            if nearest == "Astrean_Consortium":
-                stem = "Astrean_Consortium"
-        if stem != system.get("stem"):
-            overrides[system["id"]] = stem
+        ownership[system["id"]] = stem
 
     serialized = json.dumps(
-        overrides,
+        ownership,
         ensure_ascii=False,
         separators=(",", ":"),
         sort_keys=True,
@@ -199,7 +197,7 @@ def main() -> int:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(serialized, encoding="utf-8")
     print(
-        f"Wrote {len(OUTPUTS)} ownership maps: {len(overrides)} corrections, "
+        f"Wrote {len(OUTPUTS)} ownership maps: {len(ownership)} assignments, "
         f"{len(unresolved)} unresolved systems"
     )
     return 0

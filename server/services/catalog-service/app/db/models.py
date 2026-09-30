@@ -66,6 +66,15 @@ class GalaxyMetaRow(Base):
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
 
+class SystemOwnerOverrideRow(Base):
+    """Manual ownership overrides that outrank painted territory ownership."""
+
+    __tablename__ = "system_owner_overrides"
+
+    system_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    stem: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
+
 _engine: Engine | None = None
 _engine_lock = threading.Lock()
 

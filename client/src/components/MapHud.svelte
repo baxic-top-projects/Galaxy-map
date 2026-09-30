@@ -11,6 +11,9 @@
     onLocale = undefined,
     onSearchSelect = undefined,
     onPolityFilter = undefined,
+    onOwnerChange = undefined,
+    ownerSaving = false,
+    ownerError = '',
     onReset = undefined,
     onBackToGalaxy = undefined,
     onPoliticalMap = undefined,
@@ -29,6 +32,9 @@
 
   const selectedPolity = $derived(
     selected?.stem ? galaxy.polityByStem.get(selected.stem) : null,
+  )
+  const canEditOwner = $derived(
+    !!selected && selected.kind !== 'well' && selected.kind !== 'junction',
   )
 </script>
 
@@ -110,6 +116,26 @@
         {selected.kind !== 'junction' ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
       {/if}
     </p>
+    {#if canEditOwner}
+      <label class="owner">
+        <span>{locale === 'en' ? 'Owner polity' : 'Держава-владелец'}</span>
+        <select
+          value={selected.stem || ''}
+          disabled={ownerSaving}
+          onchange={(event) => onOwnerChange?.(selected, event.currentTarget.value)}
+          aria-label={locale === 'en' ? 'Owner polity' : 'Держава-владелец'}
+        >
+          {#each galaxy?.polities || [] as polity}
+            <option value={polity.stem}>{polityLabel(polity, locale)}</option>
+          {/each}
+        </select>
+        {#if ownerSaving}
+          <small>{locale === 'en' ? 'Saving…' : 'Сохранение…'}</small>
+        {:else if ownerError}
+          <small class="error">{ownerError}</small>
+        {/if}
+      </label>
+    {/if}
     {#if detail}
       <dl>
         <div>
@@ -380,6 +406,33 @@
   .panel h3 {
     margin-top: 0.9rem;
     font-size: 0.95rem;
+  }
+
+  .owner {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0.75rem 0 0;
+    font-size: 0.82rem;
+    color: #8ea4c7;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .owner select {
+    width: 100%;
+    text-transform: none;
+    letter-spacing: normal;
+    color: #e8eef8;
+  }
+
+  .owner small {
+    text-transform: none;
+    letter-spacing: normal;
+    color: #9bb0d0;
+  }
+
+  .owner .error {
+    color: #ff8f8f;
   }
 
   dl {

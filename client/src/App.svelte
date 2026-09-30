@@ -6,6 +6,7 @@
   import RealmNavigation from './components/RealmNavigation.svelte'
   import SystemDetailView from './components/SystemDetailView.svelte'
   import { loadGalaxy, loadSystemDetail, systemLabel } from './lib/galaxy/loadGalaxy.js'
+  import { updateSystemOwner } from './lib/galaxy/ownershipApi.js'
   import { estimateZoom } from './lib/galaxy/labelLod.js'
   import { connectStormSocket, stormForSystem } from './lib/galaxy/stormsApi.js'
   import { fetchAssetManifest } from './lib/galaxy/assetsApi.js'
@@ -29,6 +30,9 @@
   let stormSnapshot = $state(null)
   let stormStatus = $state('closed')
   let stormSocket = null
+  let ownerSaving = $state(false)
+  let ownerError = $state('')
+  let ownershipRevision = $state(0)
   const starfieldUrl = $derived(mapTexturePath('system_starfield.png', 'v=2'))
 
   const selectedStorm = $derived(stormForSystem(stormSnapshot, selected?.id))
@@ -136,10 +140,12 @@
 
   function handleSelect(system) {
     selected = system
+    ownerError = ''
   }
 
   function handleEnterSystem(system) {
     selected = system
+    ownerError = ''
     mode = 'system'
   }
 
@@ -147,8 +153,56 @@
     const system = galaxy?.byId.get(entry.id)
     if (!system) return
     selected = system
+    ownerError = ''
     focusRequest = { id: system.id, enterSystem: true }
     mode = 'system'
+  }
+
+  function applyOwnerLocally(systemId, stem) {
+    if (!galaxy) return null
+    const current = galaxy.byId.get(systemId)
+    if (!current) return null
+    const nextSystem = {
+      ...current,
+      canonicalStem: current.canonicalStem || current.stem,
+      stem,
+    }
+    const systems = galaxy.systems.map((system) =>
+      system.id === systemId ? nextSystem : system,
+    )
+    const search = galaxy.search.map((entry) =>
+      entry.id === systemId ? { ...entry, stem } : entry,
+    )
+    galaxy = {
+      ...galaxy,
+      systems,
+      search,
+      byId: new Map(systems.map((system) => [system.id, system])),
+    }
+    return nextSystem
+  }
+
+  async function handleOwnerChange(system, stem) {
+    if (!system || !stem || system.stem === stem || ownerSaving) return
+    ownerSaving = true
+    ownerError = ''
+    try {
+      await updateSystemOwner(system.id, stem)
+      const nextSystem = applyOwnerLocally(system.id, stem)
+      if (nextSystem) selected = nextSystem
+      if (detail?.id === system.id) {
+        detail = {
+          ...detail,
+          canonicalStem: detail.canonicalStem || detail.stem,
+          stem,
+        }
+      }
+      ownershipRevision += 1
+    } catch (err) {
+      ownerError = err instanceof Error ? err.message : String(err)
+    } finally {
+      ownerSaving = false
+    }
   }
 
   function handleLabels(nextLabels, nextZoom) {
@@ -176,6 +230,7 @@
           {stormSnapshot}
           {showPoliticalMap}
           {locale}
+          ownershipRevision={ownershipRevision}
           onSelect={handleSelect}
           onEnterSystem={handleEnterSystem}
           onLabels={handleLabels}
@@ -220,6 +275,8 @@
       {polityFilter}
       {mode}
       {showPoliticalMap}
+      {ownerSaving}
+      {ownerError}
       storm={selectedStorm}
       stormCount={stormSnapshot?.storms?.length || 0}
       {stormStatus}
@@ -230,6 +287,7 @@
         selected = null
         mode = 'galaxy'
       }}
+      onOwnerChange={handleOwnerChange}
       onSearchSelect={handleSearchSelect}
       onReset={() => {
         mode = 'galaxy'

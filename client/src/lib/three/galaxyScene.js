@@ -118,10 +118,11 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   keyLight.position.set(20, -30, 50)
   scene.add(keyLight)
 
-  const [basePlate, plate] = await Promise.all([
+  const [basePlate, initialPlate] = await Promise.all([
     createBasePlate(),
     createPoliticalPlate(galaxy, callbacks.locale),
   ])
+  let plate = initialPlate
   root.add(basePlate, plate)
 
   const positions = new Float32Array(galaxy.systems.length * 3)
@@ -642,7 +643,31 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   }
 
   function setLocale(locale) {
+    callbacks.locale = locale
     plate.userData.setLocale?.(locale)
+  }
+
+  function setSystemOwner(systemId, stem) {
+    const system = galaxy.byId.get(systemId)
+    if (!system || !stem || system.kind === 'well') return
+    system.canonicalStem = system.canonicalStem || system.stem
+    system.stem = stem
+    const wasVisible = plate.visible
+    const locale = callbacks.locale || 'ru'
+    root.remove(plate)
+    plate.traverse((child) => {
+      if (child.geometry) child.geometry.dispose()
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      for (const material of materials) {
+        if (!material) continue
+        if (material.map) material.map.dispose()
+        material.dispose()
+      }
+    })
+    plate = createPoliticalPlate(galaxy, locale)
+    plate.visible = wasVisible
+    root.add(plate)
+    emitLabels()
   }
 
   function focusSystem(system, { enterSystem = false } = {}) {
@@ -903,6 +928,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     setStorms,
     setPoliticalMap,
     setLocale,
+    setSystemOwner,
     resetView,
     dispose,
   }

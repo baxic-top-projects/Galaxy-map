@@ -1,5 +1,3 @@
-import visualOwnership from './visualOwnership.json'
-
 /**
  * @typedef {{ id: string, token: string, stem: string|null, kind: string, nameEn: string, nameRu: string, starTypeKey: string, sectorId: string, capital: boolean, x: number, y: number, z: number, worldCount: number, shard: string }} GalaxySystem
  * @typedef {{ stem: string, nameEn: string, nameRu: string, bloc: string, kind: string, color: string, label: string }} Polity
@@ -116,19 +114,11 @@ export async function loadGalaxy(baseUrl = DEFAULT_API_BASE, { timeoutMs = 20000
     throw new Error(`Failed to load galaxy index: ${response.status}`)
   }
   const data = await response.json()
-  const systems = data.systems.map((system) => {
-    const visualStem = visualOwnership[system.id]
-    if (!visualStem || visualStem === system.stem) return system
-    return { ...system, canonicalStem: system.stem, stem: visualStem }
-  })
-  const ownershipCorrectedSearch = data.search.map((entry) => {
-    const visualStem = visualOwnership[entry.id]
-    return visualStem && visualStem !== entry.stem
-      ? { ...entry, canonicalStem: entry.stem, stem: visualStem }
-      : entry
-  })
+  // Ownership (painted + manual) is applied by catalog-service so the client
+  // does not override a server-assigned stem with a stale local JSON map.
+  const systems = data.systems || []
   const byId = new Map(systems.map((system) => [system.id, system]))
-  const search = uniquifyWorldSearch(ownershipCorrectedSearch)
+  const search = uniquifyWorldSearch(data.search || [])
   const polityByStem = new Map(data.polities.map((polity) => [polity.stem, polity]))
   return {
     ...data,

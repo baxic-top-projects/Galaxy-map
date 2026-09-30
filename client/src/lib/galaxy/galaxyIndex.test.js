@@ -76,17 +76,18 @@ describe('loadGalaxy API client', () => {
     expect(system.worlds[0].token).toBe('Mira')
   })
 
-  test('uses painted territory ownership for mismatched systems', async () => {
+  test('keeps server-provided ownership stems without client remapping', async () => {
     const payload = {
       meta: {},
       polities: [
         { stem: 'Varis_Republic', nameEn: 'Varis Republic' },
-        { stem: 'Tessar_Syndicate', nameEn: 'Tessar Syndicate' },
+        { stem: 'Remar_Federation', nameEn: 'Remar Federation' },
       ],
       systems: [
         {
           id: 'Varis_Republic:Thalyx',
-          stem: 'Varis_Republic',
+          stem: 'Remar_Federation',
+          canonicalStem: 'Varis_Republic',
           token: 'Thalyx',
         },
       ],
@@ -95,7 +96,7 @@ describe('loadGalaxy API client', () => {
       search: [
         {
           id: 'Varis_Republic:Thalyx',
-          stem: 'Varis_Republic',
+          stem: 'Remar_Federation',
           kind: 'system',
         },
       ],

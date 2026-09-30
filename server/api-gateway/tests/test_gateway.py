@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import Body, FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
@@ -114,6 +114,15 @@ def catalog_backend():
             "search": [],
         }
 
+    @backend.patch("/internal/v1/systems/{system_id:path}/owner")
+    def system_owner(system_id: str, stem: str = Body(..., embed=True)):
+        return {
+            "id": system_id,
+            "stem": stem,
+            "canonicalStem": "Miradin_Empire",
+            "token": "MiradinSirius",
+        }
+
     @backend.get("/internal/v1/systems/{system_id:path}")
     def system(system_id: str):
         return {"id": system_id, "token": "MiradinSirius", "worlds": []}
@@ -121,20 +130,20 @@ def catalog_backend():
     return backend
 
 
-def _backend_request(app: FastAPI, method: str, path: str):
+def _backend_request(app: FastAPI, method: str, path: str, *, json=None):
     with TestClient(app) as client:
-        return client.request(method, path)
+        return client.request(method, path, json=json)
 
 
 def _patch_clients(monkeypatch, *, storm_backend, asset_backend, catalog_backend):
-    async def storm_request(method: str, path: str):
+    async def storm_request(method: str, path: str, **_kwargs):
         return _backend_request(storm_backend, method, path)
 
-    async def asset_request(method: str, path: str):
+    async def asset_request(method: str, path: str, **_kwargs):
         return _backend_request(asset_backend, method, path)
 
-    async def catalog_request(method: str, path: str):
-        return _backend_request(catalog_backend, method, path)
+    async def catalog_request(method: str, path: str, **kwargs):
+        return _backend_request(catalog_backend, method, path, json=kwargs.get("json"))
 
     monkeypatch.setattr(storm_client_service.storm_client, "request", storm_request)
     monkeypatch.setattr(asset_client_service.asset_client, "request", asset_request)
@@ -182,3 +191,11 @@ def test_gateway_proxies_storm_asset_and_catalog(monkeypatch, storm_backend, ass
     system = client.get("/api/v1/systems/Miradin_Empire:MiradinSirius")
     assert system.status_code == 200
     assert system.json()["token"] == "MiradinSirius"
+
+    owner = client.patch(
+        "/api/v1/systems/Miradin_Empire:MiradinSirius/owner",
+        json={"stem": "Efol_Raih"},
+    )
+    assert owner.status_code == 200, owner.text
+    assert owner.json()["stem"] == "Efol_Raih"
+    assert owner.json()["canonicalStem"] == "Miradin_Empire"
