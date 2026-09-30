@@ -2,6 +2,11 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { mapTexturePath, starColor } from '../galaxy/modelCatalog.js'
 import polityLabelAnchors from '../galaxy/polityLabelAnchors.json'
+import {
+  centroidsFromOwnerRaster,
+  centroidsFromSystems,
+  resolvePolityLabelAnchors,
+} from '../galaxy/polityTerritoryAnchors.js'
 import { buildSpatialIndex } from '../galaxy/spatialIndex.js'
 import { estimateZoom, pickLabels } from '../galaxy/labelLod.js'
 
@@ -951,12 +956,19 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 }
 
 function createPoliticalPlate(galaxy, initialLocale = 'ru') {
-  const labels = createPolityLabelMesh(galaxy, initialLocale)
   const group = new THREE.Group()
   const territories = createProceduralPoliticalPlate(galaxy)
   territories.renderOrder = -90
+  const anchors = resolvePolityLabelAnchors(
+    territories.userData.labelAnchors || {},
+    centroidsFromSystems(galaxy, MAP_LIM),
+    polityLabelAnchors,
+    galaxy.polities || [],
+  )
+  const labels = createPolityLabelMesh(galaxy, initialLocale, anchors)
   group.add(territories, labels)
   group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
+  group.userData.labelAnchors = anchors
   return group
 }
 
@@ -977,7 +989,7 @@ function splitLabel(text) {
   return [words.slice(0, best).join(' '), words.slice(best).join(' ')]
 }
 
-function createPolityLabelMesh(galaxy, initialLocale = 'ru') {
+function createPolityLabelMesh(galaxy, initialLocale = 'ru', anchors = polityLabelAnchors) {
   const size = 2048
   const canvas = document.createElement('canvas')
   canvas.width = size
@@ -995,7 +1007,7 @@ function createPolityLabelMesh(galaxy, initialLocale = 'ru') {
     context.textBaseline = 'middle'
     context.lineJoin = 'round'
     for (const polity of galaxy.polities || []) {
-      const anchor = polityLabelAnchors[polity.stem]
+      const anchor = anchors[polity.stem]
       if (!anchor) continue
       const lines = splitLabel(locale === 'en' ? polity.nameEn : polity.nameRu)
       if (!lines.length) continue
@@ -1227,7 +1239,11 @@ function createProceduralPoliticalPlate(galaxy) {
       system.kind === 'well' ||
       (system.stem && (system.kind === 'star' || system.kind === 'black_hole')),
   )
-  if (!owned.length) return makePlateMeshFromCanvas(canvas2d)
+  if (!owned.length) {
+    const mesh = makePlateMeshFromCanvas(canvas2d)
+    mesh.userData.labelAnchors = {}
+    return mesh
+  }
 
   const spatial = buildSpatialIndex(owned)
 
@@ -1299,7 +1315,9 @@ function createProceduralPoliticalPlate(galaxy) {
   }
 
   ctx.putImageData(image, 0, 0)
-  return makePlateMeshFromCanvas(canvas2d)
+  const mesh = makePlateMeshFromCanvas(canvas2d)
+  mesh.userData.labelAnchors = centroidsFromOwnerRaster(owner, systemMeta, size)
+  return mesh
 }
 
 function makePlateMeshFromCanvas(canvas2d) {
