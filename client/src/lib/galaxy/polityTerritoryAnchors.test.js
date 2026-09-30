@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   centroidsFromOwnerRaster,
   centroidsFromSystems,
+  fitLabelFontToClearance,
   polityLabelFontSize,
   resolvePolityLabelAnchors,
 } from './polityTerritoryAnchors.js'
@@ -59,5 +60,10 @@ describe('polityTerritoryAnchors', () => {
     expect(polityLabelFontSize(10000, 10000)).toBe(22)
     expect(polityLabelFontSize(2500, 10000)).toBe(15)
     expect(polityLabelFontSize(0, 10000)).toBe(8)
+  })
+
+  test('fitLabelFontToClearance keeps long text inside the territory', () => {
+    expect(fitLabelFontToClearance(22, 20, 10, 2)).toBeCloseTo(3.2, 1)
+    expect(fitLabelFontToClearance(22, 200, 10, 2)).toBe(22)
   })
 })

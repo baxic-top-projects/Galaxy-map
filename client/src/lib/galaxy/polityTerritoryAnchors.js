@@ -8,9 +8,10 @@
  * @param {Int32Array|number[]} owner owner[i] = system index or -1
  * @param {{ polityStem: string }[]} systemMeta
  * @param {number} size square raster edge
+ * @param {Record<string, { clearancePx: number, componentAreaPx: number }>} [metrics]
  * @returns {Record<string, [number, number]>}
  */
-export function centroidsFromOwnerRaster(owner, systemMeta, size) {
+export function centroidsFromOwnerRaster(owner, systemMeta, size, metrics = {}) {
   /** @type {Map<string, number>} */
   const stemIds = new Map()
   /** @type {string[]} */
@@ -196,6 +197,10 @@ export function centroidsFromOwnerRaster(owner, systemMeta, size) {
       (bestPixel % size) / denom,
       ((bestPixel / size) | 0) / denom,
     ]
+    metrics[stems[stemId]] = {
+      clearancePx: bestScore + 1,
+      componentAreaPx: bestCount,
+    }
   }
 
   return anchors
@@ -264,4 +269,23 @@ export function polityLabelFontSize(area, largestArea, minSize = 8, maxSize = 22
   if (!(area > 0) || !(largestArea > 0)) return minSize
   const ratio = Math.min(1, area / largestArea)
   return minSize + (maxSize - minSize) * Math.sqrt(ratio)
+}
+
+/**
+ * Restrict a label to the largest centered rectangle that fits in its
+ * inscribed territory circle.
+ */
+export function fitLabelFontToClearance(
+  preferredSize,
+  clearancePx,
+  widthPerFontPx,
+  lineCount,
+  minSize = 3,
+) {
+  if (!(clearancePx > 0) || !(widthPerFontPx > 0) || !(lineCount > 0)) {
+    return minSize
+  }
+  const footprintPerFontPx = Math.hypot(widthPerFontPx, lineCount * 1.12)
+  const fitted = (clearancePx * 2 * 0.82) / footprintPerFontPx
+  return Math.max(minSize, Math.min(preferredSize, fitted))
 }

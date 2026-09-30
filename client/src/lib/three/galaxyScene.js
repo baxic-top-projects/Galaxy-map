@@ -5,6 +5,7 @@ import polityLabelAnchors from '../galaxy/polityLabelAnchors.json'
 import {
   centroidsFromOwnerRaster,
   centroidsFromSystems,
+  fitLabelFontToClearance,
   polityLabelFontSize,
   resolvePolityLabelAnchors,
 } from '../galaxy/polityTerritoryAnchors.js'
@@ -988,6 +989,8 @@ async function createPoliticalPlate(galaxy, initialLocale = 'ru') {
     anchors,
     mapLim,
     territories.userData.territoryAreas || {},
+    territories.userData.labelMetrics || {},
+    territories.userData.rasterSize || 1,
   )
   group.add(territories, labels)
   group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
@@ -1018,6 +1021,8 @@ function createPolityLabelMesh(
   anchors = polityLabelAnchors,
   mapLim = mapLimitFor(galaxy),
   territoryAreas = {},
+  labelMetrics = {},
+  territoryRasterSize = 1,
 ) {
   const size = 2048
   const canvas = document.createElement('canvas')
@@ -1042,16 +1047,31 @@ function createPolityLabelMesh(
       const lines = splitLabel(locale === 'en' ? polity.nameEn : polity.nameRu)
       if (!lines.length) continue
       const suzerain = polity.kind === 'suzerain'
-      const fontSize = polityLabelFontSize(
+      const preferredFontSize = polityLabelFontSize(
         territoryAreas[polity.stem] || 0,
         largestTerritoryArea,
+      )
+      const weight = suzerain ? 700 : 400
+      context.font = `${weight} 100px "Segoe UI", Arial, sans-serif`
+      const widthPerFontPx =
+        Math.max(...lines.map((line) => context.measureText(line).width)) / 100
+      const clearanceCanvasPx =
+        ((labelMetrics[polity.stem]?.clearancePx || 0) / territoryRasterSize) * size
+      const fontSize = fitLabelFontToClearance(
+        preferredFontSize,
+        clearanceCanvasPx,
+        widthPerFontPx,
+        lines.length,
       )
       const lineHeight = fontSize * 1.12
       const x = anchor[0] * size
       const y = anchor[1] * size
-      context.font = `${suzerain ? 700 : 400} ${fontSize}px "Segoe UI", Arial, sans-serif`
+      context.font = `${weight} ${fontSize}px "Segoe UI", Arial, sans-serif`
       context.strokeStyle = 'rgba(0, 0, 0, 0.86)'
-      context.lineWidth = suzerain ? 5 : 4
+      context.lineWidth = Math.max(
+        1,
+        Math.min(suzerain ? 5 : 4, fontSize * 0.28),
+      )
       context.fillStyle = '#ffffff'
       lines.forEach((line, index) => {
         const lineY = y + (index - (lines.length - 1) / 2) * lineHeight
@@ -1299,6 +1319,8 @@ async function createProceduralPoliticalPlate(galaxy) {
     const mesh = makePlateMeshFromCanvas(canvas2d, mapLim)
     mesh.userData.labelAnchors = {}
     mesh.userData.territoryAreas = {}
+    mesh.userData.labelMetrics = {}
+    mesh.userData.rasterSize = size
     return mesh
   }
 
@@ -1430,8 +1452,16 @@ async function createProceduralPoliticalPlate(galaxy) {
 
   ctx.putImageData(image, 0, 0)
   const mesh = makePlateMeshFromCanvas(canvas2d, mapLim)
-  mesh.userData.labelAnchors = centroidsFromOwnerRaster(owner, systemMeta, size)
+  const labelMetrics = {}
+  mesh.userData.labelAnchors = centroidsFromOwnerRaster(
+    owner,
+    systemMeta,
+    size,
+    labelMetrics,
+  )
   mesh.userData.territoryAreas = territoryAreas
+  mesh.userData.labelMetrics = labelMetrics
+  mesh.userData.rasterSize = size
   return mesh
 }
 
