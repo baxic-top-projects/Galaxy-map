@@ -114,6 +114,7 @@ class CatalogQueryService:
 
     def get_galaxy_index(self) -> dict:
         with SessionLocal() as session:
+            cache_generation = self.cache.generation
             manual = _manual_overrides(session)
             cached = self.cache.get_json("galaxy")
             if cached is not None:
@@ -159,12 +160,18 @@ class CatalogQueryService:
                 "search": search,
             }
             # Cache the catalog without overlays so manual ownership stays live.
-            self.cache.set_json("galaxy", result, settings.redis_galaxy_ttl_seconds)
+            self.cache.set_json(
+                "galaxy",
+                result,
+                settings.redis_galaxy_ttl_seconds,
+                expected_generation=cache_generation,
+            )
             return _apply_galaxy_ownership(result, manual=manual)
 
     def get_system_by_id(self, system_id: str) -> dict:
         key = f"system:id:{system_id}"
         with SessionLocal() as session:
+            cache_generation = self.cache.generation
             manual = _manual_overrides(session)
             cached = self.cache.get_json(key)
             if cached is not None:
@@ -172,7 +179,12 @@ class CatalogQueryService:
             row = session.get(SystemRow, system_id)
             if row is None:
                 raise HTTPException(status_code=404, detail="System not found")
-            self.cache.set_json(key, row.detail, settings.redis_system_ttl_seconds)
+            self.cache.set_json(
+                key,
+                row.detail,
+                settings.redis_system_ttl_seconds,
+                expected_generation=cache_generation,
+            )
             return _apply_system_ownership(row.detail, manual=manual)
 
     def get_system_by_shard(self, shard: str) -> dict:
@@ -181,6 +193,7 @@ class CatalogQueryService:
             normalized = f"systems/{normalized}"
         key = f"system:shard:{normalized}"
         with SessionLocal() as session:
+            cache_generation = self.cache.generation
             manual = _manual_overrides(session)
             cached = self.cache.get_json(key)
             if cached is not None:
@@ -192,7 +205,12 @@ class CatalogQueryService:
                 row = session.scalar(select(SystemRow).where(SystemRow.shard.endswith(bare)))
             if row is None:
                 raise HTTPException(status_code=404, detail="System shard not found")
-            self.cache.set_json(key, row.detail, settings.redis_system_ttl_seconds)
+            self.cache.set_json(
+                key,
+                row.detail,
+                settings.redis_system_ttl_seconds,
+                expected_generation=cache_generation,
+            )
             return _apply_system_ownership(row.detail, manual=manual)
 
     def update_system_owner(self, system_id: str, stem: str) -> dict:

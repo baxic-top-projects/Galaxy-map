@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from typing import Any
 
 from redis import Redis
@@ -20,6 +21,8 @@ class CatalogCacheService:
     def __init__(self, url: str = "", client: Redis | None = None):
         self._enabled = bool(url or client)
         self._client = client
+        self._generation = 0
+        self._lock = threading.Lock()
         if self._client is None and url:
             self._client = Redis.from_url(
                 url,
@@ -33,6 +36,11 @@ class CatalogCacheService:
     def enabled(self) -> bool:
         return self._enabled
 
+    @property
+    def generation(self) -> int:
+        with self._lock:
+            return self._generation
+
     def get_json(self, key: str) -> Any | None:
         if self._client is None:
             return None
@@ -43,27 +51,42 @@ class CatalogCacheService:
             logger.warning("Redis cache read failed for %s: %s", key, exc)
             return None
 
-    def set_json(self, key: str, value: Any, ttl_seconds: int) -> None:
+    def set_json(
+        self,
+        key: str,
+        value: Any,
+        ttl_seconds: int,
+        *,
+        expected_generation: int | None = None,
+    ) -> None:
         if self._client is None:
             return
         try:
-            self._client.set(
-                f"{self.namespace}:{key}",
-                json.dumps(value, ensure_ascii=False, separators=(",", ":")),
-                ex=max(1, ttl_seconds),
-            )
+            with self._lock:
+                if (
+                    expected_generation is not None
+                    and expected_generation != self._generation
+                ):
+                    return
+                self._client.set(
+                    f"{self.namespace}:{key}",
+                    json.dumps(value, ensure_ascii=False, separators=(",", ":")),
+                    ex=max(1, ttl_seconds),
+                )
         except (RedisError, TypeError, ValueError) as exc:
             logger.warning("Redis cache write failed for %s: %s", key, exc)
 
     def clear(self) -> None:
-        if self._client is None:
-            return
-        try:
-            keys = list(self._client.scan_iter(match=f"{self.namespace}:*"))
-            if keys:
-                self._client.delete(*keys)
-        except RedisError as exc:
-            logger.warning("Redis cache invalidation failed: %s", exc)
+        with self._lock:
+            self._generation += 1
+            if self._client is None:
+                return
+            try:
+                keys = list(self._client.scan_iter(match=f"{self.namespace}:*"))
+                if keys:
+                    self._client.delete(*keys)
+            except RedisError as exc:
+                logger.warning("Redis cache invalidation failed: %s", exc)
 
     def status(self) -> str:
         if self._client is None:

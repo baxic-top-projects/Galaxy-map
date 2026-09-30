@@ -39,6 +39,21 @@ def test_cache_round_trip_and_clear():
     assert cache.get_json("galaxy") is None
 
 
+def test_cache_does_not_restore_stale_value_after_clear():
+    cache = CatalogCacheService(client=FakeRedis())
+    generation = cache.generation
+
+    cache.clear()
+    cache.set_json(
+        "galaxy",
+        {"systems": [{"id": "stale"}]},
+        60,
+        expected_generation=generation,
+    )
+
+    assert cache.get_json("galaxy") is None
+
+
 def test_catalog_uses_cached_payload_without_database(monkeypatch):
     cache = CatalogCacheService(client=FakeRedis())
     cache.set_json("galaxy", {"systems": [{"id": "cached"}]}, 60)

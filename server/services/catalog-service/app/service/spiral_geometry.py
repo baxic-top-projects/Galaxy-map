@@ -14,8 +14,8 @@ OUTER_RADIUS = 1.55
 MAP_LIMIT = 1.80
 SPIRAL_TURN_RADIANS = 1.00
 ARM_PHASE_RADIANS = math.pi / 18
-ARM_HALF_WIDTH_BASE = 0.11
-ARM_HALF_WIDTH_TIP = 0.018
+ARM_HALF_WIDTH_BASE = 0.18
+ARM_HALF_WIDTH_TIP = 0.035
 GENERATOR_SEED = 20260930
 ID_PREFIX = "frontier:"
 
@@ -118,10 +118,40 @@ def arm_edges(objects: list[ArmObject]) -> set[tuple[str, str]]:
     edges: set[tuple[str, str]] = set()
     for arm_objects in by_arm.values():
         ordered = sorted(arm_objects, key=lambda item: item.ordinal)
-        for left, right in zip(ordered, ordered[1:]):
-            edges.add(tuple(sorted((left.id, right.id))))
-        # Sparse short loops make each arm resilient without drawing long
-        # cross-galaxy lines.
-        for index in range(0, len(ordered) - 3, 9):
-            edges.add(tuple(sorted((ordered[index].id, ordered[index + 3].id))))
+        # A minimum spanning tree connects the two-dimensional arm cloud with
+        # local links instead of drawing one long stripe through every object.
+        connected = {0}
+        remaining = set(range(1, len(ordered)))
+        while remaining:
+            _, left_index, right_index = min(
+                (
+                    (ordered[left].x - ordered[right].x) ** 2
+                    + (ordered[left].y - ordered[right].y) ** 2,
+                    left,
+                    right,
+                )
+                for left in connected
+                for right in remaining
+            )
+            edges.add(
+                tuple(sorted((ordered[left_index].id, ordered[right_index].id)))
+            )
+            connected.add(right_index)
+            remaining.remove(right_index)
+
+        # Add two local neighbors per object to form short branches and loops
+        # across the arm width while keeping every corridor inside one arm.
+        for index, obj in enumerate(ordered):
+            nearest = sorted(
+                (
+                    (
+                        (obj.x - other.x) ** 2 + (obj.y - other.y) ** 2,
+                        other.id,
+                    )
+                    for other_index, other in enumerate(ordered)
+                    if other_index != index
+                ),
+            )[:2]
+            for _, neighbor_id in nearest:
+                edges.add(tuple(sorted((obj.id, neighbor_id))))
     return edges
