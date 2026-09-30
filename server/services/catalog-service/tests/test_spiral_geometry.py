@@ -21,7 +21,7 @@ def test_spiral_object_counts_and_stable_bounds():
     first = generate_arm_objects()
     second = generate_arm_objects()
     assert first == second
-    assert len(first) == 632
+    assert len(first) == ARM_COUNT * OBJECTS_PER_ARM
     assert len({obj.id for obj in first}) == len(first)
     assert all(obj.id.startswith(ID_PREFIX) for obj in first)
     assert max(hypot(obj.x, obj.y) for obj in first) <= OUTER_RADIUS + 0.02

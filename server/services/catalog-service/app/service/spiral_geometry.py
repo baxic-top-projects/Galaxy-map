@@ -5,9 +5,9 @@ import math
 from dataclasses import dataclass
 
 ARM_COUNT = 4
-STARS_PER_ARM = 150
-BLACK_HOLES_PER_ARM = 5
-JUNCTIONS_PER_ARM = 3
+STARS_PER_ARM = 720
+BLACK_HOLES_PER_ARM = 24
+JUNCTIONS_PER_ARM = 14
 OBJECTS_PER_ARM = STARS_PER_ARM + BLACK_HOLES_PER_ARM + JUNCTIONS_PER_ARM
 INNER_RADIUS = 1.02
 OUTER_RADIUS = 1.55
@@ -19,8 +19,15 @@ ARM_HALF_WIDTH_TIP = 0.035
 GENERATOR_SEED = 20260930
 ID_PREFIX = "frontier:"
 
-_BLACK_HOLE_SLOTS = frozenset({18, 48, 82, 118, 146})
-_JUNCTION_SLOTS = frozenset({38, 78, 124})
+_BLACK_HOLE_SLOTS = frozenset(
+    int((index + 0.5) * OBJECTS_PER_ARM / BLACK_HOLES_PER_ARM)
+    for index in range(BLACK_HOLES_PER_ARM)
+)
+_JUNCTION_SLOTS = frozenset(
+    int((index + 0.5) * OBJECTS_PER_ARM / JUNCTIONS_PER_ARM)
+    for index in range(JUNCTIONS_PER_ARM)
+)
+assert _BLACK_HOLE_SLOTS.isdisjoint(_JUNCTION_SLOTS)
 _STAR_TYPES = ("class_m", "class_k", "class_g", "class_f", "class_a", "class_b")
 
 
@@ -118,30 +125,44 @@ def arm_edges(objects: list[ArmObject]) -> set[tuple[str, str]]:
     edges: set[tuple[str, str]] = set()
     for arm_objects in by_arm.values():
         ordered = sorted(arm_objects, key=lambda item: item.ordinal)
-        # A minimum spanning tree connects the two-dimensional arm cloud with
-        # local links instead of drawing one long stripe through every object.
-        connected = {0}
-        remaining = set(range(1, len(ordered)))
-        while remaining:
-            _, left_index, right_index = min(
+        # Connect the cloud with an O(n²) Prim tree. This avoids both a single
+        # striped chain and long first-to-second links across the broad base.
+        count = len(ordered)
+        in_tree = [False] * count
+        best_distance = [math.inf] * count
+        best_parent = [-1] * count
+        best_distance[0] = 0.0
+        for _ in range(count):
+            current = min(
                 (
-                    (ordered[left].x - ordered[right].x) ** 2
-                    + (ordered[left].y - ordered[right].y) ** 2,
-                    left,
-                    right,
+                    best_distance[index],
+                    ordered[index].id,
+                    index,
                 )
-                for left in connected
-                for right in remaining
-            )
-            edges.add(
-                tuple(sorted((ordered[left_index].id, ordered[right_index].id)))
-            )
-            connected.add(right_index)
-            remaining.remove(right_index)
+                for index in range(count)
+                if not in_tree[index]
+            )[2]
+            in_tree[current] = True
+            parent = best_parent[current]
+            if parent >= 0:
+                edges.add(
+                    tuple(sorted((ordered[current].id, ordered[parent].id)))
+                )
+            for candidate in range(count):
+                if in_tree[candidate]:
+                    continue
+                distance = (
+                    (ordered[current].x - ordered[candidate].x) ** 2
+                    + (ordered[current].y - ordered[candidate].y) ** 2
+                )
+                if distance < best_distance[candidate]:
+                    best_distance[candidate] = distance
+                    best_parent[candidate] = current
 
-        # Add two local neighbors per object to form short branches and loops
-        # across the arm width while keeping every corridor inside one arm.
+        lookaround = 32
         for index, obj in enumerate(ordered):
+            # Add two local neighbors to create branches and short loops across
+            # the arm width instead of a single visible corridor stripe.
             nearest = sorted(
                 (
                     (
@@ -150,6 +171,7 @@ def arm_edges(objects: list[ArmObject]) -> set[tuple[str, str]]:
                     )
                     for other_index, other in enumerate(ordered)
                     if other_index != index
+                    and abs(other_index - index) <= lookaround
                 ),
             )[:2]
             for _, neighbor_id in nearest:
