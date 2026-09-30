@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import Any
 
 from aiokafka import AIOKafkaProducer
@@ -10,6 +11,8 @@ from app.config.settings import Settings, settings
 
 logger = logging.getLogger(__name__)
 
+_RECONNECT_INTERVAL_S = 30.0
+
 
 class StormKafkaPublisher:
     """Async Kafka publisher for storm snapshots."""
@@ -17,6 +20,7 @@ class StormKafkaPublisher:
     def __init__(self, app_settings: Settings):
         self._settings = app_settings
         self._producer: AIOKafkaProducer | None = None
+        self._last_start_attempt: float | None = None
 
     @property
     def enabled(self) -> bool:
@@ -26,6 +30,7 @@ class StormKafkaPublisher:
         if not self.enabled:
             logger.info("Kafka publisher disabled")
             return
+        self._last_start_attempt = time.monotonic()
         producer = AIOKafkaProducer(
             bootstrap_servers=self._settings.kafka_bootstrap_servers,
             acks="all",
@@ -51,7 +56,13 @@ class StormKafkaPublisher:
             self._settings.kafka_topic,
         )
 
+    def _should_retry_start(self) -> bool:
+        if not self.enabled or self._last_start_attempt is None:
+            return False
+        return time.monotonic() - self._last_start_attempt >= _RECONNECT_INTERVAL_S
+
     async def stop(self) -> None:
+        self._last_start_attempt = None
         if not self._producer:
             return
         try:
@@ -63,6 +74,8 @@ class StormKafkaPublisher:
 
     async def publish_snapshot(self, payload: dict[str, Any]) -> None:
         """Publish snapshot; swallow errors so WS path stays healthy."""
+        if not self._producer and self._should_retry_start():
+            await self.start()
         if not self._producer:
             return
         try:
