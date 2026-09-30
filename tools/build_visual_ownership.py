@@ -14,7 +14,16 @@ from scipy.ndimage import binary_dilation, distance_transform_edt, label
 
 ROOT = Path(__file__).resolve().parents[1]
 CANON_ASSETS = ROOT.parent / "EfolsMiradinsPact" / "assets"
-OUTPUT = ROOT / "client" / "src" / "lib" / "galaxy" / "visualOwnership.json"
+OUTPUTS = (
+    ROOT / "client" / "src" / "lib" / "galaxy" / "visualOwnership.json",
+    ROOT
+    / "server"
+    / "services"
+    / "catalog-service"
+    / "app"
+    / "data"
+    / "visual_ownership.json",
+)
 LABEL_ANCHORS = ROOT / "client" / "src" / "lib" / "galaxy" / "polityLabelAnchors.json"
 TERRITORY_MAP = CANON_ASSETS / "galaxy_territory_plate.png"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
@@ -180,12 +189,17 @@ def main() -> int:
         if stem != system.get("stem"):
             overrides[system["id"]] = stem
 
-    OUTPUT.write_text(
-        json.dumps(overrides, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
-        encoding="utf-8",
+    serialized = json.dumps(
+        overrides,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
     )
+    for output in OUTPUTS:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(serialized, encoding="utf-8")
     print(
-        f"Wrote {OUTPUT}: {len(overrides)} ownership corrections, "
+        f"Wrote {len(OUTPUTS)} ownership maps: {len(overrides)} corrections, "
         f"{len(unresolved)} unresolved systems"
     )
     return 0

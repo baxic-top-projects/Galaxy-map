@@ -10,11 +10,6 @@ const MAP_LIM = 1.06
 const textureLoader = new THREE.TextureLoader()
 textureLoader.setCrossOrigin('anonymous')
 
-function territoryPlateUrl() {
-  // Resolve at use-time so applyAssetManifest / VITE_ASSETS_BASE are already applied.
-  return mapTexturePath('galaxy_territory_plate.png', 'v=10')
-}
-
 function basePlateUrl() {
   return mapTexturePath('galaxy_base_plate.png', 'v=4')
 }
@@ -915,22 +910,12 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 
 function createPoliticalPlate(galaxy, initialLocale = 'ru') {
   const labels = createPolityLabelMesh(galaxy, initialLocale)
-  return loadTexture(territoryPlateUrl(), { crisp: true })
-    .then((texture) => {
-      const group = new THREE.Group()
-      const territories = makePlateMeshFromTexture(texture)
-      territories.renderOrder = -90
-      group.add(territories, labels)
-      group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
-      return group
-    })
-    .catch((err) => {
-      console.warn('Galaxy territory plate failed, using procedural fallback', err)
-      const group = new THREE.Group()
-      group.add(createProceduralPoliticalPlate(galaxy), labels)
-      group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
-      return group
-    })
+  const group = new THREE.Group()
+  const territories = createProceduralPoliticalPlate(galaxy)
+  territories.renderOrder = -90
+  group.add(territories, labels)
+  group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
+  return group
 }
 
 function splitLabel(text) {
@@ -1189,26 +1174,16 @@ function createProceduralPoliticalPlate(galaxy) {
   canvas2d.width = size
   canvas2d.height = size
   const ctx = canvas2d.getContext('2d')
-  ctx.fillStyle = '#05070f'
-  ctx.fillRect(0, 0, size, size)
 
   const cx = size / 2
   const cy = size / 2
   const diskR = size * 0.48
   const lim = MAP_LIM
 
-  const arms = ctx.createRadialGradient(cx, cy, diskR * 0.04, cx, cy, diskR)
-  arms.addColorStop(0, 'rgba(255, 210, 140, 0.18)')
-  arms.addColorStop(0.25, 'rgba(150, 95, 145, 0.10)')
-  arms.addColorStop(0.6, 'rgba(60, 90, 150, 0.07)')
-  arms.addColorStop(1, 'rgba(5, 7, 15, 0)')
-  ctx.fillStyle = arms
-  ctx.beginPath()
-  ctx.arc(cx, cy, diskR, 0, Math.PI * 2)
-  ctx.fill()
-
   const owned = galaxy.systems.filter(
-    (system) => system.kind === 'star' || system.kind === 'black_hole',
+    (system) =>
+      system.kind === 'well' ||
+      (system.stem && (system.kind === 'star' || system.kind === 'black_hole')),
   )
   if (!owned.length) return makePlateMeshFromCanvas(canvas2d)
 
@@ -1221,10 +1196,11 @@ function createProceduralPoliticalPlate(galaxy) {
 
   const systemIndex = new Map(owned.map((system, index) => [system.id, index]))
   const systemMeta = owned.map((system) => {
-    const polity = system.stem ? galaxy.polityByStem.get(system.stem) : null
-    const color = new THREE.Color(polity?.color || '#7aa0c8')
+    const neutral = system.kind === 'well'
+    const polity = !neutral && system.stem ? galaxy.polityByStem.get(system.stem) : null
+    const color = new THREE.Color(neutral ? '#667080' : polity?.color || '#7aa0c8')
     return {
-      polityStem: system.stem || '',
+      polityStem: neutral ? '__neutral__' : system.stem,
       r: Math.round(color.r * 255),
       g: Math.round(color.g * 255),
       b: Math.round(color.b * 255),
