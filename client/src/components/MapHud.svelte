@@ -33,9 +33,7 @@
   const selectedPolity = $derived(
     selected?.stem ? galaxy.polityByStem.get(selected.stem) : null,
   )
-  const canEditOwner = $derived(
-    !!selected && selected.kind !== 'well' && selected.kind !== 'junction',
-  )
+  const canEditOwner = $derived(!!selected && selected.kind !== 'well')
 </script>
 
 <header class="hud-top">

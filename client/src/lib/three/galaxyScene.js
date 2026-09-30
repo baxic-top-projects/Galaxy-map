@@ -1233,11 +1233,23 @@ function createProceduralPoliticalPlate(galaxy) {
   const cy = size / 2
   const diskR = size * 0.48
   const lim = MAP_LIM
+  // Fixed claim radius around every host system (stars, black holes, junctions).
+  // Large enough to keep interior cells contiguous (NN ~0.02–0.04), small enough
+  // that rim fill hugs the constellation instead of the circular galaxy disk.
+  const claimR = 0.034
+  const claimFadeW = claimR * 0.22
+  // Systems this close to the Axis Well use full Voronoi cells so claim-radius
+  // circles do not leave arc-shaped traces beside the well.
+  const wellRingR = 0.2
+  const centerZoneR = 0.14
 
   const owned = galaxy.systems.filter(
     (system) =>
       system.kind === 'well' ||
-      (system.stem && (system.kind === 'star' || system.kind === 'black_hole')),
+      (system.stem &&
+        (system.kind === 'star' ||
+          system.kind === 'black_hole' ||
+          system.kind === 'junction')),
   )
   if (!owned.length) {
     const mesh = makePlateMeshFromCanvas(canvas2d)
@@ -1246,6 +1258,9 @@ function createProceduralPoliticalPlate(galaxy) {
   }
 
   const spatial = buildSpatialIndex(owned)
+  const wellSystem = owned.find((system) => system.kind === 'well') || null
+  const wellX = wellSystem?.x || 0
+  const wellY = wellSystem?.y || 0
 
   const image = ctx.createImageData(size, size)
   const data = image.data
@@ -1259,10 +1274,18 @@ function createProceduralPoliticalPlate(galaxy) {
     const color = new THREE.Color(neutral ? '#667080' : polity?.color || '#7aa0c8')
     return {
       polityStem: neutral ? '__neutral__' : system.stem,
+      isWell: neutral,
       r: Math.round(color.r * 255),
       g: Math.round(color.g * 255),
       b: Math.round(color.b * 255),
     }
+  })
+
+  // Precompute which systems sit in the well ring (full Voronoi, no claim cut).
+  const fullVoronoi = owned.map((system) => {
+    if (system.kind === 'well') return true
+    if (!wellSystem) return false
+    return Math.hypot(system.x - wellX, system.y - wellY) <= wellRingR
   })
 
   for (let py = 0; py < size; py += 1) {
@@ -1276,41 +1299,79 @@ function createProceduralPoliticalPlate(galaxy) {
       const gy = -(((py + 0.5) / size) * 2 * lim - lim)
       const nearest = spatial.queryNearestAny(gx, gy)
       if (!nearest) continue
+      const dist = Math.hypot(nearest.x - gx, nearest.y - gy)
       const idx = systemIndex.get(nearest.id)
       if (idx == null) continue
+
+      const nearestIsWell = nearest.kind === 'well'
+      const useVoronoi = nearestIsWell || fullVoronoi[idx]
+      if (!useVoronoi && dist > claimR) continue
 
       const i = py * size + px
       owner[i] = idx
       const meta = systemMeta[idx]
-      const edgeFade = Math.max(0, Math.min(1, (diskR - rr) / (diskR * 0.06)))
+      let fade = 1
+      if (!useVoronoi) {
+        fade = Math.max(0.4, Math.min(1, (claimR - dist) / claimFadeW + 0.4))
+      }
       const o = i * 4
       data[o] = meta.r
       data[o + 1] = meta.g
       data[o + 2] = meta.b
-      data[o + 3] = Math.round(120 * edgeFade)
+      data[o + 3] = Math.round((nearestIsWell ? 100 : 120) * fade)
     }
   }
 
-  for (let py = 1; py < size - 1; py += 1) {
-    for (let px = 1; px < size - 1; px += 1) {
+  // Cream outline: single-sided between polities, around the Axis Well, and against void.
+  // Void-cream inside the well ring stays suppressed (kills leftover claim arcs).
+  for (let py = 0; py < size; py += 1) {
+    for (let px = 0; px < size; px += 1) {
       const i = py * size + px
       const current = owner[i]
       if (current < 0) continue
-      const neighbors = [owner[i - 1], owner[i + 1], owner[i - size], owner[i + size]]
-      let polityBorder = false
-      for (const other of neighbors) {
-        if (other < 0 || other === current) continue
-        if (systemMeta[other].polityStem !== systemMeta[current].polityStem) {
-          polityBorder = true
+      const currentMeta = systemMeta[current]
+      const currentStem = currentMeta.polityStem
+      if (currentMeta.isWell) continue
+
+      const neighborIndexes = []
+      if (px > 0) neighborIndexes.push(i - 1)
+      if (px + 1 < size) neighborIndexes.push(i + 1)
+      if (py > 0) neighborIndexes.push(i - size)
+      if (py + 1 < size) neighborIndexes.push(i + size)
+
+      const gx = ((px + 0.5) / size) * 2 * lim - lim
+      const gy = -(((py + 0.5) / size) * 2 * lim - lim)
+      const distToWell = Math.hypot(gx - wellX, gy - wellY)
+
+      let border = false
+      for (const ni of neighborIndexes) {
+        const other = owner[ni]
+        if (other === current) continue
+        if (other < 0) {
+          // Suppress void outlines near the well — those were the leftover claim arcs.
+          if (distToWell <= wellRingR + claimR) continue
+          if (Math.hypot(gx, gy) <= centerZoneR) continue
+          border = true
+          break
+        }
+        const otherMeta = systemMeta[other]
+        if (otherMeta.polityStem === currentStem) continue
+        // Single cream ring on the polity side of the Axis Well.
+        if (otherMeta.isWell) {
+          border = true
+          break
+        }
+        if (currentStem < otherMeta.polityStem) {
+          border = true
           break
         }
       }
-      if (!polityBorder) continue
+      if (!border) continue
       const o = i * 4
       data[o] = 242
       data[o + 1] = 235
       data[o + 2] = 209
-      data[o + 3] = 220
+      data[o + 3] = 200
     }
   }
 
