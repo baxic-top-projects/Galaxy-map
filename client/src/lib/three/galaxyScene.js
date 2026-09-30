@@ -998,21 +998,27 @@ async function createPoliticalPlate(galaxy, initialLocale = 'ru') {
   return group
 }
 
-function splitLabel(text) {
+function labelLineVariants(text, maxLines = 4) {
   const words = String(text || '').trim().split(/\s+/).filter(Boolean)
-  if (words.length < 2) return words
-  let best = 1
-  let difference = Infinity
-  for (let split = 1; split < words.length; split += 1) {
-    const nextDifference = Math.abs(
-      words.slice(0, split).join(' ').length - words.slice(split).join(' ').length,
-    )
-    if (nextDifference < difference) {
-      best = split
-      difference = nextDifference
+  if (!words.length) return []
+  if (words.length === 1) return [words]
+  const variants = []
+  const breakCount = words.length - 1
+  for (let mask = 0; mask < 2 ** breakCount; mask += 1) {
+    const lines = []
+    let line = words[0]
+    for (let index = 0; index < breakCount; index += 1) {
+      if (mask & (1 << index)) {
+        lines.push(line)
+        line = words[index + 1]
+      } else {
+        line += ` ${words[index + 1]}`
+      }
     }
+    lines.push(line)
+    if (lines.length <= maxLines) variants.push(lines)
   }
-  return [words.slice(0, best).join(' '), words.slice(best).join(' ')]
+  return variants
 }
 
 function createPolityLabelMesh(
@@ -1044,34 +1050,48 @@ function createPolityLabelMesh(
     for (const polity of galaxy.polities || []) {
       const anchor = anchors[polity.stem]
       if (!anchor) continue
-      const lines = splitLabel(locale === 'en' ? polity.nameEn : polity.nameRu)
-      if (!lines.length) continue
+      const variants = labelLineVariants(
+        locale === 'en' ? polity.nameEn : polity.nameRu,
+      )
+      if (!variants.length) continue
       const suzerain = polity.kind === 'suzerain'
       const preferredFontSize = polityLabelFontSize(
         territoryAreas[polity.stem] || 0,
         largestTerritoryArea,
       )
-      const weight = suzerain ? 700 : 400
-      context.font = `${weight} 100px "Segoe UI", Arial, sans-serif`
-      const widthPerFontPx =
-        Math.max(...lines.map((line) => context.measureText(line).width)) / 100
+      const weight = suzerain ? 700 : 600
+      const fontFamily = '"Arial Narrow", "Roboto Condensed", "Segoe UI", Arial, sans-serif'
+      context.font = `${weight} 100px ${fontFamily}`
       const clearanceCanvasPx =
         ((labelMetrics[polity.stem]?.clearancePx || 0) / territoryRasterSize) * size
-      const fontSize = fitLabelFontToClearance(
-        preferredFontSize,
-        clearanceCanvasPx,
-        widthPerFontPx,
-        lines.length,
-      )
+      let lines = variants[0]
+      let fontSize = 0
+      for (const candidate of variants) {
+        const widthPerFontPx =
+          Math.max(...candidate.map((line) => context.measureText(line).width)) / 100
+        const candidateSize = fitLabelFontToClearance(
+          preferredFontSize,
+          clearanceCanvasPx,
+          widthPerFontPx,
+          candidate.length,
+          0,
+        )
+        if (
+          candidateSize > fontSize + 0.05 ||
+          (Math.abs(candidateSize - fontSize) <= 0.05 &&
+            candidate.length < lines.length)
+        ) {
+          lines = candidate
+          fontSize = candidateSize
+        }
+      }
+      fontSize = Math.max(3, fontSize)
       const lineHeight = fontSize * 1.12
       const x = anchor[0] * size
       const y = anchor[1] * size
-      context.font = `${weight} ${fontSize}px "Segoe UI", Arial, sans-serif`
-      context.strokeStyle = 'rgba(0, 0, 0, 0.86)'
-      context.lineWidth = Math.max(
-        1,
-        Math.min(suzerain ? 5 : 4, fontSize * 0.28),
-      )
+      context.font = `${weight} ${fontSize}px ${fontFamily}`
+      context.strokeStyle = 'rgba(0, 0, 0, 0.92)'
+      context.lineWidth = Math.max(0.55, Math.min(3, fontSize * 0.16))
       context.fillStyle = '#ffffff'
       lines.forEach((line, index) => {
         const lineY = y + (index - (lines.length - 1) / 2) * lineHeight
