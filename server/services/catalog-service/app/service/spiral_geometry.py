@@ -9,7 +9,7 @@ STARS_PER_ARM = 1290
 BLACK_HOLES_PER_ARM = 43
 JUNCTIONS_PER_ARM = 25
 OBJECTS_PER_ARM = STARS_PER_ARM + BLACK_HOLES_PER_ARM + JUNCTIONS_PER_ARM
-INNER_RADIUS = 1.02
+INNER_RADIUS = 1.00
 OUTER_RADIUS = 2.61
 MAP_LIMIT = 2.80
 SPIRAL_TURN_RADIANS = 3.20
@@ -114,8 +114,12 @@ def generate_arm_objects() -> list[ArmObject]:
             radial_jitter = 0.018 * (1.0 - progress) + 0.006 * progress
             radial_offset = (_unit_hash(object_id, 4) - 0.5) * radial_jitter
             radius += radial_offset
-            x = radius * math.cos(angle) - normal_offset * math.sin(angle)
-            y = radius * math.sin(angle) + normal_offset * math.cos(angle)
+            # Express arm width as an angular spread. At the broad attachment
+            # this keeps every object next to the old circular disk instead of
+            # pushing edge objects far outward with a Cartesian tangent offset.
+            object_angle = angle + normal_offset / max(radius, 0.001)
+            x = radius * math.cos(object_angle)
+            y = radius * math.sin(object_angle)
             z = (_unit_hash(object_id, 8) * 2.0 - 1.0) * (0.018 - 0.008 * progress)
 
             if kind == "star":
