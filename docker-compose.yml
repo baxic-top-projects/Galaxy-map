@@ -213,12 +213,12 @@ services:
       test:
         [
           "CMD-SHELL",
-          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1",
+          "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9092'",
         ]
       interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 20s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
     restart: unless-stopped
     networks:
       - galaxy_net
