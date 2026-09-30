@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import requests
 from PIL import Image
-from scipy.ndimage import binary_dilation
+from scipy.ndimage import binary_dilation, label
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -88,6 +88,31 @@ def decode_owner(polities: list[dict]) -> np.ndarray:
         better = usable & (amount > 0.035) & (error < best_error)
         owner[better] = index
         best_error[better] = error[better]
+
+    # Similar brown/purple fills can classify individual stars as a
+    # neighboring polity. Closed cream borders are authoritative: if a
+    # connected region contains exactly one polity label anchor, assign the
+    # entire region to that polity. Regions sharing multiple anchors retain
+    # the color result above (the galactic core interrupts one such border).
+    anchors = json.loads(LABEL_ANCHORS.read_text(encoding="utf-8"))
+    strong_border = binary_dilation(
+        (np.linalg.norm(rgb - cream, axis=2) < (125 / 255)) & (alpha > 40),
+        iterations=12,
+    )
+    regions, _region_count = label((alpha > 16) & ~strong_border)
+    indices_by_region: dict[int, list[int]] = {}
+    for index, polity in enumerate(polities):
+        anchor = anchors.get(polity["stem"])
+        if not anchor:
+            continue
+        px = round(float(anchor[0]) * (width - 1))
+        py = round(float(anchor[1]) * (height - 1))
+        region = int(regions[py, px])
+        if region > 0:
+            indices_by_region.setdefault(region, []).append(index)
+    for region, indices in indices_by_region.items():
+        if len(indices) == 1:
+            owner[regions == region] = indices[0]
     return owner
 
 
