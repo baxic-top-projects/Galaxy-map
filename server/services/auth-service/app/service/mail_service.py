@@ -68,22 +68,23 @@ def _code_template(name: str, heading: str, code: str, footer: str) -> str:
     return f"""<!doctype html>
 <html lang="ru">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
-<body style="margin:0;background:#05070f;font-family:Arial,sans-serif;color:#e8eef8">
+<body style="margin:0;background:#f3f6fa;font-family:Arial,sans-serif;color:#172033">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
-       style="background:#05070f;padding:32px 12px">
+       style="background:#f3f6fa;padding:32px 12px">
 <tr><td align="center">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
-       style="max-width:560px;background:#0d1728;border:1px solid #263a58;border-radius:16px">
+       style="max-width:560px;background:#ffffff;border:1px solid #d8e1ec;border-radius:16px">
 <tr><td style="padding:32px">
 <img src="{logo_url}" width="72" height="72" alt="Galaxy Map"
      style="display:block;margin:0 auto 20px;border:0;border-radius:16px">
-<p style="margin:0 0 8px;text-align:center;color:#9bb0d0;font-size:14px">THE UNIVERSE</p>
-<h1 style="margin:0 0 24px;text-align:center;font-size:26px">{html.escape(heading)}</h1>
-<p>Здравствуйте, {html.escape(name)}.</p>
-<p>Ваш код:</p>
-<p style="margin:20px 0;padding:16px;text-align:center;background:#111f35;border-radius:10px;
-          font-size:32px;font-weight:700;letter-spacing:8px">{html.escape(code)}</p>
-<p style="margin:24px 0 0;color:#9bb0d0;font-size:14px">{html.escape(footer)}</p>
+<p style="margin:0 0 8px;text-align:center;color:#315f91;font-size:14px">THE UNIVERSE</p>
+<h1 style="margin:0 0 24px;text-align:center;color:#172033;font-size:26px">{html.escape(heading)}</h1>
+<p style="color:#172033">Здравствуйте, {html.escape(name)}.</p>
+<p style="color:#172033">Ваш код:</p>
+<p style="margin:20px 0;padding:16px;text-align:center;color:#172033;background:#edf4fc;
+          border:1px solid #d4e3f3;border-radius:10px;font-size:32px;font-weight:700;
+          letter-spacing:8px">{html.escape(code)}</p>
+<p style="margin:24px 0 0;color:#52677f;font-size:14px">{html.escape(footer)}</p>
 </td></tr>
 </table>
 </td></tr>
