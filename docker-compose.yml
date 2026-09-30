@@ -145,7 +145,7 @@ services:
       - galaxy_net
 
   smtp-service-galaxy:
-    image: maildev/maildev
+    image: maildev/maildev:3.0.0
     container_name: smtp-service-galaxy
     restart: unless-stopped
     environment:
@@ -158,7 +158,7 @@ services:
       - /bin/sh
     command:
       - -c
-      - 'exec maildev --outgoing-host "$${SMTP_OUTGOING_HOST}" --outgoing-port "$${SMTP_OUTGOING_PORT}" --outgoing-secure --outgoing-user "$${SMTP_OUTGOING_USER}" --outgoing-pass "$${SMTP_OUTGOING_PASSWORD}" --auto-relay --verbose'
+      - 'exec bin/maildev --outgoing-host "$${SMTP_OUTGOING_HOST}" --outgoing-port "$${SMTP_OUTGOING_PORT}" --outgoing-secure --outgoing-user "$${SMTP_OUTGOING_USER}" --outgoing-pass "$${SMTP_OUTGOING_PASSWORD}" --auto-relay --verbose'
     ports:
       - "9997:1080"
     networks:
