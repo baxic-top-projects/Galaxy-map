@@ -17,12 +17,34 @@
   } = $props()
 
   let email = $state(new URLSearchParams(window.location.search).get('email') || '')
-  let code = $state('')
+  let codeDigits = $state(['', '', '', '', '', ''])
+  let codeInputs = []
   let password = $state('')
   let displayName = $state('')
   let busy = $state(false)
   let error = $state('')
   let notice = $state('')
+
+  function handleCodeInput(event, index) {
+    const digit = event.currentTarget.value.replace(/\D/g, '').slice(-1)
+    codeDigits[index] = digit
+    if (digit && index < 5) codeInputs[index + 1]?.focus()
+  }
+
+  function handleCodeKeydown(event, index) {
+    if (event.key === 'Backspace' && !codeDigits[index] && index > 0) {
+      codeDigits[index - 1] = ''
+      codeInputs[index - 1]?.focus()
+    }
+  }
+
+  function handleCodePaste(event) {
+    const digits = event.clipboardData?.getData('text').replace(/\D/g, '').slice(0, 6) || ''
+    if (!digits) return
+    event.preventDefault()
+    codeDigits = Array.from({ length: 6 }, (_, index) => digits[index] || '')
+    codeInputs[Math.min(digits.length, 6) - 1]?.focus()
+  }
 
   async function submit() {
     busy = true
@@ -43,10 +65,10 @@
         await forgotPassword(email)
         onNavigate?.(`/reset-password?email=${encodeURIComponent(email)}`)
       } else if (mode === 'reset') {
-        await resetPassword(email, code, password)
+        await resetPassword(email, codeDigits.join(''), password)
         notice = locale === 'en' ? 'Password changed. You can sign in.' : 'Пароль изменён. Теперь можно войти.'
       } else if (mode === 'verify') {
-        onAuthenticated?.(await verifyEmail(email, code))
+        onAuthenticated?.(await verifyEmail(email, codeDigits.join('')))
       }
     } catch (err) {
       error = err instanceof Error ? err.message : String(err)
@@ -99,7 +121,21 @@
         {#if mode === 'reset' || mode === 'verify'}
           <label>
             <span>{locale === 'en' ? 'Six-digit code' : 'Шестизначный код'}</span>
-            <input bind:value={code} required pattern="[0-9]{6}" maxlength="6" inputmode="numeric" autocomplete="one-time-code" />
+            <span class="code-inputs" onpaste={handleCodePaste}>
+              {#each codeDigits as digit, index}
+                <input
+                  bind:this={codeInputs[index]}
+                  value={digit}
+                  required
+                  maxlength="1"
+                  inputmode="numeric"
+                  autocomplete={index === 0 ? 'one-time-code' : 'off'}
+                  aria-label={`${locale === 'en' ? 'Code digit' : 'Цифра кода'} ${index + 1}`}
+                  oninput={(event) => handleCodeInput(event, index)}
+                  onkeydown={(event) => handleCodeKeydown(event, index)}
+                />
+              {/each}
+            </span>
           </label>
         {/if}
         {#if mode === 'login' || mode === 'register' || mode === 'reset'}
@@ -143,6 +179,8 @@
   form, label { display: grid; gap: .45rem; }
   form { gap: 1rem; }
   input { padding: .75rem; color: #fff; border: 1px solid rgba(150,190,255,.25); border-radius: 8px; background: #0d1728; }
+  .code-inputs { display: grid; grid-template-columns: repeat(6, 1fr); gap: .5rem; }
+  .code-inputs input { min-width: 0; padding: .7rem 0; text-align: center; font-size: 1.35rem; font-weight: 700; }
   button { cursor: pointer; }
   .primary, .google { width: 100%; padding: .75rem; border-radius: 8px; border: 1px solid rgba(150,190,255,.28); color: #fff; background: #285a9d; }
   .google { margin-top: .8rem; background: #17243a; }
