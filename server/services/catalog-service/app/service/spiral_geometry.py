@@ -5,9 +5,9 @@ import math
 from dataclasses import dataclass
 
 ARM_COUNT = 4
-STARS_PER_ARM = 720
-BLACK_HOLES_PER_ARM = 24
-JUNCTIONS_PER_ARM = 14
+STARS_PER_ARM = 1290
+BLACK_HOLES_PER_ARM = 43
+JUNCTIONS_PER_ARM = 25
 OBJECTS_PER_ARM = STARS_PER_ARM + BLACK_HOLES_PER_ARM + JUNCTIONS_PER_ARM
 INNER_RADIUS = 1.02
 OUTER_RADIUS = 2.61
@@ -16,18 +16,34 @@ SPIRAL_TURN_RADIANS = 3.20
 ARM_PHASE_RADIANS = 0.144
 ARM_HALF_WIDTH_BASE = 1.62
 ARM_HALF_WIDTH_TIP = 0.315
+ARM_PROGRESS_EXPONENT = 1.80
 GENERATOR_SEED = 20260930
 ID_PREFIX = "frontier:"
 
-_BLACK_HOLE_SLOTS = frozenset(
-    int((index + 0.5) * OBJECTS_PER_ARM / BLACK_HOLES_PER_ARM)
-    for index in range(BLACK_HOLES_PER_ARM)
-)
-_JUNCTION_SLOTS = frozenset(
-    int((index + 0.5) * OBJECTS_PER_ARM / JUNCTIONS_PER_ARM)
-    for index in range(JUNCTIONS_PER_ARM)
-)
-assert _BLACK_HOLE_SLOTS.isdisjoint(_JUNCTION_SLOTS)
+def _spread_slots(count: int, occupied: frozenset[int] = frozenset()) -> frozenset[int]:
+    slots: set[int] = set()
+    for index in range(count):
+        target = int((index + 0.5) * OBJECTS_PER_ARM / count)
+        for distance in range(OBJECTS_PER_ARM):
+            candidates = (target + distance, target - distance)
+            slot = next(
+                (
+                    candidate
+                    for candidate in candidates
+                    if 0 <= candidate < OBJECTS_PER_ARM
+                    and candidate not in occupied
+                    and candidate not in slots
+                ),
+                None,
+            )
+            if slot is not None:
+                slots.add(slot)
+                break
+    return frozenset(slots)
+
+
+_BLACK_HOLE_SLOTS = _spread_slots(BLACK_HOLES_PER_ARM)
+_JUNCTION_SLOTS = _spread_slots(JUNCTIONS_PER_ARM, _BLACK_HOLE_SLOTS)
 _STAR_TYPES = ("class_m", "class_k", "class_g", "class_f", "class_a", "class_b")
 
 
@@ -59,6 +75,11 @@ def arm_center(arm: int, progress: float) -> tuple[float, float]:
     return radius * math.cos(angle), radius * math.sin(angle)
 
 
+def arm_progress(slot: int) -> float:
+    """Bias systems toward the broad attachment while retaining the full arm."""
+    return ((slot + 0.5) / OBJECTS_PER_ARM) ** ARM_PROGRESS_EXPONENT
+
+
 def arm_object_kind(slot: int) -> str:
     if slot in _BLACK_HOLE_SLOTS:
         return "black_hole"
@@ -72,7 +93,7 @@ def generate_arm_objects() -> list[ArmObject]:
     for arm in range(ARM_COUNT):
         kind_counts = {"star": 0, "black_hole": 0, "junction": 0}
         for slot in range(OBJECTS_PER_ARM):
-            progress = (slot + 0.5) / OBJECTS_PER_ARM
+            progress = arm_progress(slot)
             kind = arm_object_kind(slot)
             kind_counts[kind] += 1
             ordinal = kind_counts[kind]

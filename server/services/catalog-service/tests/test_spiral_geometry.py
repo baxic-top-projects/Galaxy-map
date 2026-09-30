@@ -13,6 +13,7 @@ from app.service.spiral_geometry import (
     STARS_PER_ARM,
     arm_center,
     arm_edges,
+    arm_progress,
     generate_arm_objects,
 )
 
@@ -41,7 +42,7 @@ def test_spiral_object_counts_and_stable_bounds():
 def test_arm_distribution_is_wide_at_disk_and_tapers_toward_tip():
     deviations = {"base": [], "tip": []}
     for obj in generate_arm_objects():
-        progress = (obj.ordinal + 0.5) / OBJECTS_PER_ARM
+        progress = arm_progress(obj.ordinal)
         center_x, center_y = arm_center(obj.arm - 1, progress)
         radius = hypot(center_x, center_y)
         normal_x = -center_y / radius
