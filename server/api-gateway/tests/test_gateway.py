@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app import main as gateway
+from app.security import require_admin
 from app.service import asset_client_service, catalog_client_service, storm_client_service
 
 
@@ -196,6 +197,18 @@ def test_gateway_proxies_storm_asset_and_catalog(monkeypatch, storm_backend, ass
         "/api/v1/systems/Miradin_Empire:MiradinSirius/owner",
         json={"stem": "Efol_Raih"},
     )
+    assert owner.status_code == 401
+
+    gateway.app.dependency_overrides[require_admin] = lambda: {
+        "sub": "admin-1",
+        "role": "ADMIN",
+    }
+    owner = client.patch(
+        "/api/v1/systems/Miradin_Empire:MiradinSirius/owner",
+        json={"stem": "Efol_Raih"},
+        headers={"Authorization": "Bearer test-admin"},
+    )
     assert owner.status_code == 200, owner.text
     assert owner.json()["stem"] == "Efol_Raih"
     assert owner.json()["canonicalStem"] == "Miradin_Empire"
+    gateway.app.dependency_overrides.clear()

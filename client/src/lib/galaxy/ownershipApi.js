@@ -1,3 +1,5 @@
+import { getAccessToken } from '../auth/authApi.js'
+
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || ''
 
 /**
@@ -11,9 +13,13 @@ export async function updateSystemOwner(systemId, stem, baseUrl = DEFAULT_API_BA
   if (!systemId) throw new Error('System id is required')
   if (!stem) throw new Error('Polity stem is required')
   const url = `${String(baseUrl).replace(/\/$/, '')}/api/v1/systems/${encodeURIComponent(systemId)}/owner`
+  const token = getAccessToken()
   const response = await fetch(url, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({ stem }),
   })
   if (!response.ok) {

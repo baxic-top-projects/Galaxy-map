@@ -1,0 +1,1 @@
+"""Galaxy authentication service."""

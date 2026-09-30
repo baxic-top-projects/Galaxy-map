@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Response
+from fastapi import APIRouter, Body, Depends, Response
 from pydantic import BaseModel, Field
 
 from app.service.catalog_client_service import catalog_client
+from app.security import require_admin
 
 router = APIRouter()
 
@@ -28,6 +29,7 @@ async def galaxy_index():
 async def system_owner(
     system_id: str,
     payload: Annotated[SystemOwnerUpdate, Body()],
+    _admin: Annotated[dict, Depends(require_admin)],
 ):
     response = await catalog_client.request(
         "PATCH",

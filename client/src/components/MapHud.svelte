@@ -1,6 +1,7 @@
 <script>
   import { filterSearch } from '../lib/galaxy/search.js'
   import { polityLabel, systemLabel } from '../lib/galaxy/loadGalaxy.js'
+  import UserMenu from './UserMenu.svelte'
 
   let {
     galaxy,
@@ -18,6 +19,11 @@
     onBackToGalaxy = undefined,
     onPoliticalMap = undefined,
     showPoliticalMap = true,
+    user = null,
+    onLogin = undefined,
+    onProfile = undefined,
+    onAdmin = undefined,
+    onLogout = undefined,
     mode = 'galaxy',
   } = $props()
 
@@ -33,7 +39,9 @@
   const selectedPolity = $derived(
     selected?.stem ? galaxy.polityByStem.get(selected.stem) : null,
   )
-  const canEditOwner = $derived(!!selected && selected.kind !== 'well')
+  const canEditOwner = $derived(
+    user?.role === 'ADMIN' && !!selected && selected.kind !== 'well',
+  )
 </script>
 
 <header class="hud-top">
@@ -100,6 +108,7 @@
         {locale === 'en' ? 'Galaxy view' : 'К галактике'}
       </button>
     {/if}
+    <UserMenu {user} {locale} {onLogin} {onProfile} {onAdmin} {onLogout} />
   </div>
 </header>
 

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, Header, HTTPException
+
+from app.config.settings import settings
 
 from app.service.catalog_query_service import SystemOwnerUpdate, catalog_query
 
@@ -18,7 +20,13 @@ def get_galaxy():
 def patch_system_owner(
     system_id: str,
     payload: Annotated[SystemOwnerUpdate, Body()],
+    x_internal_service_token: Annotated[str | None, Header()] = None,
 ):
+    if (
+        settings.internal_service_token
+        and x_internal_service_token != settings.internal_service_token
+    ):
+        raise HTTPException(status_code=403, detail="Invalid internal service token")
     return catalog_query.update_system_owner(system_id, payload.stem.strip())
 
 

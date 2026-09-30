@@ -1,7 +1,10 @@
 <script>
   import { onDestroy, onMount } from 'svelte'
   import GalaxyScene from './components/GalaxyScene.svelte'
+  import AdminRolesPage from './components/AdminRolesPage.svelte'
+  import AuthPage from './components/AuthPage.svelte'
   import MapHud from './components/MapHud.svelte'
+  import ProfilePage from './components/ProfilePage.svelte'
   import RealmMapPage from './components/RealmMapPage.svelte'
   import RealmNavigation from './components/RealmNavigation.svelte'
   import SystemDetailView from './components/SystemDetailView.svelte'
@@ -12,12 +15,34 @@
   import { fetchAssetManifest } from './lib/galaxy/assetsApi.js'
   import { applyAssetManifest, mapTexturePath } from './lib/galaxy/modelCatalog.js'
   import { pageFromPath } from './lib/realms/realmCatalog.js'
+  import {
+    bootstrapSession,
+    exchangeGoogleCode,
+    logout as logoutAccount,
+  } from './lib/auth/authApi.js'
+
+  function authPageFromPath(pathname) {
+    const path = pathname.replace(/\/+$/, '') || '/'
+    return {
+      '/login': 'login',
+      '/register': 'register',
+      '/forgot-password': 'forgot',
+      '/reset-password': 'reset',
+      '/verify-email': 'verify',
+      '/auth/callback': 'callback',
+      '/profile': 'profile',
+      '/admin/roles': 'admin',
+    }[path] || null
+  }
 
   let galaxy = $state(null)
   let error = $state('')
   let loading = $state(true)
   let locale = $state('ru')
   let page = $state(pageFromPath(window.location.pathname))
+  let authPage = $state(authPageFromPath(window.location.pathname))
+  let user = $state(null)
+  let authLoading = $state(true)
   let selected = $state(null)
   let detail = $state(null)
   let polityFilter = $state('')
@@ -39,11 +64,18 @@
 
   function handleRouteChange() {
     page = pageFromPath(window.location.pathname)
+    authPage = authPageFromPath(window.location.pathname)
+  }
+
+  function navigatePath(path) {
+    if (window.location.pathname !== path) window.history.pushState({}, '', path)
+    handleRouteChange()
   }
 
   function navigate(nextPage, path) {
     if (window.location.pathname !== path) window.history.pushState({}, '', path)
     page = nextPage
+    authPage = null
     if (nextPage === 'universe') mode = 'galaxy'
   }
 
@@ -64,6 +96,19 @@
 
   onMount(async () => {
     window.addEventListener('popstate', handleRouteChange)
+    try {
+      if (authPage === 'callback') {
+        const code = new URLSearchParams(window.location.search).get('code')
+        if (code) user = await exchangeGoogleCode(code)
+        navigatePath('/')
+      } else {
+        user = await bootstrapSession()
+      }
+    } catch {
+      user = null
+    } finally {
+      authLoading = false
+    }
     fetchAssetManifest()
       .then((manifest) => applyAssetManifest(manifest))
       .catch(() => {
@@ -219,9 +264,39 @@
     zoom = nextZoom ?? estimateZoom(8)
   }
 
+  async function handleLogout() {
+    try {
+      await logoutAccount()
+    } finally {
+      user = null
+      navigatePath('/')
+    }
+  }
+
 </script>
 
-{#if page !== 'universe'}
+{#if authLoading && authPage}
+  <main class="boot">Загрузка профиля…</main>
+{:else if authPage === 'profile' && user}
+  <ProfilePage
+    {user}
+    {locale}
+    onUpdated={(value) => (user = value)}
+    onBack={() => navigatePath('/')}
+  />
+{:else if authPage === 'admin' && user?.role === 'ADMIN'}
+  <AdminRolesPage {locale} onBack={() => navigatePath('/')} />
+{:else if authPage && authPage !== 'callback'}
+  <AuthPage
+    mode={(authPage === 'profile' || authPage === 'admin') ? 'login' : authPage}
+    {locale}
+    onAuthenticated={(value) => {
+      user = value
+      navigatePath('/')
+    }}
+    onNavigate={navigatePath}
+  />
+{:else if page !== 'universe'}
   <RealmMapPage realmId={page} {locale} />
 {:else if loading}
   <main class="boot">Загрузка галактики…</main>
@@ -286,6 +361,7 @@
       {showPoliticalMap}
       {ownerSaving}
       {ownerError}
+      {user}
       storm={selectedStorm}
       stormCount={stormSnapshot?.storms?.length || 0}
       {stormStatus}
@@ -297,6 +373,10 @@
         mode = 'galaxy'
       }}
       onOwnerChange={handleOwnerChange}
+      onLogin={() => navigatePath('/login')}
+      onProfile={() => navigatePath('/profile')}
+      onAdmin={() => navigatePath('/admin/roles')}
+      onLogout={handleLogout}
       onSearchSelect={handleSearchSelect}
       onReset={() => {
         mode = 'galaxy'
@@ -310,11 +390,13 @@
   </main>
 {/if}
 
-<RealmNavigation
-  current={page}
-  {locale}
-  onNavigate={navigate}
-/>
+{#if !authPage}
+  <RealmNavigation
+    current={page}
+    {locale}
+    onNavigate={navigate}
+  />
+{/if}
 
 <style>
   :global(:root) {

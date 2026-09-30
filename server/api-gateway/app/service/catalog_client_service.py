@@ -19,9 +19,12 @@ class CatalogClientService:
         json: dict | None = None,
     ) -> httpx.Response:
         url = f"{self.base_url}{path}"
+        headers = {}
+        if settings.internal_service_token:
+            headers["X-Internal-Service-Token"] = settings.internal_service_token
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                return await client.request(method, url, json=json)
+                return await client.request(method, url, json=json, headers=headers)
         except httpx.RequestError as exc:
             raise HTTPException(status_code=502, detail=f"Catalog service unreachable: {exc}") from exc
 

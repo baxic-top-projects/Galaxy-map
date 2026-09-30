@@ -29,6 +29,8 @@ services:
         condition: service_healthy
       catalog-service:
         condition: service_healthy
+      auth-service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - galaxy_net
@@ -109,6 +111,56 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - galaxy_net
+
+  auth-service:
+    build:
+      context: ./server/services/auth-service
+      dockerfile: Dockerfile
+    container_name: galaxy-auth-service
+    expose:
+      - "8004"
+    env_file:
+      - path: ./server/services/auth-service/.env
+        required: false
+    environment:
+      AUTH_SMTP_HOST: smtp-service-galaxy
+      AUTH_SMTP_PORT: 1025
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health')\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      smtp-service-galaxy:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - galaxy_net
+
+  smtp-service-galaxy:
+    image: maildev/maildev
+    container_name: smtp-service-galaxy
+    restart: unless-stopped
+    environment:
+      - NODE_OPTIONS=--no-warnings=DeprecationWarning
+      - DEBUG=maildev*
+    env_file:
+      - path: ./server/services/auth-service/.env
+        required: false
+    entrypoint:
+      - /bin/sh
+    command:
+      - -c
+      - 'exec maildev --outgoing-host "$${SMTP_OUTGOING_HOST}" --outgoing-port "$${SMTP_OUTGOING_PORT}" --outgoing-secure --outgoing-user "$${SMTP_OUTGOING_USER}" --outgoing-pass "$${SMTP_OUTGOING_PASSWORD}" --auto-relay --verbose'
+    ports:
+      - "8186:1080"
     networks:
       - galaxy_net
 
