@@ -374,7 +374,6 @@
       }}
       onOwnerChange={handleOwnerChange}
       onLogin={() => navigatePath('/login')}
-      onRegister={() => navigatePath('/register')}
       onProfile={() => navigatePath('/profile')}
       onAdmin={() => navigatePath('/admin/roles')}
       onLogout={handleLogout}

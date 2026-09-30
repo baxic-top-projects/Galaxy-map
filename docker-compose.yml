@@ -160,7 +160,7 @@ services:
       - -c
       - 'exec maildev --outgoing-host "$${SMTP_OUTGOING_HOST}" --outgoing-port "$${SMTP_OUTGOING_PORT}" --outgoing-secure --outgoing-user "$${SMTP_OUTGOING_USER}" --outgoing-pass "$${SMTP_OUTGOING_PASSWORD}" --auto-relay --verbose'
     ports:
-      - "8186:1080"
+      - "9997:1080"
     networks:
       - galaxy_net
 
