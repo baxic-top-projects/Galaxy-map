@@ -186,19 +186,28 @@
     if (!system || !stem || system.stem === stem || ownerSaving) return
     ownerSaving = true
     ownerError = ''
+    const previousStem = system.stem
+    const optimistic = applyOwnerLocally(system.id, stem)
+    if (optimistic) selected = optimistic
+    if (detail?.id === system.id) {
+      detail = {
+        ...detail,
+        canonicalStem: detail.canonicalStem || detail.stem,
+        stem,
+      }
+    }
+    ownershipRevision += 1
     try {
       await updateSystemOwner(system.id, stem)
-      const nextSystem = applyOwnerLocally(system.id, stem)
-      if (nextSystem) selected = nextSystem
+    } catch (err) {
+      applyOwnerLocally(system.id, previousStem)
+      if (selected?.id === system.id) {
+        selected = galaxy?.byId.get(system.id) || selected
+      }
       if (detail?.id === system.id) {
-        detail = {
-          ...detail,
-          canonicalStem: detail.canonicalStem || detail.stem,
-          stem,
-        }
+        detail = { ...detail, stem: previousStem }
       }
       ownershipRevision += 1
-    } catch (err) {
       ownerError = err instanceof Error ? err.message : String(err)
     } finally {
       ownerSaving = false

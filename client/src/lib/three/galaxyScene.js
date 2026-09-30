@@ -647,15 +647,8 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     plate.userData.setLocale?.(locale)
   }
 
-  function setSystemOwner(systemId, stem) {
-    const system = galaxy.byId.get(systemId)
-    if (!system || !stem || system.kind === 'well') return
-    system.canonicalStem = system.canonicalStem || system.stem
-    system.stem = stem
-    const wasVisible = plate.visible
-    const locale = callbacks.locale || 'ru'
-    root.remove(plate)
-    plate.traverse((child) => {
+  function disposePoliticalPlate(target) {
+    target.traverse((child) => {
       if (child.geometry) child.geometry.dispose()
       const materials = Array.isArray(child.material) ? child.material : [child.material]
       for (const material of materials) {
@@ -664,10 +657,32 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
         material.dispose()
       }
     })
+  }
+
+  function rebuildPoliticalOwnership(nextGalaxy) {
+    if (nextGalaxy) {
+      galaxy.systems = nextGalaxy.systems
+      galaxy.byId = nextGalaxy.byId
+      galaxy.search = nextGalaxy.search
+      if (nextGalaxy.polityByStem) galaxy.polityByStem = nextGalaxy.polityByStem
+      if (nextGalaxy.polities) galaxy.polities = nextGalaxy.polities
+    }
+    const wasVisible = plate.visible
+    const locale = callbacks.locale || 'ru'
+    root.remove(plate)
+    disposePoliticalPlate(plate)
     plate = createPoliticalPlate(galaxy, locale)
     plate.visible = wasVisible
     root.add(plate)
     emitLabels()
+  }
+
+  function setSystemOwner(systemId, stem) {
+    const system = galaxy.byId.get(systemId)
+    if (!system || !stem || system.kind === 'well') return
+    system.canonicalStem = system.canonicalStem || system.stem
+    system.stem = stem
+    rebuildPoliticalOwnership()
   }
 
   function focusSystem(system, { enterSystem = false } = {}) {
@@ -929,6 +944,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     setPoliticalMap,
     setLocale,
     setSystemOwner,
+    rebuildPoliticalOwnership,
     resetView,
     dispose,
   }

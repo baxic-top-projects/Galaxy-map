@@ -1,5 +1,5 @@
 <script>
-  import { onDestroy, onMount } from 'svelte'
+  import { onDestroy, onMount, untrack } from 'svelte'
 
   let {
     galaxy,
@@ -18,7 +18,7 @@
 
   let canvas = $state(null)
   let api = $state(null)
-  let lastOwnershipRevision = 0
+  let appliedOwnershipRevision = $state(0)
 
   onMount(() => {
     let cancelled = false
@@ -37,7 +37,7 @@
         api = null
         return
       }
-      lastOwnershipRevision = ownershipRevision
+      appliedOwnershipRevision = ownershipRevision
       if (stormSnapshot) api.setStorms(stormSnapshot)
       api.setPoliticalMap(showPoliticalMap)
     })()
@@ -84,12 +84,12 @@
   })
 
   $effect(() => {
-    if (!api || ownershipRevision === lastOwnershipRevision) return
-    lastOwnershipRevision = ownershipRevision
-    if (selectedId) {
-      const system = galaxy.byId.get(selectedId)
-      if (system?.stem) api.setSystemOwner(selectedId, system.stem)
-    }
+    if (!api) return
+    const revision = ownershipRevision
+    if (revision === appliedOwnershipRevision) return
+    appliedOwnershipRevision = revision
+    const currentGalaxy = untrack(() => galaxy)
+    api.rebuildPoliticalOwnership(currentGalaxy)
   })
 </script>
 
