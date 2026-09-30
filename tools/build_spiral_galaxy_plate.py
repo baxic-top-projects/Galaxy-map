@@ -12,7 +12,7 @@ OUTER_ARMS_SOURCE = ROOT / "tools" / "assets" / "galaxy_outer_arms_source.jpg"
 CENTRAL_DISK_SOURCE = ROOT / "tools" / "assets" / "galaxy_central_disk_source.png"
 OUTPUT = ROOT / "client" / "public" / "textures" / "galaxy_base_plate_v5.png"
 SIDE = 2048
-MAP_LIMIT = 1.80
+MAP_LIMIT = 2.80
 CENTRAL_DISK_RADIUS = 1.10
 
 

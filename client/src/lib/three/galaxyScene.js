@@ -16,7 +16,7 @@ const textureLoader = new THREE.TextureLoader()
 textureLoader.setCrossOrigin('anonymous')
 
 function basePlateUrl() {
-  return mapTexturePath('galaxy_base_plate_v5.png', 'v=7')
+  return mapTexturePath('galaxy_base_plate_v5.png', 'v=8')
 }
 
 function mapLimitFor(galaxy) {
