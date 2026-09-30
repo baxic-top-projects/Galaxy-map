@@ -671,7 +671,9 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     })
   }
 
-  function rebuildPoliticalOwnership(nextGalaxy) {
+  let politicalBuildVersion = 0
+
+  async function rebuildPoliticalOwnership(nextGalaxy) {
     if (nextGalaxy) {
       galaxy.systems = nextGalaxy.systems
       galaxy.byId = nextGalaxy.byId
@@ -679,11 +681,17 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
       if (nextGalaxy.polityByStem) galaxy.polityByStem = nextGalaxy.polityByStem
       if (nextGalaxy.polities) galaxy.polities = nextGalaxy.polities
     }
+    const buildVersion = ++politicalBuildVersion
     const wasVisible = plate.visible
     const locale = callbacks.locale || 'ru'
+    const nextPlate = await createPoliticalPlate(galaxy, locale)
+    if (buildVersion !== politicalBuildVersion) {
+      disposePoliticalPlate(nextPlate)
+      return
+    }
     root.remove(plate)
     disposePoliticalPlate(plate)
-    plate = createPoliticalPlate(galaxy, locale)
+    plate = nextPlate
     plate.visible = wasVisible
     root.add(plate)
     emitLabels()
@@ -962,10 +970,10 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   }
 }
 
-function createPoliticalPlate(galaxy, initialLocale = 'ru') {
+async function createPoliticalPlate(galaxy, initialLocale = 'ru') {
   const mapLim = mapLimitFor(galaxy)
   const group = new THREE.Group()
-  const territories = createProceduralPoliticalPlate(galaxy)
+  const territories = await createProceduralPoliticalPlate(galaxy)
   territories.renderOrder = -90
   const anchors = resolvePolityLabelAnchors(
     territories.userData.labelAnchors || {},
@@ -1235,7 +1243,17 @@ function makeSplitPlateMeshFromTexture(texture, mapLim = DEFAULT_MAP_LIM) {
   return group
 }
 
-function createProceduralPoliticalPlate(galaxy) {
+function yieldToBrowser() {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => resolve())
+    } else {
+      setTimeout(resolve, 0)
+    }
+  })
+}
+
+async function createProceduralPoliticalPlate(galaxy) {
   const mapLim = mapLimitFor(galaxy)
   const centralDiskR = Number(galaxy?.meta?.centralDiskR) || 1.02
   const size = mapLim > DEFAULT_MAP_LIM ? 1200 : 900
@@ -1271,7 +1289,9 @@ function createProceduralPoliticalPlate(galaxy) {
     return mesh
   }
 
-  const spatial = buildSpatialIndex(owned)
+  const centralSpatial = buildSpatialIndex(owned)
+  const frontierOwned = owned.filter((system) => system.id.startsWith('frontier:'))
+  const frontierSpatial = frontierOwned.length ? buildSpatialIndex(frontierOwned) : null
   const wellSystem = owned.find((system) => system.kind === 'well') || null
   const wellX = wellSystem?.x || 0
   const wellY = wellSystem?.y || 0
@@ -1303,13 +1323,19 @@ function createProceduralPoliticalPlate(galaxy) {
   })
 
   for (let py = 0; py < size; py += 1) {
+    if (py > 0 && py % 12 === 0) await yieldToBrowser()
     for (let px = 0; px < size; px += 1) {
       const gx = ((px + 0.5) / size) * 2 * lim - lim
       const gy = -(((py + 0.5) / size) * 2 * lim - lim)
       const insideCentralDisk = Math.hypot(gx, gy) <= centralDiskR
-      const nearest = spatial.queryNearestAny(gx, gy)
+      // The expanded map is mostly empty. Searching every increasingly large
+      // grid ring for each void pixel blocks the browser for minutes. Central
+      // territory remains continuous; arm territory only exists near an owned
+      // frontier object and therefore needs a bounded lookup.
+      const nearest = insideCentralDisk
+        ? centralSpatial.queryNearestAny(gx, gy)
+        : frontierSpatial?.queryNearest(gx, gy, claimR)
       if (!nearest) continue
-      if (!insideCentralDisk && !nearest.id.startsWith('frontier:')) continue
       const dist = Math.hypot(nearest.x - gx, nearest.y - gy)
       const idx = systemIndex.get(nearest.id)
       if (idx == null) continue
@@ -1336,6 +1362,7 @@ function createProceduralPoliticalPlate(galaxy) {
   // Cream outline: single-sided between polities, around the Axis Well, and against void.
   // Void-cream inside the well ring stays suppressed (kills leftover claim arcs).
   for (let py = 0; py < size; py += 1) {
+    if (py > 0 && py % 24 === 0) await yieldToBrowser()
     for (let px = 0; px < size; px += 1) {
       const i = py * size + px
       const current = owner[i]
