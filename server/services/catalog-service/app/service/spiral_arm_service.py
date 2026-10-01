@@ -15,8 +15,11 @@ from app.db.models import (
 )
 from app.service.frontier_polities import (
     FRONTIER_POLITIES,
-    allocate_frontier_polities,
+    NEW_FRONTIER_ARM_BY_STEM,
+    NEW_FRONTIER_STEMS,
+    allocate_new_frontier_polities,
     assign_objects_inside_territories,
+    load_locked_frontier_layout,
     map_canonical_frontier_catalog,
 )
 from app.service.frontier_naming import (
@@ -177,8 +180,9 @@ def gateway_edges(
 def apply_spiral_extension() -> dict[str, int]:
     generated = generate_arm_objects()
     generated_ids = {obj.id for obj in generated}
-    ownership, clusters = allocate_frontier_polities(generated)
-    canonical_catalog = map_canonical_frontier_catalog(clusters)
+    locked_base, locked_clusters, locked_ownership = (
+        load_locked_frontier_layout(generated)
+    )
 
     with SessionLocal() as session:
         existing = list(session.scalars(select(SystemRow)))
@@ -186,44 +190,33 @@ def apply_spiral_extension() -> dict[str, int]:
             row.system_id: row.stem
             for row in session.scalars(select(SystemOwnerOverrideRow))
         }
-        territory_ownership = assign_objects_inside_territories(
+        new_ownership, new_clusters = allocate_new_frontier_polities(
             generated,
-            ownership,
-            existing,
+            {*locked_ownership, *manual_ownership},
+            locked_ownership,
         )
-        ownership.update(territory_ownership)
+        ownership = {**locked_ownership, **new_ownership}
+        clusters = {**locked_clusters, **new_clusters}
         by_id = {obj.id: obj for obj in generated}
-        outer_floor = {
-            stem: sum(
-                math.hypot(obj.x, obj.y)
-                for obj in cluster
-                if obj.kind == "star"
-            )
-            / sum(obj.kind == "star" for obj in cluster)
-            for stem, cluster in clusters.items()
-        }
-        outer_candidates = assign_objects_inside_territories(
-            generated,
-            ownership,
-            existing,
-        )
-        outer_ownership = {
+        territory_ownership = {
             object_id: stem
-            for object_id, stem in outer_candidates.items()
-            if stem in outer_floor
-            and math.hypot(by_id[object_id].x, by_id[object_id].y)
-            >= outer_floor[stem]
+            for object_id, stem in assign_objects_inside_territories(
+                generated,
+                ownership,
+                existing,
+            ).items()
+            if stem in NEW_FRONTIER_STEMS
+            and by_id[object_id].arm == NEW_FRONTIER_ARM_BY_STEM[stem]
         }
-        ownership.update(outer_ownership)
-        for object_id, stem in territory_ownership.items():
-            canonical_catalog[object_id] = _generated_claim_catalog(
-                by_id[object_id],
-                stem,
-            )
-        for object_id, stem in outer_ownership.items():
-            canonical_catalog[object_id] = _generated_claim_catalog(
-                by_id[object_id],
-                stem,
+        ownership.update(territory_ownership)
+        canonical_catalog = map_canonical_frontier_catalog(clusters)
+        for object_id, stem in ownership.items():
+            canonical_catalog.setdefault(
+                object_id,
+                _generated_claim_catalog(
+                    by_id[object_id],
+                    stem,
+                ),
             )
         for object_id, stem in manual_ownership.items():
             obj = by_id.get(object_id)
@@ -369,7 +362,9 @@ def apply_spiral_extension() -> dict[str, int]:
                 "frontierPolities": len(FRONTIER_POLITIES),
                 "frontierAssignedSystems": len(ownership),
                 "frontierTerritoryClaims": (
-                    len(territory_ownership) + len(outer_ownership)
+                    len(locked_ownership)
+                    - len(locked_base)
+                    + len(territory_ownership)
                 ),
                 "frontierNamedSystems": len(canonical_catalog),
                 "systemCount": system_count,
@@ -386,6 +381,10 @@ def apply_spiral_extension() -> dict[str, int]:
         "gateways": len(gateways),
         "polities": len(clusters),
         "assignedSystems": len(ownership),
-        "territoryClaims": len(territory_ownership) + len(outer_ownership),
+        "territoryClaims": (
+            len(locked_ownership)
+            - len(locked_base)
+            + len(territory_ownership)
+        ),
         "namedSystems": len(canonical_catalog),
     }

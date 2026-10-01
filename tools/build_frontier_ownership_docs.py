@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-import math
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -17,8 +16,11 @@ sys.path.insert(0, str(CANON / "tools"))
 from _gen_states_planets import EN_TO_RU  # noqa: E402
 from app.service.frontier_polities import (  # noqa: E402
     FRONTIER_POLITIES,
-    allocate_frontier_polities,
+    NEW_FRONTIER_ARM_BY_STEM,
+    NEW_FRONTIER_STEMS,
+    allocate_new_frontier_polities,
     assign_objects_inside_territories,
+    load_locked_frontier_layout,
 )
 from app.service.spiral_arm_service import _generated_claim_catalog  # noqa: E402
 from app.service.spiral_geometry import generate_arm_objects  # noqa: E402
@@ -92,7 +94,11 @@ def _index(rows: list[tuple[str, str, Counter]], *, ru: bool) -> str:
             "# Дополнительные системы новых государств",
             "",
             "Канонический реестр объектов, назначенных по попаданию внутрь или "
-            "касанию границ 21 нового государства без изменения координат.",
+            f"касанию границ {len(FRONTIER_POLITIES)} государств рукавов.",
+            "",
+            "Территории ранее размещённых государств зафиксированы снимком. "
+            "Новые государства получают только безымянные нейтральные объекты "
+            "за пределами снимка и стыкуются с его внешней границей.",
             "",
             "| Государство | Всего | Звёзды | Чёрные дыры | Стыки |",
             "|-------------|-------|--------|-------------|-------|",
@@ -107,7 +113,12 @@ def _index(rows: list[tuple[str, str, Counter]], *, ru: bool) -> str:
             "# Additional systems of the new polities",
             "",
             "Canonical registry of objects assigned because they lie inside "
-            "or touch the fixed borders of the 21 new polities, without moving them.",
+            f"or touch the borders of the {len(FRONTIER_POLITIES)} spiral-arm "
+            "polities.",
+            "",
+            "Earlier polity territories are frozen by an ownership snapshot. "
+            "New polities receive only unnamed neutral objects outside that "
+            "snapshot and adjoin its outer boundary.",
             "",
             "| Polity | Total | Stars | Black holes | Junctions |",
             "|--------|-------|-------|-------------|-----------|",
@@ -136,29 +147,35 @@ def _index(rows: list[tuple[str, str, Counter]], *, ru: bool) -> str:
 
 def main() -> int:
     objects = generate_arm_objects()
-    ownership, clusters = allocate_frontier_polities(objects)
-    additions = assign_objects_inside_territories(objects, ownership, [])
-    ownership.update(additions)
-    by_id = {obj.id: obj for obj in objects}
-    outer_floor = {
-        stem: sum(
-            math.hypot(obj.x, obj.y)
-            for obj in cluster
-            if obj.kind == "star"
-        )
-        / sum(obj.kind == "star" for obj in cluster)
-        for stem, cluster in clusters.items()
-    }
-    outer_candidates = assign_objects_inside_territories(objects, ownership, [])
-    additions.update(
-        {
-            object_id: stem
-            for object_id, stem in outer_candidates.items()
-            if stem in outer_floor
-            and math.hypot(by_id[object_id].x, by_id[object_id].y)
-            >= outer_floor[stem]
-        }
+    locked_base, locked_clusters, locked_ownership = (
+        load_locked_frontier_layout(objects)
     )
+    new_ownership, new_clusters = allocate_new_frontier_polities(
+        objects,
+        locked_ownership,
+        locked_ownership,
+    )
+    ownership = {**locked_ownership, **new_ownership}
+    clusters = {**locked_clusters, **new_clusters}
+    by_id = {obj.id: obj for obj in objects}
+    new_additions = {
+        object_id: stem
+        for object_id, stem in assign_objects_inside_territories(
+            objects,
+            ownership,
+            [],
+        ).items()
+        if stem in NEW_FRONTIER_STEMS
+        and by_id[object_id].arm == NEW_FRONTIER_ARM_BY_STEM[stem]
+    }
+    additions = {
+        **{
+            object_id: stem
+            for object_id, stem in locked_ownership.items()
+            if object_id not in locked_base
+        },
+        **new_additions,
+    }
     grouped: dict[str, list[dict]] = defaultdict(list)
 
     for object_id, stem in additions.items():

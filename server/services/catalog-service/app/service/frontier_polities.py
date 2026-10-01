@@ -81,7 +81,51 @@ _RAIH = (
     ("Theros_Compact", "Theros Compact", "Теросский Компакт", "#b78646"),
 )
 
-FRONTIER_POLITIES = tuple(
+_MIRADIN_BATCH28 = (
+    ("Haldor_Compact", "Haldor Compact", "Халдорский Компакт", "#ad4c58"),
+    ("Wren_Accord", "Wren Accord", "Вренский Аккорд", "#6b4cad"),
+    ("Basalt_Mandate", "Basalt Mandate", "Базальтовый Мандат", "#714cad"),
+    ("Grove_Communion", "Grove Communion", "Гроувская Коммуния", "#764cad"),
+    ("Frost_Ward", "Frost Ward", "Фростский Дозор", "#7b4cad"),
+    ("Ember_Array", "Ember Array", "Эмберский Массив", "#814cad"),
+    ("Prism_Assembly", "Prism Assembly", "Призменная Ассамблея", "#864cad"),
+    ("Glass_League", "Glass League", "Стеклянная Лига", "#8b4cad"),
+    ("Anvil_Covenant", "Anvil Covenant", "Анвильский Ковенант", "#904cad"),
+    ("Needle_Union", "Needle Union", "Игольный Союз", "#964cad"),
+    ("Tide_Protectorate", "Tide Protectorate", "Приливный Протекторат", "#9b4cad"),
+    ("Ash_Directorate", "Ash Directorate", "Пепельная Директория", "#a04cad"),
+    ("Quiet_Chamber", "Quiet Chamber", "Тихая Палата", "#a64cad"),
+    ("Span_League", "Span League", "Пролётная Лига", "#ad4c87"),
+)
+
+_RAIH_BATCH28 = (
+    ("Aurin_Charter", "Aurin Charter", "Ауринская Хартия", "#c29c4e"),
+    ("Cinder_Dominion", "Cinder Dominion", "Синдерский Доминион", "#c29f4e"),
+    ("Choir_Synod", "Choir Synod", "Хоровой Синод", "#c2a24e"),
+    ("Silt_Caravanate", "Silt Caravanate", "Силтовый Караванат", "#c2a54e"),
+    ("Grit_March", "Grit March", "Гритский Марш", "#c2a74e"),
+    (
+        "Latch_Guild_Republic",
+        "Latch Guild Republic",
+        "Затворная Гильдейская Республика",
+        "#c2aa4e",
+    ),
+    ("Bloom_Concordat", "Bloom Concordat", "Цветочный Конкордат", "#c2ad4e"),
+    ("Rime_Crown", "Rime Crown", "Инеевая Корона", "#c2af4e"),
+    ("Volt_Chamber", "Volt Chamber", "Вольтовая Палата", "#c2b24e"),
+    ("Facet_Compact", "Facet Compact", "Гранёный Компакт", "#c2b54e"),
+    (
+        "Coil_Protectorate",
+        "Coil Protectorate",
+        "Катушечный Протекторат",
+        "#c2b84e",
+    ),
+    ("Mirror_League", "Mirror League", "Зеркальная Лига", "#c2ba4e"),
+    ("Salt_Accord", "Salt Accord", "Соляной Аккорд", "#c2bd4e"),
+    ("Hex_Mandate", "Hex Mandate", "Гекс Мандат", "#c27e4e"),
+)
+
+LOCKED_FRONTIER_POLITIES = tuple(
     FrontierPolity(row[0], row[1], row[2], "miradin", row[3], arm=1 if index < 6 else 4)
     for index, row in enumerate(_MIRADIN)
 ) + tuple(
@@ -89,11 +133,91 @@ FRONTIER_POLITIES = tuple(
     for index, row in enumerate(_RAIH)
 )
 
+NEW_FRONTIER_POLITIES = tuple(
+    FrontierPolity(
+        row[0],
+        row[1],
+        row[2],
+        "miradin",
+        row[3],
+        arm=1 if index < 7 else 4,
+    )
+    for index, row in enumerate(_MIRADIN_BATCH28)
+) + tuple(
+    FrontierPolity(
+        row[0],
+        row[1],
+        row[2],
+        "raih",
+        row[3],
+        arm=2 if index < 7 else 3,
+    )
+    for index, row in enumerate(_RAIH_BATCH28)
+)
+
+NEW_FRONTIER_STEMS = frozenset(
+    polity.stem for polity in NEW_FRONTIER_POLITIES
+)
+NEW_FRONTIER_ARM_BY_STEM = {
+    polity.stem: polity.arm for polity in NEW_FRONTIER_POLITIES
+}
+FRONTIER_POLITIES = LOCKED_FRONTIER_POLITIES + NEW_FRONTIER_POLITIES
+
 _CATALOG_PATH = (
     Path(__file__).resolve().parents[1]
     / "data"
     / "frontier_polity_catalog.json"
 )
+_LAYOUT_LOCK_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "data"
+    / "frontier_layout_lock.json"
+)
+
+
+def load_locked_frontier_layout(
+    objects: list[ArmObject],
+) -> tuple[
+    dict[str, str],
+    dict[str, tuple[ArmObject, ...]],
+    dict[str, str],
+]:
+    """Load the immutable ownership/coordinate snapshot for current polities."""
+    if not _LAYOUT_LOCK_PATH.is_file():
+        raise RuntimeError(f"Missing frontier layout lock: {_LAYOUT_LOCK_PATH}")
+    layout = json.loads(_LAYOUT_LOCK_PATH.read_text(encoding="utf-8"))
+    expected_polities = [
+        polity.stem for polity in LOCKED_FRONTIER_POLITIES
+    ]
+    if layout.get("polities") != expected_polities:
+        raise RuntimeError(
+            "Frontier polity definitions differ from the locked layout"
+        )
+
+    object_indexes = {obj.id: index for index, obj in enumerate(objects)}
+    for object_id, coordinates in layout["coordinates"].items():
+        index = object_indexes.get(object_id)
+        if index is None:
+            raise RuntimeError(
+                f"Locked frontier object is missing: {object_id}"
+            )
+        objects[index] = replace(
+            objects[index],
+            x=float(coordinates[0]),
+            y=float(coordinates[1]),
+            z=float(coordinates[2]),
+        )
+
+    by_id = {obj.id: obj for obj in objects}
+    clusters = {
+        stem: tuple(by_id[object_id] for object_id in object_ids)
+        for stem, object_ids in layout["clusters"].items()
+    }
+    return (
+        dict(layout["baseOwnership"]),
+        clusters,
+        dict(layout["ownership"]),
+    )
 
 
 def allocate_frontier_polities(
@@ -112,14 +236,20 @@ def allocate_frontier_polities(
     clusters: dict[str, tuple[ArmObject, ...]] = {}
     bloc_indexes = {"miradin": 0, "raih": 0}
     bloc_totals = {
-        "miradin": sum(polity.bloc == "miradin" for polity in FRONTIER_POLITIES),
-        "raih": sum(polity.bloc == "raih" for polity in FRONTIER_POLITIES),
+        "miradin": sum(
+            polity.bloc == "miradin"
+            for polity in LOCKED_FRONTIER_POLITIES
+        ),
+        "raih": sum(
+            polity.bloc == "raih"
+            for polity in LOCKED_FRONTIER_POLITIES
+        ),
     }
     def update_object(obj: ArmObject) -> None:
         objects[object_indexes[obj.id]] = obj
         available[obj.id] = obj
 
-    for polity in FRONTIER_POLITIES:
+    for polity in LOCKED_FRONTIER_POLITIES:
         position = bloc_indexes[polity.bloc]
         bloc_indexes[polity.bloc] += 1
         fraction = (position + 0.5) / bloc_totals[polity.bloc]
@@ -204,6 +334,192 @@ def allocate_frontier_polities(
         for obj in cluster:
             assignments[obj.id] = polity.stem
             available.pop(obj.id)
+        clusters[polity.stem] = cluster
+
+    return assignments, clusters
+
+
+def allocate_new_frontier_polities(
+    objects: list[ArmObject],
+    reserved_ids: Iterable[str],
+    boundary_ownership: dict[str, str] | None = None,
+) -> tuple[dict[str, str], dict[str, tuple[ArmObject, ...]]]:
+    """Allocate new polities only on neutral objects outside the layout lock."""
+    reserved = set(reserved_ids)
+    boundary = (
+        set(boundary_ownership)
+        if boundary_ownership is not None
+        else reserved
+    )
+    if boundary_ownership is not None:
+        reserved.update(
+            assign_objects_inside_territories(
+                objects,
+                boundary_ownership,
+                [],
+            )
+        )
+    object_indexes = {obj.id: index for index, obj in enumerate(objects)}
+    available = {
+        obj.id: obj
+        for obj in objects
+        if obj.id not in reserved
+    }
+    assignments: dict[str, str] = {}
+    clusters: dict[str, tuple[ArmObject, ...]] = {}
+    selected_by_stem: dict[str, list[ArmObject]] = {
+        polity.stem: [] for polity in NEW_FRONTIER_POLITIES
+    }
+    locked_objects = [
+        objects[object_indexes[object_id]]
+        for object_id in boundary
+        if object_id in object_indexes
+    ]
+    groups = (
+        (1, 1, NEW_FRONTIER_POLITIES[:7]),
+        (4, 1, NEW_FRONTIER_POLITIES[7:14]),
+        (2, -1, NEW_FRONTIER_POLITIES[14:21]),
+        (3, -1, NEW_FRONTIER_POLITIES[21:]),
+    )
+
+    # Pick the densest 20-star neutral pocket nearest the old boundary, remove
+    # it, and repeat. This produces compact adjacent territories without ever
+    # sampling an object from the immutable ownership snapshot.
+    for arm, side, polities in groups:
+        adjacent_objects = list(locked_objects)
+        candidates = [
+            obj
+            for obj in available.values()
+            if obj.kind == "star"
+            and obj.arm == arm
+            and obj.x * side > 0
+        ]
+        for polity in polities:
+            if len(candidates) < STARS_PER_POLITY:
+                raise RuntimeError(
+                    f"Not enough neutral stars available for {polity.stem}"
+                )
+            best: tuple[
+                float,
+                int,
+                str,
+                list[ArmObject],
+            ] | None = None
+            for seed in candidates:
+                nearest = sorted(
+                    candidates,
+                    key=lambda obj: (
+                        math.hypot(obj.x - seed.x, obj.y - seed.y),
+                        obj.ordinal,
+                        obj.id,
+                    ),
+                )[:STARS_PER_POLITY]
+                compact_radius = math.hypot(
+                    nearest[-1].x - seed.x,
+                    nearest[-1].y - seed.y,
+                )
+                boundary_gap = min(
+                    math.hypot(seed.x - old.x, seed.y - old.y)
+                    for old in adjacent_objects
+                )
+                candidate = (
+                    compact_radius + boundary_gap * 0.35,
+                    seed.ordinal,
+                    seed.id,
+                    nearest,
+                )
+                if best is None or candidate[:3] < best[:3]:
+                    best = candidate
+            assert best is not None
+            selected_by_stem[polity.stem] = best[3]
+            adjacent_objects.extend(best[3])
+            selected_ids = {obj.id for obj in best[3]}
+            candidates = [
+                obj for obj in candidates if obj.id not in selected_ids
+            ]
+            for object_id in selected_ids:
+                available.pop(object_id)
+
+    for polity in NEW_FRONTIER_POLITIES:
+        stars = sorted(
+            selected_by_stem[polity.stem],
+            key=lambda obj: (obj.ordinal, obj.id),
+        )
+        anchor_x = sum(obj.x for obj in stars) / len(stars)
+        anchor_y = sum(obj.y for obj in stars) / len(stars)
+        cluster_radius = max(
+            math.hypot(obj.x - anchor_x, obj.y - anchor_y)
+            for obj in stars
+        )
+
+        def take_special(kind: str, offset_index: int) -> ArmObject:
+            selected = min(
+                (
+                    obj
+                    for obj in available.values()
+                    if obj.kind == kind
+                    and obj.arm == polity.arm
+                    and obj.x * polity.side > 0
+                ),
+                key=lambda obj: (
+                    math.hypot(obj.x - anchor_x, obj.y - anchor_y),
+                    obj.ordinal,
+                    obj.id,
+                ),
+                default=None,
+            )
+            if selected is None:
+                selected = min(
+                    (
+                        obj
+                        for obj in available.values()
+                        if obj.kind == kind and obj.arm == polity.arm
+                    ),
+                    key=lambda obj: (
+                        math.hypot(obj.x - anchor_x, obj.y - anchor_y),
+                        obj.ordinal,
+                        obj.id,
+                    ),
+                    default=None,
+                )
+            if selected is None:
+                raise RuntimeError(
+                    f"No neutral {kind} available for {polity.stem}"
+                )
+            distance = math.hypot(
+                selected.x - anchor_x,
+                selected.y - anchor_y,
+            )
+            if (
+                selected.x * polity.side > 0
+                and distance <= max(0.08, cluster_radius * 1.2)
+            ):
+                return selected
+            offset_angle = (
+                (
+                    len(LOCKED_FRONTIER_POLITIES)
+                    + len(clusters)
+                )
+                * 2
+                + offset_index
+            ) * 2.399963229728653
+            relocated = replace(
+                selected,
+                x=round(anchor_x + math.cos(offset_angle) * 0.008, 6),
+                y=round(anchor_y + math.sin(offset_angle) * 0.008, 6),
+            )
+            objects[object_indexes[selected.id]] = relocated
+            available[selected.id] = relocated
+            return relocated
+
+        cluster = (
+            *stars,
+            take_special("black_hole", 0),
+            take_special("junction", 1),
+        )
+        for obj in cluster:
+            assignments[obj.id] = polity.stem
+            available.pop(obj.id, None)
         clusters[polity.stem] = cluster
 
     return assignments, clusters
