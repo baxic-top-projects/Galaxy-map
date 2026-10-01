@@ -4,6 +4,7 @@ from math import hypot
 from app.service.frontier_polities import (
     FRONTIER_POLITIES,
     NEUTRAL_STAR_CLEARANCE,
+    NEUTRAL_STAR_MIN_GALACTIC_RADIUS,
     allocate_frontier_polities,
     map_canonical_frontier_catalog,
 )
@@ -95,6 +96,9 @@ def test_neutral_stars_are_moved_outside_new_polity_clusters():
         for obj in neutral_stars
         for center_x, center_y in centers
     ) >= NEUTRAL_STAR_CLEARANCE
+    assert min(hypot(obj.x, obj.y) for obj in neutral_stars) >= (
+        NEUTRAL_STAR_MIN_GALACTIC_RADIUS
+    )
 
 
 def test_all_assigned_stars_receive_canonical_names_and_planets():

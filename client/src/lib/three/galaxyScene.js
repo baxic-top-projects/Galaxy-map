@@ -1352,9 +1352,14 @@ async function createProceduralPoliticalPlate(galaxy) {
     return mesh
   }
 
-  const centralSpatial = buildSpatialIndex(owned)
-  const frontierOwned = owned.filter((system) => system.id.startsWith('frontier:'))
+  const neutralOwned = owned.filter(isUnnamedNeutralStar)
+  const politicalOwned = owned.filter((system) => !isUnnamedNeutralStar(system))
+  const centralSpatial = politicalOwned.length ? buildSpatialIndex(politicalOwned) : null
+  const frontierOwned = politicalOwned.filter((system) =>
+    system.id.startsWith('frontier:'),
+  )
   const frontierSpatial = frontierOwned.length ? buildSpatialIndex(frontierOwned) : null
+  const neutralSpatial = neutralOwned.length ? buildSpatialIndex(neutralOwned) : null
   const frontierByStem = new Map()
   for (const system of frontierOwned) {
     if (!frontierByStem.has(system.stem)) frontierByStem.set(system.stem, [])
@@ -1402,9 +1407,12 @@ async function createProceduralPoliticalPlate(galaxy) {
       polityStem: neutral ? '__neutral__' : system.stem,
       isWell,
       isNeutral: neutral,
-      claimRadius: system.id.startsWith('frontier:')
-        ? frontierClaimByStem.get(system.stem) || frontierClaimMin
-        : claimR,
+      claimRadius:
+        neutral && system.id.startsWith('frontier:')
+          ? frontierClaimMax
+          : system.id.startsWith('frontier:')
+            ? frontierClaimByStem.get(system.stem) || frontierClaimMin
+            : claimR,
       r: Math.round(color.r * 255),
       g: Math.round(color.g * 255),
       b: Math.round(color.b * 255),
@@ -1429,16 +1437,13 @@ async function createProceduralPoliticalPlate(galaxy) {
       // territory remains continuous; arm territory only exists near an owned
       // frontier object and therefore needs a bounded lookup.
       let nearest = insideCentralDisk
-        ? centralSpatial.queryNearestAny(gx, gy)
+        ? centralSpatial?.queryNearestAny(gx, gy)
         : frontierSpatial?.queryNearest(gx, gy, frontierClaimMax)
-      if (!nearest) continue
-      let dist = Math.hypot(nearest.x - gx, nearest.y - gy)
-      let idx = systemIndex.get(nearest.id)
-      if (idx == null) continue
-
-      let nearestIsWell = nearest.kind === 'well'
-      let useVoronoi = nearestIsWell || fullVoronoi[idx]
-      let effectiveClaimR = systemMeta[idx].claimRadius
+      let dist = nearest ? Math.hypot(nearest.x - gx, nearest.y - gy) : Infinity
+      let idx = nearest ? systemIndex.get(nearest.id) : null
+      let nearestIsWell = nearest?.kind === 'well'
+      let useVoronoi = idx != null && (nearestIsWell || fullVoronoi[idx])
+      let effectiveClaimR = idx != null ? systemMeta[idx].claimRadius : 0
       // At an arm root, the nearest legacy-disk system can be just outside its
       // small claim while a slightly farther frontier system still legitimately
       // covers the pixel. Fall back to that frontier claim to stitch the arm to
@@ -1471,6 +1476,29 @@ async function createProceduralPoliticalPlate(galaxy) {
           }
         }
       }
+
+      // Political territory has priority over neutral stars. Only use neutral
+      // fill where no valid state/well claim exists, so free arm stars cannot
+      // punch gray islands into legacy states.
+      if (
+        (!nearest || idx == null || (!useVoronoi && dist > effectiveClaimR)) &&
+        neutralSpatial
+      ) {
+        const neutralNearest = neutralSpatial.queryNearest(
+          gx,
+          gy,
+          frontierClaimMax,
+        )
+        if (neutralNearest) {
+          nearest = neutralNearest
+          idx = systemIndex.get(neutralNearest.id)
+          dist = Math.hypot(neutralNearest.x - gx, neutralNearest.y - gy)
+          nearestIsWell = false
+          useVoronoi = false
+          effectiveClaimR = systemMeta[idx]?.claimRadius || 0
+        }
+      }
+      if (!nearest || idx == null) continue
       if (!useVoronoi && dist > effectiveClaimR) continue
 
       const i = py * size + px

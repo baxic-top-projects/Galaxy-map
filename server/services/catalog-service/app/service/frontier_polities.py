@@ -13,6 +13,7 @@ JUNCTIONS_PER_POLITY = 1
 POLITY_STAR_RADIUS = 0.055
 NEUTRAL_STAR_CLEARANCE = 0.13
 NEUTRAL_STAR_EJECT_RADIUS = 0.145
+NEUTRAL_STAR_MIN_GALACTIC_RADIUS = 1.19
 
 
 @dataclass(frozen=True)
@@ -233,19 +234,29 @@ def allocate_frontier_polities(
         dx = obj.x - nearest_center[0]
         dy = obj.y - nearest_center[1]
         distance = math.hypot(dx, dy)
-        if distance >= NEUTRAL_STAR_CLEARANCE:
-            continue
-        if distance < 1e-9:
-            angle = obj.ordinal * 2.399963229728653
-        else:
-            angle = math.atan2(dy, dx)
         spread = ((obj.ordinal * 2654435761) % 997) / 997 * 0.018
-        radius = NEUTRAL_STAR_EJECT_RADIUS + spread
-        relocated = replace(
-            obj,
-            x=round(nearest_center[0] + math.cos(angle) * radius, 6),
-            y=round(nearest_center[1] + math.sin(angle) * radius, 6),
-        )
+        relocated = obj
+        if distance < NEUTRAL_STAR_CLEARANCE:
+            angle = (
+                obj.ordinal * 2.399963229728653
+                if distance < 1e-9
+                else math.atan2(dy, dx)
+            )
+            radius = NEUTRAL_STAR_EJECT_RADIUS + spread
+            relocated = replace(
+                obj,
+                x=round(nearest_center[0] + math.cos(angle) * radius, 6),
+                y=round(nearest_center[1] + math.sin(angle) * radius, 6),
+            )
+        galactic_radius = math.hypot(relocated.x, relocated.y)
+        if galactic_radius < NEUTRAL_STAR_MIN_GALACTIC_RADIUS:
+            radial_angle = math.atan2(relocated.y, relocated.x)
+            outer_radius = NEUTRAL_STAR_MIN_GALACTIC_RADIUS + spread
+            relocated = replace(
+                relocated,
+                x=round(math.cos(radial_angle) * outer_radius, 6),
+                y=round(math.sin(radial_angle) * outer_radius, 6),
+            )
         update_object(relocated)
 
     return assignments, clusters
