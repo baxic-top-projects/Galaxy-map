@@ -1360,7 +1360,6 @@ async function createProceduralPoliticalPlate(galaxy) {
     system.id.startsWith('frontier:'),
   )
   const frontierSpatial = frontierOwned.length ? buildSpatialIndex(frontierOwned) : null
-  const neutralSpatial = neutralOwned.length ? buildSpatialIndex(neutralOwned) : null
   const frontierByStem = new Map()
   for (const system of frontierOwned) {
     if (!frontierByStem.has(system.stem)) frontierByStem.set(system.stem, [])
@@ -1434,13 +1433,12 @@ async function createProceduralPoliticalPlate(galaxy) {
       const gx = ((px + 0.5) / size) * 2 * lim - lim
       const gy = -(((py + 0.5) / size) * 2 * lim - lim)
       const insideCentralDisk = Math.hypot(gx, gy) <= centralDiskR
+      if (!insideCentralDisk) continue
       // The expanded map is mostly empty. Searching every increasingly large
       // grid ring for each void pixel blocks the browser for minutes. Central
-      // territory remains continuous; arm territory only exists near an owned
-      // frontier object and therefore needs a bounded lookup.
-      let nearest = insideCentralDisk
-        ? centralSpatial?.queryNearestAny(gx, gy)
-        : frontierSpatial?.queryNearest(gx, gy, frontierClaimMax)
+      // territory remains continuous. Bounded arm claims are rasterized
+      // directly after this pass instead of querying every empty outer pixel.
+      let nearest = centralSpatial?.queryNearestAny(gx, gy)
       let dist = nearest ? Math.hypot(nearest.x - gx, nearest.y - gy) : Infinity
       let idx = nearest ? systemIndex.get(nearest.id) : null
       let nearestIsWell = nearest?.kind === 'well'
@@ -1479,27 +1477,6 @@ async function createProceduralPoliticalPlate(galaxy) {
         }
       }
 
-      // Political territory has priority over neutral stars. Only use neutral
-      // fill where no valid state/well claim exists, so free arm stars cannot
-      // punch gray islands into legacy states.
-      if (
-        (!nearest || idx == null || (!useVoronoi && dist > effectiveClaimR)) &&
-        neutralSpatial
-      ) {
-        const neutralNearest = neutralSpatial.queryNearest(
-          gx,
-          gy,
-          frontierClaimMax,
-        )
-        if (neutralNearest) {
-          nearest = neutralNearest
-          idx = systemIndex.get(neutralNearest.id)
-          dist = Math.hypot(neutralNearest.x - gx, neutralNearest.y - gy)
-          nearestIsWell = false
-          useVoronoi = false
-          effectiveClaimR = systemMeta[idx]?.claimRadius || 0
-        }
-      }
       if (!nearest || idx == null) continue
       if (!useVoronoi && dist > effectiveClaimR) continue
 
@@ -1521,6 +1498,57 @@ async function createProceduralPoliticalPlate(galaxy) {
       data[o + 3] = Math.round((meta.isNeutral ? 100 : 120) * fade)
     }
   }
+
+  const paintBoundedClaims = async (systems) => {
+    const nearestDistance = new Float32Array(size * size)
+    nearestDistance.fill(Infinity)
+    for (let systemNumber = 0; systemNumber < systems.length; systemNumber += 1) {
+      if (systemNumber > 0 && systemNumber % 256 === 0) await yieldToBrowser()
+      const system = systems[systemNumber]
+      const idx = systemIndex.get(system.id)
+      if (idx == null) continue
+      const meta = systemMeta[idx]
+      const claimRadius = meta.claimRadius
+      const centerPx = ((system.x + lim) / (2 * lim)) * size - 0.5
+      const centerPy = ((lim - system.y) / (2 * lim)) * size - 0.5
+      const pixelRadius = (claimRadius / (2 * lim)) * size
+      const minPx = Math.max(0, Math.floor(centerPx - pixelRadius))
+      const maxPx = Math.min(size - 1, Math.ceil(centerPx + pixelRadius))
+      const minPy = Math.max(0, Math.floor(centerPy - pixelRadius))
+      const maxPy = Math.min(size - 1, Math.ceil(centerPy + pixelRadius))
+
+      for (let py = minPy; py <= maxPy; py += 1) {
+        for (let px = minPx; px <= maxPx; px += 1) {
+          const dx = ((px - centerPx) / size) * 2 * lim
+          const dy = ((py - centerPy) / size) * 2 * lim
+          const dist = Math.hypot(dx, dy)
+          if (dist > claimRadius) continue
+          const i = py * size + px
+          // Preserve the continuous central-disk result. Among bounded claims,
+          // retain the nearest system so neighboring polity borders stay exact.
+          if (owner[i] >= 0 && nearestDistance[i] === Infinity) continue
+          if (dist >= nearestDistance[i]) continue
+          nearestDistance[i] = dist
+          owner[i] = idx
+          const fadeWidth = claimRadius * 0.22
+          const fade = Math.max(
+            0.4,
+            Math.min(1, (claimRadius - dist) / fadeWidth + 0.4),
+          )
+          const o = i * 4
+          data[o] = meta.r
+          data[o + 1] = meta.g
+          data[o + 2] = meta.b
+          data[o + 3] = Math.round((meta.isNeutral ? 100 : 120) * fade)
+        }
+      }
+    }
+  }
+
+  // State claims are painted first; neutral stars can only occupy remaining
+  // pixels and therefore cannot cut holes into any polity.
+  await paintBoundedClaims(frontierOwned)
+  await paintBoundedClaims(neutralOwned)
 
   // Cream outline: single-sided between polities, around the Axis Well, and against void.
   // Void-cream inside the well ring stays suppressed (kills leftover claim arcs).
