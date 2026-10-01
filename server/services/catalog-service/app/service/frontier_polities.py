@@ -10,9 +10,6 @@ from app.service.spiral_geometry import ArmObject
 STARS_PER_POLITY = 20
 BLACK_HOLES_PER_POLITY = 1
 JUNCTIONS_PER_POLITY = 1
-NEUTRAL_STAR_CLEARANCE = 0.13
-NEUTRAL_STAR_MIN_GALACTIC_RADIUS = 1.10
-POLITY_ATTACHMENT_RADIUS = 1.075
 
 
 @dataclass(frozen=True)
@@ -111,8 +108,6 @@ def allocate_frontier_polities(
         "miradin": sum(polity.bloc == "miradin" for polity in FRONTIER_POLITIES),
         "raih": sum(polity.bloc == "raih" for polity in FRONTIER_POLITIES),
     }
-    cluster_zones: list[tuple[float, float, float]] = []
-
     def update_object(obj: ArmObject) -> None:
         objects[object_indexes[obj.id]] = obj
         available[obj.id] = obj
@@ -126,8 +121,8 @@ def allocate_frontier_polities(
             if polity.bloc == "miradin"
             else math.pi / 2 + fraction * math.pi
         )
-        target_x = math.cos(target_angle) * 1.12
-        target_y = math.sin(target_angle) * 1.12
+        target_x = math.cos(target_angle) * 1.04
+        target_y = math.sin(target_angle) * 1.04
 
         candidates = [
             obj
@@ -198,101 +193,11 @@ def allocate_frontier_polities(
         black_hole = take_special("black_hole", 0)
         junction = take_special("junction", 1)
 
-        # Move the complete natural pocket toward the legacy disk as one unit.
-        # Relative positions stay untouched, while its inner edge now meets the
-        # old outer territories instead of leaving a visible empty corridor.
-        anchor_radius = math.hypot(anchor_x, anchor_y)
-        shift = POLITY_ATTACHMENT_RADIUS - anchor_radius
-        shift_x = (anchor_x / anchor_radius) * shift
-        shift_y = (anchor_y / anchor_radius) * shift
-        cluster = tuple(
-            replace(
-                obj,
-                x=round(obj.x + shift_x, 6),
-                y=round(obj.y + shift_y, 6),
-            )
-            for obj in (*stars, black_hole, junction)
-        )
-        for obj in cluster:
-            update_object(obj)
-
-        moved_stars = [obj for obj in cluster if obj.kind == "star"]
-        anchor_x = sum(obj.x for obj in moved_stars) / len(moved_stars)
-        anchor_y = sum(obj.y for obj in moved_stars) / len(moved_stars)
-        cluster_radius = max(
-            math.hypot(obj.x - anchor_x, obj.y - anchor_y)
-            for obj in moved_stars
-        )
-        cluster_zones.append(
-            (
-                anchor_x,
-                anchor_y,
-                max(NEUTRAL_STAR_CLEARANCE, cluster_radius + 0.025),
-            )
-        )
+        cluster = tuple([*stars, black_hole, junction])
         for obj in cluster:
             assignments[obj.id] = polity.stem
             available.pop(obj.id)
         clusters[polity.stem] = cluster
-
-    # The arm generator already begins directly outside the legacy disk. Only
-    # eject unclaimed objects that fall inside a new polity pocket; do not
-    # project the whole arm onto a shared radius, which creates a circular row.
-    for obj in tuple(available.values()):
-        if obj.kind not in {"star", "black_hole", "junction"}:
-            continue
-        kind_salt = {"star": 17, "black_hole": 43, "junction": 71}[obj.kind]
-        phase = (
-            (obj.ordinal * 2654435761 + obj.arm * 104729 + kind_salt) % 1009
-        ) / 1009
-        relocated = obj
-        original_radius = math.hypot(obj.x, obj.y)
-        inward_influence = max(
-            0.0,
-            min(1.0, 1.0 - (original_radius - 1.10) / 0.60),
-        )
-        inward_shift = (0.035 + phase * 0.035) * inward_influence
-        minimum_radius = NEUTRAL_STAR_MIN_GALACTIC_RADIUS + phase * 0.02
-        moved_radius = max(minimum_radius, original_radius - inward_shift)
-        if moved_radius < original_radius:
-            original_angle = math.atan2(obj.y, obj.x)
-            relocated = replace(
-                obj,
-                x=round(math.cos(original_angle) * moved_radius, 6),
-                y=round(math.sin(original_angle) * moved_radius, 6),
-            )
-
-        # If an object intersects any polity pocket, move it farther out along
-        # the arm. Scatter both its radius and angle so displaced systems do
-        # not form a dense row immediately outside the polity border.
-        for attempt in range(6):
-            overlaps = [
-                clearance - math.hypot(
-                    relocated.x - center_x,
-                    relocated.y - center_y,
-                )
-                for center_x, center_y, clearance in cluster_zones
-            ]
-            overlap = max(overlaps)
-            if overlap <= 0:
-                break
-            angle = math.atan2(relocated.y, relocated.x)
-            angular_phase = (
-                phase + attempt * 0.3819660112501051
-            ) % 1.0
-            angle += (angular_phase - 0.5) * 0.24
-            radius = (
-                math.hypot(relocated.x, relocated.y)
-                + overlap
-                + 0.03
-                + phase * 0.10
-            )
-            relocated = replace(
-                relocated,
-                x=round(math.cos(angle) * radius, 6),
-                y=round(math.sin(angle) * radius, 6),
-            )
-        update_object(relocated)
 
     return assignments, clusters
 

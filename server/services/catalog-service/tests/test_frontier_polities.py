@@ -3,9 +3,6 @@ from math import hypot
 
 from app.service.frontier_polities import (
     FRONTIER_POLITIES,
-    NEUTRAL_STAR_CLEARANCE,
-    NEUTRAL_STAR_MIN_GALACTIC_RADIUS,
-    POLITY_ATTACHMENT_RADIUS,
     allocate_frontier_polities,
     map_canonical_frontier_catalog,
 )
@@ -32,17 +29,10 @@ def test_new_polities_receive_compact_single_arm_pockets():
         assert {obj.arm for obj in cluster} == {polity.arm}
         assert all(obj.x * polity.side > 0 for obj in cluster)
 
-        stars = [obj for obj in cluster if obj.kind == "star"]
-        star_center_x = sum(obj.x for obj in stars) / len(stars)
-        star_center_y = sum(obj.y for obj in stars) / len(stars)
-        assert abs(
-            hypot(star_center_x, star_center_y) - POLITY_ATTACHMENT_RADIUS
-        ) < 1e-5
-
         center_x = sum(obj.x for obj in cluster) / len(cluster)
         center_y = sum(obj.y for obj in cluster) / len(cluster)
         centers.append((center_x, center_y))
-        assert hypot(center_x, center_y) < 1.23
+        assert hypot(center_x, center_y) < 1.15
         assert max(
             hypot(obj.x - center_x, obj.y - center_y) for obj in cluster
         ) < 0.17
@@ -80,34 +70,20 @@ def test_missing_nearby_special_objects_are_relocated_into_pockets():
     assert relocated > 0
 
 
-def test_neutral_objects_are_moved_outside_disk_and_new_polity_clusters():
+def test_allocating_polities_does_not_move_any_stars():
     objects = generate_arm_objects()
-    assignments, clusters = allocate_frontier_polities(objects)
-    centers = []
-    for cluster in clusters.values():
-        stars = [obj for obj in cluster if obj.kind == "star"]
-        centers.append(
-            (
-                sum(obj.x for obj in stars) / len(stars),
-                sum(obj.y for obj in stars) / len(stars),
-            )
-        )
-
-    neutral_objects = [
-        obj
+    original = {
+        obj.id: (obj.x, obj.y, obj.z)
         for obj in objects
-        if obj.kind in {"star", "black_hole", "junction"}
-        and obj.id not in assignments
-    ]
-    assert neutral_objects
-    assert min(
-        hypot(obj.x - center_x, obj.y - center_y)
-        for obj in neutral_objects
-        for center_x, center_y in centers
-    ) >= NEUTRAL_STAR_CLEARANCE
-    assert min(hypot(obj.x, obj.y) for obj in neutral_objects) >= (
-        NEUTRAL_STAR_MIN_GALACTIC_RADIUS
-    )
+        if obj.kind == "star"
+    }
+    allocate_frontier_polities(objects)
+
+    assert {
+        obj.id: (obj.x, obj.y, obj.z)
+        for obj in objects
+        if obj.kind == "star"
+    } == original
 
 
 def test_all_assigned_stars_receive_canonical_names_and_planets():
