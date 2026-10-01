@@ -1323,7 +1323,7 @@ async function createProceduralPoliticalPlate(galaxy) {
   const claimR = 0.034
   const frontierClaimMin = 0.07
   const frontierClaimMax = 0.17
-  const neutralClaimR = 0.05
+  const neutralClaimR = 0.085
   // Systems this close to the Axis Well use full Voronoi cells so claim-radius
   // circles do not leave arc-shaped traces beside the well.
   const wellRingR = 0.2
@@ -1401,13 +1401,15 @@ async function createProceduralPoliticalPlate(galaxy) {
   const systemIndex = new Map(owned.map((system, index) => [system.id, index]))
   const systemMeta = owned.map((system) => {
     const isWell = system.kind === 'well'
-    const neutral = isWell || isUnnamedNeutralStar(system)
+    const isUnnamedNeutral = isUnnamedNeutralStar(system)
+    const neutral = isWell || isUnnamedNeutral
     const polity = !neutral && system.stem ? galaxy.polityByStem.get(system.stem) : null
     const color = new THREE.Color(neutral ? '#667080' : polity?.color || '#7aa0c8')
     return {
       polityStem: neutral ? '__neutral__' : system.stem,
       isWell,
       isNeutral: neutral,
+      isUnnamedNeutral,
       claimRadius:
         neutral && system.id.startsWith('frontier:')
           ? neutralClaimR
