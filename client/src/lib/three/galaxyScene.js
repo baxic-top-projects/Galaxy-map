@@ -1419,17 +1419,49 @@ async function createProceduralPoliticalPlate(galaxy) {
       // grid ring for each void pixel blocks the browser for minutes. Central
       // territory remains continuous; arm territory only exists near an owned
       // frontier object and therefore needs a bounded lookup.
-      const nearest = insideCentralDisk
+      let nearest = insideCentralDisk
         ? centralSpatial.queryNearestAny(gx, gy)
         : frontierSpatial?.queryNearest(gx, gy, frontierClaimMax)
       if (!nearest) continue
-      const dist = Math.hypot(nearest.x - gx, nearest.y - gy)
-      const idx = systemIndex.get(nearest.id)
+      let dist = Math.hypot(nearest.x - gx, nearest.y - gy)
+      let idx = systemIndex.get(nearest.id)
       if (idx == null) continue
 
-      const nearestIsWell = nearest.kind === 'well'
-      const useVoronoi = nearestIsWell || fullVoronoi[idx]
-      const effectiveClaimR = systemMeta[idx].claimRadius
+      let nearestIsWell = nearest.kind === 'well'
+      let useVoronoi = nearestIsWell || fullVoronoi[idx]
+      let effectiveClaimR = systemMeta[idx].claimRadius
+      // At an arm root, the nearest legacy-disk system can be just outside its
+      // small claim while a slightly farther frontier system still legitimately
+      // covers the pixel. Fall back to that frontier claim to stitch the arm to
+      // the old disk without globally inflating legacy territories.
+      if (
+        insideCentralDisk &&
+        !useVoronoi &&
+        dist > effectiveClaimR &&
+        frontierSpatial
+      ) {
+        const frontierNearest = frontierSpatial.queryNearest(
+          gx,
+          gy,
+          frontierClaimMax,
+        )
+        if (frontierNearest) {
+          const frontierIdx = systemIndex.get(frontierNearest.id)
+          const frontierDist = Math.hypot(
+            frontierNearest.x - gx,
+            frontierNearest.y - gy,
+          )
+          const frontierClaimR = systemMeta[frontierIdx]?.claimRadius || 0
+          if (frontierIdx != null && frontierDist <= frontierClaimR) {
+            nearest = frontierNearest
+            idx = frontierIdx
+            dist = frontierDist
+            nearestIsWell = false
+            useVoronoi = fullVoronoi[idx]
+            effectiveClaimR = frontierClaimR
+          }
+        }
+      }
       if (!useVoronoi && dist > effectiveClaimR) continue
 
       const i = py * size + px

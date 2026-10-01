@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 from app.service.spiral_geometry import ArmObject
 
@@ -78,6 +80,12 @@ FRONTIER_POLITIES = tuple(
 ) + tuple(
     FrontierPolity(row[0], row[1], row[2], "raih", row[3], arm=2 if index < 5 else 3)
     for index, row in enumerate(_RAIH)
+)
+
+_CATALOG_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "data"
+    / "frontier_polity_catalog.json"
 )
 
 
@@ -186,3 +194,38 @@ def allocate_frontier_polities(
         clusters[polity.stem] = cluster
 
     return assignments, clusters
+
+
+def map_canonical_frontier_catalog(
+    clusters: dict[str, tuple[ArmObject, ...]],
+) -> dict[str, dict]:
+    """Map Efols canonical stars/details onto the selected map objects."""
+    if not _CATALOG_PATH.is_file():
+        raise RuntimeError(f"Missing frontier catalog: {_CATALOG_PATH}")
+    catalog = json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
+    mapped: dict[str, dict] = {}
+
+    for polity in FRONTIER_POLITIES:
+        cluster = clusters[polity.stem]
+        entries = catalog.get(polity.stem) or []
+        for kind in ("star", "black_hole", "junction"):
+            objects_of_kind = sorted(
+                (obj for obj in cluster if obj.kind == kind),
+                key=lambda obj: (obj.ordinal, obj.id),
+            )
+            entries_of_kind = sorted(
+                (entry for entry in entries if entry.get("kind") == kind),
+                key=lambda entry: entry.get("token") or "",
+            )
+            for obj, entry in zip(objects_of_kind, entries_of_kind):
+                mapped[obj.id] = entry
+
+        mapped_stars = sum(
+            obj.id in mapped for obj in cluster if obj.kind == "star"
+        )
+        if mapped_stars != STARS_PER_POLITY:
+            raise RuntimeError(
+                f"{polity.stem}: mapped {mapped_stars}/{STARS_PER_POLITY} stars"
+            )
+
+    return mapped

@@ -4,10 +4,18 @@ import math
 
 from sqlalchemy import delete, func, or_, select
 
-from app.db.models import EdgeRow, GalaxyMetaRow, PolityRow, SessionLocal, SystemRow
+from app.db.models import (
+    EdgeRow,
+    GalaxyMetaRow,
+    PolityRow,
+    SearchEntryRow,
+    SessionLocal,
+    SystemRow,
+)
 from app.service.frontier_polities import (
     FRONTIER_POLITIES,
     allocate_frontier_polities,
+    map_canonical_frontier_catalog,
 )
 from app.service.spiral_geometry import (
     ARM_COUNT,
@@ -37,34 +45,45 @@ def _star_type_name(type_key: str) -> str:
     }[type_key]
 
 
-def _index_payload(obj: ArmObject, stem: str | None = None) -> dict:
+def _index_payload(
+    obj: ArmObject,
+    stem: str | None = None,
+    canonical: dict | None = None,
+) -> dict:
     shard_name = obj.id.replace(":", "__") + ".json"
+    canonical = canonical or {}
     return {
         "id": obj.id,
-        "token": "",
+        "token": canonical.get("token") or "",
         "stem": stem,
         "kind": obj.kind,
-        "nameEn": "",
-        "nameRu": "",
-        "starTypeKey": obj.star_type_key,
-        "sectorId": "",
+        "nameEn": canonical.get("nameEn") or "",
+        "nameRu": canonical.get("nameRu") or "",
+        "starTypeKey": canonical.get("starTypeKey") or obj.star_type_key,
+        "sectorId": canonical.get("sectorId") or "",
         "capital": False,
         "x": obj.x,
         "y": obj.y,
         "z": obj.z,
-        "worldCount": 0,
+        "worldCount": len(canonical.get("worlds") or []),
         "shard": f"systems/{shard_name}",
     }
 
 
-def _detail_payload(obj: ArmObject, stem: str | None = None) -> dict:
+def _detail_payload(
+    obj: ArmObject,
+    stem: str | None = None,
+    canonical: dict | None = None,
+) -> dict:
+    canonical = canonical or {}
     return {
-        **_index_payload(obj, stem),
-        "starType": _star_type_name(obj.star_type_key),
-        "sectorNameEn": "",
-        "worlds": [],
-        "uninhabited": [],
-        "features": [],
+        **_index_payload(obj, stem, canonical),
+        "canonicalId": canonical.get("canonicalId"),
+        "starType": canonical.get("starType") or _star_type_name(obj.star_type_key),
+        "sectorNameEn": canonical.get("sectorNameEn") or "",
+        "worlds": canonical.get("worlds") or [],
+        "uninhabited": canonical.get("uninhabited") or [],
+        "features": canonical.get("features") or [],
         "frontierArm": obj.arm,
     }
 
@@ -108,6 +127,7 @@ def apply_spiral_extension() -> dict[str, int]:
     generated = generate_arm_objects()
     generated_ids = {obj.id for obj in generated}
     ownership, clusters = allocate_frontier_polities(generated)
+    canonical_catalog = map_canonical_frontier_catalog(clusters)
 
     with SessionLocal() as session:
         existing = list(session.scalars(select(SystemRow)))
@@ -119,26 +139,66 @@ def apply_spiral_extension() -> dict[str, int]:
 
         for obj in generated:
             stem = ownership.get(obj.id)
-            payload = _detail_payload(obj, stem)
+            payload = _detail_payload(obj, stem, canonical_catalog.get(obj.id))
             session.merge(
                 SystemRow(
                     id=obj.id,
-                    token="",
+                    token=payload["token"],
                     stem=stem,
                     kind=obj.kind,
-                    name_en="",
-                    name_ru="",
-                    star_type_key=obj.star_type_key,
-                    sector_id="",
+                    name_en=payload["nameEn"],
+                    name_ru=payload["nameRu"],
+                    star_type_key=payload["starTypeKey"],
+                    sector_id=payload["sectorId"],
                     capital=False,
                     x=obj.x,
                     y=obj.y,
                     z=obj.z,
-                    world_count=0,
+                    world_count=payload["worldCount"],
                     shard=payload["shard"],
                     detail=payload,
                 )
             )
+
+        session.execute(
+            delete(SearchEntryRow).where(
+                SearchEntryRow.entry_key.like(f"%:{ID_PREFIX}%")
+            )
+        )
+        for system_id, canonical in sorted(canonical_catalog.items()):
+            stem = ownership[system_id]
+            if canonical["kind"] != "junction":
+                session.add(
+                    SearchEntryRow(
+                        entry_key=f"system:{system_id}:{canonical['token']}",
+                        payload={
+                            "id": system_id,
+                            "kind": "system",
+                            "token": canonical["token"],
+                            "nameEn": canonical["nameEn"],
+                            "nameRu": canonical["nameRu"],
+                            "stem": stem,
+                        },
+                    )
+                )
+            for world in canonical.get("worlds") or []:
+                session.add(
+                    SearchEntryRow(
+                        entry_key=f"world:{system_id}:{world['token']}",
+                        payload={
+                            "id": system_id,
+                            "kind": "world",
+                            "token": world["token"],
+                            "nameEn": world["nameEn"],
+                            "nameRu": world["nameRu"],
+                            "stem": stem,
+                            "planetTypeKey": world.get(
+                                "planetTypeKey",
+                                "continental",
+                            ),
+                        },
+                    )
+                )
 
         stale_ids = {
             row.id
@@ -192,6 +252,7 @@ def apply_spiral_extension() -> dict[str, int]:
                 "spiralJunctions": ARM_COUNT * JUNCTIONS_PER_ARM,
                 "frontierPolities": len(FRONTIER_POLITIES),
                 "frontierAssignedSystems": len(ownership),
+                "frontierNamedSystems": len(canonical_catalog),
                 "systemCount": system_count,
                 "edgeCountCanon": canon_count,
                 "edgeCountDisplay": display_count,
@@ -206,4 +267,5 @@ def apply_spiral_extension() -> dict[str, int]:
         "gateways": len(gateways),
         "polities": len(clusters),
         "assignedSystems": len(ownership),
+        "namedSystems": len(canonical_catalog),
     }

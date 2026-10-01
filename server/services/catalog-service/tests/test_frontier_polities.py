@@ -4,6 +4,7 @@ from math import hypot
 from app.service.frontier_polities import (
     FRONTIER_POLITIES,
     allocate_frontier_polities,
+    map_canonical_frontier_catalog,
 )
 from app.service.spiral_geometry import generate_arm_objects
 
@@ -67,3 +68,24 @@ def test_missing_nearby_special_objects_are_relocated_into_pockets():
                 relocated += 1
 
     assert relocated > 0
+
+
+def test_all_assigned_stars_receive_canonical_names_and_planets():
+    objects = generate_arm_objects()
+    _, clusters = allocate_frontier_polities(objects)
+    catalog = map_canonical_frontier_catalog(clusters)
+
+    stars = [entry for entry in catalog.values() if entry["kind"] == "star"]
+    assert len(stars) == 21 * 20
+    assert all(entry["token"] for entry in stars)
+    assert all(entry["nameEn"] and entry["nameRu"] for entry in stars)
+    assert sum(len(entry["worlds"]) for entry in stars) == 21 * 24
+
+    for polity in FRONTIER_POLITIES:
+        mapped_stars = [
+            catalog[obj.id]
+            for obj in clusters[polity.stem]
+            if obj.kind == "star"
+        ]
+        assert len(mapped_stars) == 20
+        assert sum(len(entry["worlds"]) for entry in mapped_stars) == 24
