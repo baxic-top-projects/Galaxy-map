@@ -1503,7 +1503,7 @@ async function createProceduralPoliticalPlate(galaxy) {
     }
   }
 
-  const paintBoundedClaims = async (systems) => {
+  const paintBoundedClaims = async (systems, claimRadiusOverride = null) => {
     const nearestDistance = new Float32Array(size * size)
     nearestDistance.fill(Infinity)
     for (let systemNumber = 0; systemNumber < systems.length; systemNumber += 1) {
@@ -1512,7 +1512,7 @@ async function createProceduralPoliticalPlate(galaxy) {
       const idx = systemIndex.get(system.id)
       if (idx == null) continue
       const meta = systemMeta[idx]
-      const claimRadius = meta.claimRadius
+      const claimRadius = claimRadiusOverride || meta.claimRadius
       const centerPx = ((system.x + lim) / (2 * lim)) * size - 0.5
       const centerPy = ((lim - system.y) / (2 * lim)) * size - 0.5
       const pixelRadius = (claimRadius / (2 * lim)) * size
@@ -1551,10 +1551,13 @@ async function createProceduralPoliticalPlate(galaxy) {
     }
   }
 
-  // Paint bounded state claims in the arms without scanning the full map.
-  await paintBoundedClaims(frontierOwned)
-  // Unnamed stars fill only pixels left unclaimed by every polity.
-  await paintBoundedClaims(neutralOwned)
+  // One shared bounded Voronoi pass gives the 21 frontier polities and neutral
+  // stars equal cells. Reassigning a star therefore recolors its existing cell
+  // instead of layering a second claim over the previous territory.
+  await paintBoundedClaims(
+    [...frontierOwned, ...neutralOwned],
+    frontierClaimMax,
+  )
 
   // Cream outline: single-sided between polities, around the Axis Well, and against void.
   // Void-cream inside the well ring stays suppressed (kills leftover claim arcs).
