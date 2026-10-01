@@ -211,7 +211,6 @@ def apply_spiral_extension() -> dict[str, int]:
             canonical_catalog[object_id] = _generated_claim_catalog(
                 by_id[object_id],
                 stem,
-                territory_anchor=False,
             )
         for object_id, stem in manual_ownership.items():
             obj = by_id.get(object_id)
