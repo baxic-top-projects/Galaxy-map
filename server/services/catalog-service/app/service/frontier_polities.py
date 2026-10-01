@@ -14,6 +14,7 @@ JUNCTIONS_PER_POLITY = 1
 LEGACY_CLAIM_RADIUS = 0.034
 FRONTIER_CLAIM_MIN = 0.07
 FRONTIER_CLAIM_MAX = 0.17
+BOUNDARY_CAPTURE_MARGIN = 0.02
 
 
 @dataclass(frozen=True)
@@ -274,7 +275,9 @@ def assign_objects_inside_territories(
         cells.setdefault(key, []).append(host)
 
     additions: dict[str, str] = {}
-    search_cells = math.ceil(FRONTIER_CLAIM_MAX / cell_size)
+    search_cells = math.ceil(
+        (FRONTIER_CLAIM_MAX + BOUNDARY_CAPTURE_MARGIN) / cell_size
+    )
     for obj in objects:
         if obj.id in assignments:
             continue
@@ -289,7 +292,8 @@ def assign_objects_inside_territories(
         covered = [
             (math.hypot(obj.x - x, obj.y - y), stem)
             for x, y, stem, claim_radius in candidates
-            if math.hypot(obj.x - x, obj.y - y) <= claim_radius
+            if math.hypot(obj.x - x, obj.y - y)
+            <= claim_radius + BOUNDARY_CAPTURE_MARGIN
         ]
         if covered:
             additions[obj.id] = min(covered, key=lambda item: (item[0], item[1]))[1]
