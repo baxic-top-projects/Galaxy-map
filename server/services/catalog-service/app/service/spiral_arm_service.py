@@ -126,6 +126,19 @@ def _generated_claim_catalog(
     }
 
 
+def _ensure_frontier_star_worlds(obj: ArmObject, canonical: dict) -> dict:
+    if (
+        obj.kind != "star"
+        or not canonical.get("token")
+        or canonical.get("worlds")
+    ):
+        return canonical
+    return {
+        **canonical,
+        "worlds": generated_frontier_worlds(obj.id, canonical["token"]),
+    }
+
+
 def gateway_edges(
     generated: list[ArmObject],
     existing: list[SystemRow],
@@ -226,6 +239,13 @@ def apply_spiral_extension() -> dict[str, int]:
                 generated_entry["token"],
             )
             canonical_catalog[object_id] = generated_entry
+        canonical_catalog = {
+            object_id: _ensure_frontier_star_worlds(
+                by_id[object_id],
+                canonical,
+            )
+            for object_id, canonical in canonical_catalog.items()
+        }
         effective_ownership = {**ownership, **manual_ownership}
         gateways = gateway_edges(generated, existing)
         generated_edges = arm_edges(generated) | gateways

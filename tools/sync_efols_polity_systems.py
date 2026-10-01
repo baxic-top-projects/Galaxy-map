@@ -13,9 +13,16 @@ import requests
 
 CANON = Path(r"D:\GitHub\EfolsMiradinsPact")
 GALAXY_API = "https://galaxyapi.baxic.ru/api/v1/galaxy"
+CATALOG_SERVICE = Path(__file__).resolve().parents[1] / "server" / "services" / "catalog-service"
 
 sys.path.insert(0, str(CANON / "tools"))
+sys.path.insert(0, str(CATALOG_SERVICE))
 from _gen_states_planets import EN_TO_RU  # noqa: E402
+from app.service.frontier_naming import (  # noqa: E402
+    natural_frontier_black_hole_name,
+    natural_frontier_junction_name,
+    natural_frontier_star_name,
+)
 
 TITLE_RE = re.compile(r"(?m)^#\s+(.+?)\s*/\s*(.+?)\s*$")
 WORLD_LINK_RE = re.compile(
@@ -166,8 +173,13 @@ def build_star_index(stem: str, systems: list[dict], world_total: int | None) ->
         if system.get("nameEn"):
             name_en = system["nameEn"]
         href = star_href(stem, canon, system["token"])
+        star_cell = (
+            f"[`{name_en}`]({href})"
+            if path and path.is_file()
+            else f"`{name_en}`"
+        )
         rows.append(
-            f"| {i} | [`{name_en}`]({href}) | {world_cell(stem, worlds)} |"
+            f"| {i} | {star_cell} | {world_cell(stem, worlds)} |"
         )
     n = len(systems)
     worlds_note = f" Named worlds: **{world_total}**." if world_total is not None else ""
@@ -207,6 +219,12 @@ def build_star_index_ru(
             href = f"звёзды/{system['token']}.md"
         else:
             href = f"../{ru_canon}/звёзды/{system['token']}.md"
+        ru_path = ru_card_path(system, ru_canon)
+        star_cell = (
+            f"[`{name_ru}`]({href})"
+            if ru_path and ru_path.is_file()
+            else f"`{name_ru}`"
+        )
         world_parts = []
         for name, href_w in worlds:
             m = re.search(r"STATES/EN/([^/]+)/worlds/([^)]+\.md)", href_w)
@@ -219,7 +237,7 @@ def build_star_index_ru(
                 f"[`{name}`](../../../../../STATES/RU/{ru_pol}/миры/{m.group(2)})"
             )
         world_cell_s = ", ".join(world_parts) if world_parts else "—"
-        rows.append(f"| {i} | [`{name_ru}`]({href}) | {world_cell_s} |")
+        rows.append(f"| {i} | {star_cell} | {world_cell_s} |")
     n = len(systems)
     worlds_note = f" Именованных миров: **{world_total}**." if world_total is not None else ""
     return (
@@ -250,11 +268,16 @@ def build_hole_index(stem: str, systems: list[dict]) -> str:
         if system.get("nameEn"):
             name_en = system["nameEn"]
         href = hole_href(stem, canon, system["token"])
+        hole_cell = (
+            f"[`{name_en}`]({href})"
+            if path and path.is_file()
+            else f"`{name_en}`"
+        )
         if sector_href:
             sec = f"[`{sector_en}`]({sector_href_from_card(stem, canon, sector_href)})"
         else:
             sec = sector_en
-        rows.append(f"| {i} | [`{name_en}`]({href}) | `{system['token']}` | {sec} |")
+        rows.append(f"| {i} | {hole_cell} | `{system['token']}` | {sec} |")
     n = len(systems)
     return (
         f"# {stem} — black holes\n\n"
@@ -280,11 +303,16 @@ def build_junction_index(stem: str, systems: list[dict]) -> str:
         if system.get("nameEn"):
             name_en = system["nameEn"]
         href = hole_href(stem, canon, system["token"])
+        junction_cell = (
+            f"[`{name_en}`]({href})"
+            if path and path.is_file()
+            else f"`{name_en}`"
+        )
         if sector_href:
             sec = f"[`{sector_en}`]({sector_href_from_card(stem, canon, sector_href)})"
         else:
             sec = sector_en
-        rows.append(f"| {i} | [`{name_en}`]({href}) | `{system['token']}` | {sec} |")
+        rows.append(f"| {i} | {junction_cell} | `{system['token']}` | {sec} |")
     n = len(systems)
     return (
         f"# {stem} — hypercorridor junctions\n\n"
@@ -314,12 +342,18 @@ def build_hole_index_ru(stem: str, ru_stem: str, systems: list[dict]) -> str:
             href = f"{system['token']}.md"
         else:
             href = f"../{ru_canon}/{system['token']}.md"
+        ru_path = ru_card_path(system, ru_canon)
+        hole_cell = (
+            f"[`{name_ru}`]({href})"
+            if ru_path and ru_path.is_file()
+            else f"`{name_ru}`"
+        )
         if sector_href:
             name = Path(sector_href).name
             sec = f"[`{sector_en}`](../../../SECTORS/RU/{ru_canon}/{name})"
         else:
             sec = sector_en
-        rows.append(f"| {i} | [`{name_ru}`]({href}) | `{system['token']}` | {sec} |")
+        rows.append(f"| {i} | {hole_cell} | `{system['token']}` | {sec} |")
     n = len(systems)
     return (
         f"# {ru_stem} — чёрные дыры\n\n"
@@ -349,12 +383,18 @@ def build_junction_index_ru(stem: str, ru_stem: str, systems: list[dict]) -> str
             href = f"{system['token']}.md"
         else:
             href = f"../{ru_canon}/{system['token']}.md"
+        ru_path = ru_card_path(system, ru_canon)
+        junction_cell = (
+            f"[`{name_ru}`]({href})"
+            if ru_path and ru_path.is_file()
+            else f"`{name_ru}`"
+        )
         if sector_href:
             name = Path(sector_href).name
             sec = f"[`{sector_en}`](../../../SECTORS/RU/{ru_canon}/{name})"
         else:
             sec = sector_en
-        rows.append(f"| {i} | [`{name_ru}`]({href}) | `{system['token']}` | {sec} |")
+        rows.append(f"| {i} | {junction_cell} | `{system['token']}` | {sec} |")
     n = len(systems)
     return (
         f"# {ru_stem} — стыки гиперкоридоров\n\n"
@@ -401,6 +441,35 @@ def sort_key(system: dict) -> tuple:
     )
 
 
+def ensure_frontier_name(system: dict) -> dict:
+    """Fill names omitted by the API for already-owned generated arm objects."""
+    if (
+        not str(system.get("id") or "").startswith("frontier:")
+        or (
+            system.get("token")
+            and system.get("nameEn")
+            and system.get("nameRu")
+        )
+    ):
+        return system
+
+    naming = {
+        "star": natural_frontier_star_name,
+        "black_hole": natural_frontier_black_hole_name,
+        "junction": natural_frontier_junction_name,
+    }.get(system.get("kind"))
+    if naming is None:
+        return system
+
+    token, name_en, name_ru = naming(system["id"])
+    return {
+        **system,
+        "token": system.get("token") or token,
+        "nameEn": system.get("nameEn") or name_en,
+        "nameRu": system.get("nameRu") or name_ru,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
@@ -410,7 +479,8 @@ def main() -> int:
     by_owner: dict[str, dict[str, list[dict]]] = defaultdict(
         lambda: {"star": [], "black_hole": [], "junction": []}
     )
-    for system in galaxy.get("systems", []):
+    for raw_system in galaxy.get("systems", []):
+        system = ensure_frontier_name(raw_system)
         stem = system.get("stem")
         kind = system.get("kind")
         if not stem or kind not in ("star", "black_hole", "junction"):

@@ -7,6 +7,10 @@ from app.service.frontier_polities import (
     assign_objects_inside_territories,
     map_canonical_frontier_catalog,
 )
+from app.service.spiral_arm_service import (
+    _ensure_frontier_star_worlds,
+    _generated_claim_catalog,
+)
 from app.service.spiral_geometry import generate_arm_objects
 
 
@@ -124,3 +128,16 @@ def test_all_assigned_stars_receive_canonical_names_and_planets():
         ]
         assert len(mapped_stars) == 20
         assert sum(len(entry["worlds"]) for entry in mapped_stars) == 24
+
+
+def test_additional_named_frontier_stars_receive_planets():
+    star = next(obj for obj in generate_arm_objects() if obj.kind == "star")
+    catalog = _generated_claim_catalog(star, "Khelar_Union")
+
+    assert catalog["worlds"] == []
+
+    catalog = _ensure_frontier_star_worlds(star, catalog)
+
+    assert 1 <= len(catalog["worlds"]) <= 3
+    assert all(world["token"] for world in catalog["worlds"])
+    assert all(world["nameEn"] and world["nameRu"] for world in catalog["worlds"])
