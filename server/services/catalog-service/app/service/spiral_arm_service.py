@@ -4,7 +4,11 @@ import math
 
 from sqlalchemy import delete, func, or_, select
 
-from app.db.models import EdgeRow, GalaxyMetaRow, SessionLocal, SystemRow
+from app.db.models import EdgeRow, GalaxyMetaRow, PolityRow, SessionLocal, SystemRow
+from app.service.frontier_polities import (
+    FRONTIER_POLITIES,
+    allocate_frontier_polities,
+)
 from app.service.spiral_geometry import (
     ARM_COUNT,
     BLACK_HOLES_PER_ARM,
@@ -33,12 +37,12 @@ def _star_type_name(type_key: str) -> str:
     }[type_key]
 
 
-def _index_payload(obj: ArmObject) -> dict:
+def _index_payload(obj: ArmObject, stem: str | None = None) -> dict:
     shard_name = obj.id.replace(":", "__") + ".json"
     return {
         "id": obj.id,
         "token": "",
-        "stem": None,
+        "stem": stem,
         "kind": obj.kind,
         "nameEn": "",
         "nameRu": "",
@@ -53,9 +57,9 @@ def _index_payload(obj: ArmObject) -> dict:
     }
 
 
-def _detail_payload(obj: ArmObject) -> dict:
+def _detail_payload(obj: ArmObject, stem: str | None = None) -> dict:
     return {
-        **_index_payload(obj),
+        **_index_payload(obj, stem),
         "starType": _star_type_name(obj.star_type_key),
         "sectorNameEn": "",
         "worlds": [],
@@ -103,19 +107,24 @@ def gateway_edges(
 def apply_spiral_extension() -> dict[str, int]:
     generated = generate_arm_objects()
     generated_ids = {obj.id for obj in generated}
+    ownership, clusters = allocate_frontier_polities(generated)
 
     with SessionLocal() as session:
         existing = list(session.scalars(select(SystemRow)))
         gateways = gateway_edges(generated, existing)
         generated_edges = arm_edges(generated) | gateways
 
+        for polity in FRONTIER_POLITIES:
+            session.merge(PolityRow(stem=polity.stem, payload=polity.payload()))
+
         for obj in generated:
-            payload = _detail_payload(obj)
+            stem = ownership.get(obj.id)
+            payload = _detail_payload(obj, stem)
             session.merge(
                 SystemRow(
                     id=obj.id,
                     token="",
-                    stem=None,
+                    stem=stem,
                     kind=obj.kind,
                     name_en="",
                     name_ru="",
@@ -181,6 +190,8 @@ def apply_spiral_extension() -> dict[str, int]:
                 "spiralStars": ARM_COUNT * STARS_PER_ARM,
                 "spiralBlackHoles": ARM_COUNT * BLACK_HOLES_PER_ARM,
                 "spiralJunctions": ARM_COUNT * JUNCTIONS_PER_ARM,
+                "frontierPolities": len(FRONTIER_POLITIES),
+                "frontierAssignedSystems": len(ownership),
                 "systemCount": system_count,
                 "edgeCountCanon": canon_count,
                 "edgeCountDisplay": display_count,
@@ -193,4 +204,6 @@ def apply_spiral_extension() -> dict[str, int]:
         "systems": len(generated),
         "edgesPerGraph": len(generated_edges),
         "gateways": len(gateways),
+        "polities": len(clusters),
+        "assignedSystems": len(ownership),
     }
