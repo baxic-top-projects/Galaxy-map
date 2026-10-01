@@ -1323,14 +1323,22 @@ async function createProceduralPoliticalPlate(galaxy) {
   const claimR = 0.034
   const frontierClaimMin = 0.07
   const frontierClaimMax = 0.17
+  const neutralClaimR = 0.05
   // Systems this close to the Axis Well use full Voronoi cells so claim-radius
   // circles do not leave arc-shaped traces beside the well.
   const wellRingR = 0.2
   const centerZoneR = 0.14
 
+  const isUnnamedNeutralStar = (system) =>
+    system.kind === 'star' &&
+    !system.stem &&
+    !system.token?.trim() &&
+    !system.nameEn?.trim() &&
+    !system.nameRu?.trim()
   const owned = galaxy.systems.filter(
     (system) =>
       system.kind === 'well' ||
+      isUnnamedNeutralStar(system) ||
       (system.stem &&
         system.territoryAnchor !== false &&
         (system.kind === 'star' ||
@@ -1346,7 +1354,8 @@ async function createProceduralPoliticalPlate(galaxy) {
     return mesh
   }
 
-  const politicalOwned = owned
+  const neutralOwned = owned.filter(isUnnamedNeutralStar)
+  const politicalOwned = owned.filter((system) => !isUnnamedNeutralStar(system))
   const centralSpatial = politicalOwned.length ? buildSpatialIndex(politicalOwned) : null
   const frontierOwned = politicalOwned.filter((system) =>
     system.id.startsWith('frontier:'),
@@ -1392,16 +1401,19 @@ async function createProceduralPoliticalPlate(galaxy) {
   const systemIndex = new Map(owned.map((system, index) => [system.id, index]))
   const systemMeta = owned.map((system) => {
     const isWell = system.kind === 'well'
-    const neutral = isWell
+    const neutral = isWell || isUnnamedNeutralStar(system)
     const polity = !neutral && system.stem ? galaxy.polityByStem.get(system.stem) : null
     const color = new THREE.Color(neutral ? '#667080' : polity?.color || '#7aa0c8')
     return {
       polityStem: neutral ? '__neutral__' : system.stem,
       isWell,
       isNeutral: neutral,
-      claimRadius: system.id.startsWith('frontier:')
-        ? frontierClaimByStem.get(system.stem) || frontierClaimMin
-        : claimR,
+      claimRadius:
+        neutral && system.id.startsWith('frontier:')
+          ? neutralClaimR
+          : system.id.startsWith('frontier:')
+            ? frontierClaimByStem.get(system.stem) || frontierClaimMin
+            : claimR,
       r: Math.round(color.r * 255),
       g: Math.round(color.g * 255),
       b: Math.round(color.b * 255),
@@ -1535,6 +1547,8 @@ async function createProceduralPoliticalPlate(galaxy) {
 
   // Paint bounded state claims in the arms without scanning the full map.
   await paintBoundedClaims(frontierOwned)
+  // Unnamed stars fill only pixels left unclaimed by every polity.
+  await paintBoundedClaims(neutralOwned)
 
   // Cream outline: single-sided between polities, around the Axis Well, and against void.
   // Void-cream inside the well ring stays suppressed (kills leftover claim arcs).
