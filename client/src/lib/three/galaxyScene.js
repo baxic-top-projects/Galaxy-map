@@ -1328,9 +1328,16 @@ async function createProceduralPoliticalPlate(galaxy) {
   const wellRingR = 0.2
   const centerZoneR = 0.14
 
+  const isUnnamedNeutralStar = (system) =>
+    system.kind === 'star' &&
+    !system.stem &&
+    !system.token?.trim() &&
+    !system.nameEn?.trim() &&
+    !system.nameRu?.trim()
   const owned = galaxy.systems.filter(
     (system) =>
       system.kind === 'well' ||
+      isUnnamedNeutralStar(system) ||
       (system.stem &&
         (system.kind === 'star' ||
           system.kind === 'black_hole' ||
@@ -1387,12 +1394,14 @@ async function createProceduralPoliticalPlate(galaxy) {
 
   const systemIndex = new Map(owned.map((system, index) => [system.id, index]))
   const systemMeta = owned.map((system) => {
-    const neutral = system.kind === 'well'
+    const isWell = system.kind === 'well'
+    const neutral = isWell || isUnnamedNeutralStar(system)
     const polity = !neutral && system.stem ? galaxy.polityByStem.get(system.stem) : null
     const color = new THREE.Color(neutral ? '#667080' : polity?.color || '#7aa0c8')
     return {
       polityStem: neutral ? '__neutral__' : system.stem,
-      isWell: neutral,
+      isWell,
+      isNeutral: neutral,
       claimRadius: system.id.startsWith('frontier:')
         ? frontierClaimByStem.get(system.stem) || frontierClaimMin
         : claimR,
@@ -1479,7 +1488,7 @@ async function createProceduralPoliticalPlate(galaxy) {
       data[o] = meta.r
       data[o + 1] = meta.g
       data[o + 2] = meta.b
-      data[o + 3] = Math.round((nearestIsWell ? 100 : 120) * fade)
+      data[o + 3] = Math.round((meta.isNeutral ? 100 : 120) * fade)
     }
   }
 

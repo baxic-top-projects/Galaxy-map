@@ -3,6 +3,7 @@ from math import hypot
 
 from app.service.frontier_polities import (
     FRONTIER_POLITIES,
+    NEUTRAL_STAR_CLEARANCE,
     allocate_frontier_polities,
     map_canonical_frontier_catalog,
 )
@@ -68,6 +69,32 @@ def test_missing_nearby_special_objects_are_relocated_into_pockets():
                 relocated += 1
 
     assert relocated > 0
+
+
+def test_neutral_stars_are_moved_outside_new_polity_clusters():
+    objects = generate_arm_objects()
+    assignments, clusters = allocate_frontier_polities(objects)
+    centers = []
+    for cluster in clusters.values():
+        stars = [obj for obj in cluster if obj.kind == "star"]
+        centers.append(
+            (
+                sum(obj.x for obj in stars) / len(stars),
+                sum(obj.y for obj in stars) / len(stars),
+            )
+        )
+
+    neutral_stars = [
+        obj
+        for obj in objects
+        if obj.kind == "star" and obj.id not in assignments
+    ]
+    assert neutral_stars
+    assert min(
+        hypot(obj.x - center_x, obj.y - center_y)
+        for obj in neutral_stars
+        for center_x, center_y in centers
+    ) >= NEUTRAL_STAR_CLEARANCE
 
 
 def test_all_assigned_stars_receive_canonical_names_and_planets():

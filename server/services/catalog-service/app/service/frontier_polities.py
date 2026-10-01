@@ -10,6 +10,9 @@ from app.service.spiral_geometry import ArmObject
 STARS_PER_POLITY = 20
 BLACK_HOLES_PER_POLITY = 1
 JUNCTIONS_PER_POLITY = 1
+POLITY_STAR_RADIUS = 0.055
+NEUTRAL_STAR_CLEARANCE = 0.13
+NEUTRAL_STAR_EJECT_RADIUS = 0.145
 
 
 @dataclass(frozen=True)
@@ -108,6 +111,11 @@ def allocate_frontier_polities(
         "miradin": sum(polity.bloc == "miradin" for polity in FRONTIER_POLITIES),
         "raih": sum(polity.bloc == "raih" for polity in FRONTIER_POLITIES),
     }
+    cluster_centers: list[tuple[float, float]] = []
+
+    def update_object(obj: ArmObject) -> None:
+        objects[object_indexes[obj.id]] = obj
+        available[obj.id] = obj
 
     for polity in FRONTIER_POLITIES:
         position = bloc_indexes[polity.bloc]
@@ -136,12 +144,32 @@ def allocate_frontier_polities(
         )
         if not star_candidates:
             raise RuntimeError(f"No stars available for {polity.stem}")
-        stars = star_candidates[:STARS_PER_POLITY]
-        if len(stars) != STARS_PER_POLITY:
+        selected_stars = star_candidates[:STARS_PER_POLITY]
+        if len(selected_stars) != STARS_PER_POLITY:
             raise RuntimeError(f"Not enough stars available for {polity.stem}")
+
+        # Repack the selected systems into a deterministic round pocket. Merely
+        # selecting nearby generated points can leave unclaimed stars inside
+        # the polity and split its rendered territory into neutral islands.
+        stars: list[ArmObject] = []
+        for index, selected in enumerate(
+            sorted(selected_stars, key=lambda obj: (obj.ordinal, obj.id))
+        ):
+            angle = index * 2.399963229728653
+            radius = POLITY_STAR_RADIUS * math.sqrt(
+                (index + 0.5) / STARS_PER_POLITY
+            )
+            relocated = replace(
+                selected,
+                x=round(target_x + math.cos(angle) * radius, 6),
+                y=round(target_y + math.sin(angle) * radius, 6),
+            )
+            update_object(relocated)
+            stars.append(relocated)
 
         anchor_x = sum(obj.x for obj in stars) / len(stars)
         anchor_y = sum(obj.y for obj in stars) / len(stars)
+        cluster_centers.append((anchor_x, anchor_y))
         cluster_radius = max(
             math.hypot(obj.x - anchor_x, obj.y - anchor_y)
             for obj in stars
@@ -180,8 +208,7 @@ def allocate_frontier_polities(
                 x=round(anchor_x + math.cos(offset_angle) * 0.008, 6),
                 y=round(anchor_y + math.sin(offset_angle) * 0.008, 6),
             )
-            objects[object_indexes[relocated.id]] = relocated
-            available[relocated.id] = relocated
+            update_object(relocated)
             return relocated
 
         black_hole = take_special("black_hole", 0)
@@ -192,6 +219,34 @@ def allocate_frontier_polities(
             assignments[obj.id] = polity.stem
             available.pop(obj.id)
         clusters[polity.stem] = cluster
+
+    # Push every still-neutral star beyond all new polity pockets. Keep each
+    # star in its original arm and direction from the pocket so the broad arm
+    # shape is preserved instead of creating empty circular cut-outs.
+    for obj in tuple(available.values()):
+        if obj.kind != "star":
+            continue
+        nearest_center = min(
+            cluster_centers,
+            key=lambda center: math.hypot(obj.x - center[0], obj.y - center[1]),
+        )
+        dx = obj.x - nearest_center[0]
+        dy = obj.y - nearest_center[1]
+        distance = math.hypot(dx, dy)
+        if distance >= NEUTRAL_STAR_CLEARANCE:
+            continue
+        if distance < 1e-9:
+            angle = obj.ordinal * 2.399963229728653
+        else:
+            angle = math.atan2(dy, dx)
+        spread = ((obj.ordinal * 2654435761) % 997) / 997 * 0.018
+        radius = NEUTRAL_STAR_EJECT_RADIUS + spread
+        relocated = replace(
+            obj,
+            x=round(nearest_center[0] + math.cos(angle) * radius, 6),
+            y=round(nearest_center[1] + math.sin(angle) * radius, 6),
+        )
+        update_object(relocated)
 
     return assignments, clusters
 
