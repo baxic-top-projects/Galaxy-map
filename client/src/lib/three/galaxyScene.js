@@ -1321,7 +1321,8 @@ async function createProceduralPoliticalPlate(galaxy) {
   // Large enough to keep interior cells contiguous (NN ~0.02–0.04), small enough
   // that rim fill hugs the constellation instead of the circular galaxy disk.
   const claimR = 0.034
-  const claimFadeW = claimR * 0.22
+  const frontierClaimMin = 0.07
+  const frontierClaimMax = 0.14
   // Systems this close to the Axis Well use full Voronoi cells so claim-radius
   // circles do not leave arc-shaped traces beside the well.
   const wellRingR = 0.2
@@ -1347,6 +1348,33 @@ async function createProceduralPoliticalPlate(galaxy) {
   const centralSpatial = buildSpatialIndex(owned)
   const frontierOwned = owned.filter((system) => system.id.startsWith('frontier:'))
   const frontierSpatial = frontierOwned.length ? buildSpatialIndex(frontierOwned) : null
+  const frontierByStem = new Map()
+  for (const system of frontierOwned) {
+    if (!frontierByStem.has(system.stem)) frontierByStem.set(system.stem, [])
+    frontierByStem.get(system.stem).push(system)
+  }
+  const frontierClaimByStem = new Map()
+  for (const [stem, systems] of frontierByStem) {
+    let widestNearestGap = 0
+    if (systems.length > 1) {
+      for (const system of systems) {
+        const nearestGap = Math.min(
+          ...systems
+            .filter((other) => other.id !== system.id)
+            .map((other) => Math.hypot(system.x - other.x, system.y - other.y)),
+        )
+        widestNearestGap = Math.max(widestNearestGap, nearestGap)
+      }
+    }
+    frontierClaimByStem.set(
+      stem,
+      THREE.MathUtils.clamp(
+        widestNearestGap * 0.58 + 0.012,
+        frontierClaimMin,
+        frontierClaimMax,
+      ),
+    )
+  }
   const wellSystem = owned.find((system) => system.kind === 'well') || null
   const wellX = wellSystem?.x || 0
   const wellY = wellSystem?.y || 0
@@ -1365,6 +1393,9 @@ async function createProceduralPoliticalPlate(galaxy) {
     return {
       polityStem: neutral ? '__neutral__' : system.stem,
       isWell: neutral,
+      claimRadius: system.id.startsWith('frontier:')
+        ? frontierClaimByStem.get(system.stem) || frontierClaimMin
+        : claimR,
       r: Math.round(color.r * 255),
       g: Math.round(color.g * 255),
       b: Math.round(color.b * 255),
@@ -1390,7 +1421,7 @@ async function createProceduralPoliticalPlate(galaxy) {
       // frontier object and therefore needs a bounded lookup.
       const nearest = insideCentralDisk
         ? centralSpatial.queryNearestAny(gx, gy)
-        : frontierSpatial?.queryNearest(gx, gy, claimR)
+        : frontierSpatial?.queryNearest(gx, gy, frontierClaimMax)
       if (!nearest) continue
       const dist = Math.hypot(nearest.x - gx, nearest.y - gy)
       const idx = systemIndex.get(nearest.id)
@@ -1398,14 +1429,19 @@ async function createProceduralPoliticalPlate(galaxy) {
 
       const nearestIsWell = nearest.kind === 'well'
       const useVoronoi = nearestIsWell || fullVoronoi[idx]
-      if (!useVoronoi && dist > claimR) continue
+      const effectiveClaimR = systemMeta[idx].claimRadius
+      if (!useVoronoi && dist > effectiveClaimR) continue
 
       const i = py * size + px
       owner[i] = idx
       const meta = systemMeta[idx]
       let fade = 1
       if (!useVoronoi) {
-        fade = Math.max(0.4, Math.min(1, (claimR - dist) / claimFadeW + 0.4))
+        const fadeWidth = effectiveClaimR * 0.22
+        fade = Math.max(
+          0.4,
+          Math.min(1, (effectiveClaimR - dist) / fadeWidth + 0.4),
+        )
       }
       const o = i * 4
       data[o] = meta.r
