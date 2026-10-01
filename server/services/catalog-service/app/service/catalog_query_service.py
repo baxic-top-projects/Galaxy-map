@@ -19,6 +19,10 @@ from app.db.models import (
     SystemRow,
 )
 from app.service.catalog_cache_service import CatalogCacheService, catalog_cache
+from app.service.frontier_naming import (
+    generated_frontier_worlds,
+    natural_frontier_star_name,
+)
 
 _OWNERSHIP_PATH = Path(__file__).resolve().parents[1] / "data" / "visual_ownership.json"
 
@@ -232,10 +236,64 @@ class CatalogQueryService:
                 session.add(SystemOwnerOverrideRow(system_id=system_id, stem=stem))
             else:
                 override.stem = stem
+
+            detail = dict(row.detail or {})
+            is_unnamed_star = row.kind == "star" and not (
+                detail.get("token")
+                or detail.get("nameEn")
+                or detail.get("nameRu")
+                or getattr(row, "token", "")
+                or getattr(row, "name_en", "")
+                or getattr(row, "name_ru", "")
+            )
+            if is_unnamed_star:
+                token, name_en, name_ru = natural_frontier_star_name(row.id)
+                worlds = generated_frontier_worlds(row.id, token)
+                detail.update(
+                    {
+                        "token": token,
+                        "nameEn": name_en,
+                        "nameRu": name_ru,
+                        "worlds": worlds,
+                        "worldCount": len(worlds),
+                    }
+                )
+                row.token = token
+                row.name_en = name_en
+                row.name_ru = name_ru
+                row.world_count = len(worlds)
+                row.detail = detail
+                session.add(
+                    SearchEntryRow(
+                        entry_key=f"system:{row.id}:{token}",
+                        payload={
+                            "id": row.id,
+                            "kind": "system",
+                            "token": token,
+                            "nameEn": name_en,
+                            "nameRu": name_ru,
+                            "stem": stem,
+                        },
+                    )
+                )
+                for world in worlds:
+                    session.add(
+                        SearchEntryRow(
+                            entry_key=f"world:{row.id}:{world['token']}",
+                            payload={
+                                "id": row.id,
+                                "kind": "world",
+                                "token": world["token"],
+                                "nameEn": world["nameEn"],
+                                "nameRu": world["nameRu"],
+                                "stem": stem,
+                                "planetTypeKey": world["planetTypeKey"],
+                            },
+                        )
+                    )
             session.commit()
 
             self.cache.clear()
-            detail = dict(row.detail or {})
             detail["id"] = row.id
             detail["stem"] = stem
             detail["canonicalStem"] = row.stem

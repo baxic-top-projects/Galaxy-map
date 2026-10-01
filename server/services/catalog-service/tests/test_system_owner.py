@@ -126,6 +126,61 @@ def test_update_system_owner_persists_and_clears_cache(monkeypatch):
     assert cache.get_json("galaxy") is None
 
 
+def test_assigning_unnamed_star_generates_name_and_planets(monkeypatch):
+    catalog = CatalogQueryService(cache=CatalogCacheService(client=FakeRedis()))
+    system = SimpleNamespace(
+        id="frontier:arm-1:star-777",
+        kind="star",
+        stem=None,
+        token="",
+        name_en="",
+        name_ru="",
+        world_count=0,
+        detail={
+            "id": "frontier:arm-1:star-777",
+            "kind": "star",
+            "token": "",
+            "nameEn": "",
+            "nameRu": "",
+            "worlds": [],
+        },
+    )
+    polity = SimpleNamespace(stem="Veyran_Accord", payload={"stem": "Veyran_Accord"})
+    added = []
+
+    class FakeSession:
+        def get(self, model, key):
+            name = getattr(model, "__name__", str(model))
+            if name == "SystemRow":
+                return system
+            if name == "PolityRow":
+                return polity
+            return None
+
+        def add(self, row):
+            added.append(row)
+
+        def commit(self):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(query_module, "SessionLocal", FakeSession)
+    result = catalog.update_system_owner(system.id, polity.stem)
+
+    assert result["stem"] == polity.stem
+    assert result["token"]
+    assert result["nameRu"]
+    assert not result["nameRu"].startswith("Пограничная звезда")
+    assert 1 <= len(result["worlds"]) <= 3
+    assert system.world_count == len(result["worlds"])
+    assert len(added) == 2 + len(result["worlds"])
+
+
 def test_update_system_owner_rejects_axis_well(monkeypatch):
     catalog = CatalogQueryService(cache=CatalogCacheService(client=FakeRedis()))
     system = SimpleNamespace(id="AxisWell", kind="well", stem=None, detail={"id": "AxisWell"})

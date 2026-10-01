@@ -10,6 +10,7 @@ from app.db.models import (
     PolityRow,
     SearchEntryRow,
     SessionLocal,
+    SystemOwnerOverrideRow,
     SystemRow,
 )
 from app.service.frontier_polities import (
@@ -17,6 +18,10 @@ from app.service.frontier_polities import (
     allocate_frontier_polities,
     assign_objects_inside_territories,
     map_canonical_frontier_catalog,
+)
+from app.service.frontier_naming import (
+    generated_frontier_worlds,
+    natural_frontier_star_name,
 )
 from app.service.spiral_geometry import (
     ARM_COUNT,
@@ -93,9 +98,7 @@ def _generated_claim_catalog(obj: ArmObject, stem: str) -> dict:
     polity_name = stem.replace("_", " ")
     suffix = f"{obj.arm}-{obj.ordinal:04d}"
     if obj.kind == "star":
-        token = f"FrontierStar{obj.arm}_{obj.ordinal:04d}"
-        name_en = f"{polity_name} Frontier Star {suffix}"
-        name_ru = f"Пограничная звезда {polity_name} {suffix}"
+        token, name_en, name_ru = natural_frontier_star_name(obj.id)
     elif obj.kind == "black_hole":
         token = f"FrontierBlackHole{obj.arm}_{obj.ordinal:04d}"
         name_en = f"{polity_name} Black Hole {suffix}"
@@ -163,6 +166,10 @@ def apply_spiral_extension() -> dict[str, int]:
 
     with SessionLocal() as session:
         existing = list(session.scalars(select(SystemRow)))
+        manual_ownership = {
+            row.system_id: row.stem
+            for row in session.scalars(select(SystemOwnerOverrideRow))
+        }
         territory_ownership = assign_objects_inside_territories(
             generated,
             ownership,
@@ -175,6 +182,21 @@ def apply_spiral_extension() -> dict[str, int]:
                 by_id[object_id],
                 stem,
             )
+        for object_id, stem in manual_ownership.items():
+            obj = by_id.get(object_id)
+            if (
+                obj is None
+                or obj.kind != "star"
+                or object_id in canonical_catalog
+            ):
+                continue
+            generated_entry = _generated_claim_catalog(obj, stem)
+            generated_entry["worlds"] = generated_frontier_worlds(
+                obj.id,
+                generated_entry["token"],
+            )
+            canonical_catalog[object_id] = generated_entry
+        effective_ownership = {**ownership, **manual_ownership}
         gateways = gateway_edges(generated, existing)
         generated_edges = arm_edges(generated) | gateways
 
@@ -210,7 +232,7 @@ def apply_spiral_extension() -> dict[str, int]:
             )
         )
         for system_id, canonical in sorted(canonical_catalog.items()):
-            stem = ownership[system_id]
+            stem = effective_ownership[system_id]
             if canonical["kind"] != "junction":
                 session.add(
                     SearchEntryRow(
