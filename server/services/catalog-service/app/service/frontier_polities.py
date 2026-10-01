@@ -4,12 +4,16 @@ import json
 import math
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Iterable
 
 from app.service.spiral_geometry import ArmObject
 
 STARS_PER_POLITY = 20
 BLACK_HOLES_PER_POLITY = 1
 JUNCTIONS_PER_POLITY = 1
+LEGACY_CLAIM_RADIUS = 0.034
+FRONTIER_CLAIM_MIN = 0.07
+FRONTIER_CLAIM_MAX = 0.17
 
 
 @dataclass(frozen=True)
@@ -200,6 +204,97 @@ def allocate_frontier_polities(
         clusters[polity.stem] = cluster
 
     return assignments, clusters
+
+
+def assign_objects_inside_territories(
+    objects: list[ArmObject],
+    assignments: dict[str, str],
+    existing_hosts: Iterable[object],
+) -> dict[str, str]:
+    """Assign currently unclaimed objects already covered by polity fill.
+
+    The calculation uses only the original polity hosts, so assigning objects
+    does not recursively expand a territory and consume an entire arm.
+    """
+    hosts: list[tuple[float, float, str, float]] = []
+    assigned_by_stem: dict[str, list[ArmObject]] = {}
+    by_id = {obj.id: obj for obj in objects}
+    for object_id, stem in assignments.items():
+        assigned_by_stem.setdefault(stem, []).append(by_id[object_id])
+
+    claim_by_stem: dict[str, float] = {}
+    for stem, systems in assigned_by_stem.items():
+        widest_nearest_gap = 0.0
+        for system in systems:
+            nearest_gap = min(
+                (
+                    math.hypot(system.x - other.x, system.y - other.y)
+                    for other in systems
+                    if other.id != system.id
+                ),
+                default=0.0,
+            )
+            widest_nearest_gap = max(widest_nearest_gap, nearest_gap)
+        claim_by_stem[stem] = min(
+            FRONTIER_CLAIM_MAX,
+            max(
+                FRONTIER_CLAIM_MIN,
+                widest_nearest_gap * 0.58 + 0.012,
+            ),
+        )
+        hosts.extend(
+            (system.x, system.y, stem, claim_by_stem[stem])
+            for system in systems
+        )
+
+    for row in existing_hosts:
+        if (
+            getattr(row, "id", "").startswith("frontier:")
+            or not getattr(row, "stem", None)
+            or getattr(row, "kind", None)
+            not in {"star", "black_hole", "junction"}
+        ):
+            continue
+        hosts.append(
+            (
+                float(getattr(row, "x")),
+                float(getattr(row, "y")),
+                str(getattr(row, "stem")),
+                LEGACY_CLAIM_RADIUS,
+            )
+        )
+
+    cell_size = 0.06
+    cells: dict[tuple[int, int], list[tuple[float, float, str, float]]] = {}
+    for host in hosts:
+        key = (
+            math.floor(host[0] / cell_size),
+            math.floor(host[1] / cell_size),
+        )
+        cells.setdefault(key, []).append(host)
+
+    additions: dict[str, str] = {}
+    search_cells = math.ceil(FRONTIER_CLAIM_MAX / cell_size)
+    for obj in objects:
+        if obj.id in assignments:
+            continue
+        cell_x = math.floor(obj.x / cell_size)
+        cell_y = math.floor(obj.y / cell_size)
+        candidates = (
+            host
+            for dx in range(-search_cells, search_cells + 1)
+            for dy in range(-search_cells, search_cells + 1)
+            for host in cells.get((cell_x + dx, cell_y + dy), ())
+        )
+        covered = [
+            (math.hypot(obj.x - x, obj.y - y), stem)
+            for x, y, stem, claim_radius in candidates
+            if math.hypot(obj.x - x, obj.y - y) <= claim_radius
+        ]
+        if covered:
+            additions[obj.id] = min(covered, key=lambda item: (item[0], item[1]))[1]
+
+    return additions
 
 
 def map_canonical_frontier_catalog(

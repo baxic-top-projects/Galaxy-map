@@ -4,6 +4,7 @@ from math import hypot
 from app.service.frontier_polities import (
     FRONTIER_POLITIES,
     allocate_frontier_polities,
+    assign_objects_inside_territories,
     map_canonical_frontier_catalog,
 )
 from app.service.spiral_geometry import generate_arm_objects
@@ -84,6 +85,24 @@ def test_allocating_polities_does_not_move_any_stars():
         for obj in objects
         if obj.kind == "star"
     } == original
+
+
+def test_unclaimed_objects_inside_current_territories_get_owners():
+    objects = generate_arm_objects()
+    assignments, _ = allocate_frontier_polities(objects)
+    additions = assign_objects_inside_territories(objects, assignments, [])
+    by_id = {obj.id: obj for obj in objects}
+
+    assert additions
+    assert not additions.keys() & assignments.keys()
+    assert {by_id[object_id].kind for object_id in additions} == {
+        "star",
+        "black_hole",
+        "junction",
+    }
+    assert set(additions.values()) <= {
+        polity.stem for polity in FRONTIER_POLITIES
+    }
 
 
 def test_all_assigned_stars_receive_canonical_names_and_planets():

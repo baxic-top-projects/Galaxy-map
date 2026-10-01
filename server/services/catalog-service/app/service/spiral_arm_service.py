@@ -15,6 +15,7 @@ from app.db.models import (
 from app.service.frontier_polities import (
     FRONTIER_POLITIES,
     allocate_frontier_polities,
+    assign_objects_inside_territories,
     map_canonical_frontier_catalog,
 )
 from app.service.spiral_geometry import (
@@ -88,6 +89,37 @@ def _detail_payload(
     }
 
 
+def _generated_claim_catalog(obj: ArmObject, stem: str) -> dict:
+    polity_name = stem.replace("_", " ")
+    suffix = f"{obj.arm}-{obj.ordinal:04d}"
+    if obj.kind == "star":
+        token = f"FrontierStar{obj.arm}_{obj.ordinal:04d}"
+        name_en = f"{polity_name} Frontier Star {suffix}"
+        name_ru = f"Пограничная звезда {polity_name} {suffix}"
+    elif obj.kind == "black_hole":
+        token = f"FrontierBlackHole{obj.arm}_{obj.ordinal:04d}"
+        name_en = f"{polity_name} Black Hole {suffix}"
+        name_ru = f"Чёрная дыра {polity_name} {suffix}"
+    else:
+        token = f"FrontierJunction{obj.arm}_{obj.ordinal:04d}"
+        name_en = f"{polity_name} Junction {suffix}"
+        name_ru = f"Стык гиперкоридоров {polity_name} {suffix}"
+    return {
+        "canonicalId": None,
+        "token": token,
+        "kind": obj.kind,
+        "nameEn": name_en,
+        "nameRu": name_ru,
+        "starType": _star_type_name(obj.star_type_key),
+        "starTypeKey": obj.star_type_key,
+        "sectorId": "",
+        "sectorNameEn": "",
+        "worlds": [],
+        "uninhabited": [],
+        "features": [],
+    }
+
+
 def gateway_edges(
     generated: list[ArmObject],
     existing: list[SystemRow],
@@ -131,6 +163,18 @@ def apply_spiral_extension() -> dict[str, int]:
 
     with SessionLocal() as session:
         existing = list(session.scalars(select(SystemRow)))
+        territory_ownership = assign_objects_inside_territories(
+            generated,
+            ownership,
+            existing,
+        )
+        ownership.update(territory_ownership)
+        by_id = {obj.id: obj for obj in generated}
+        for object_id, stem in territory_ownership.items():
+            canonical_catalog[object_id] = _generated_claim_catalog(
+                by_id[object_id],
+                stem,
+            )
         gateways = gateway_edges(generated, existing)
         generated_edges = arm_edges(generated) | gateways
 
@@ -252,6 +296,7 @@ def apply_spiral_extension() -> dict[str, int]:
                 "spiralJunctions": ARM_COUNT * JUNCTIONS_PER_ARM,
                 "frontierPolities": len(FRONTIER_POLITIES),
                 "frontierAssignedSystems": len(ownership),
+                "frontierTerritoryClaims": len(territory_ownership),
                 "frontierNamedSystems": len(canonical_catalog),
                 "systemCount": system_count,
                 "edgeCountCanon": canon_count,
@@ -267,5 +312,6 @@ def apply_spiral_extension() -> dict[str, int]:
         "gateways": len(gateways),
         "polities": len(clusters),
         "assignedSystems": len(ownership),
+        "territoryClaims": len(territory_ownership),
         "namedSystems": len(canonical_catalog),
     }

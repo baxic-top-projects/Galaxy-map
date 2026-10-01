@@ -2,7 +2,7 @@ from collections import Counter, defaultdict
 from math import cos, hypot, sin
 from types import SimpleNamespace
 
-from app.service.spiral_arm_service import gateway_edges
+from app.service.spiral_arm_service import _generated_claim_catalog, gateway_edges
 from app.service.spiral_geometry import (
     ARM_COUNT,
     BLACK_HOLES_PER_ARM,
@@ -37,6 +37,19 @@ def test_spiral_object_counts_and_stable_bounds():
             "black_hole": BLACK_HOLES_PER_ARM,
             "junction": JUNCTIONS_PER_ARM,
         }
+
+
+def test_claimed_objects_receive_stable_names():
+    by_kind = {}
+    for obj in generate_arm_objects():
+        by_kind.setdefault(obj.kind, obj)
+
+    for obj in by_kind.values():
+        catalog = _generated_claim_catalog(obj, "Test_Polity")
+        assert catalog["token"]
+        assert catalog["nameEn"]
+        assert catalog["nameRu"]
+        assert catalog["kind"] == obj.kind
 
 
 def test_arm_distribution_is_wide_at_disk_and_tapers_toward_tip():
