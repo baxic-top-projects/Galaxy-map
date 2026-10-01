@@ -216,13 +216,16 @@ def allocate_frontier_polities(
     for obj in tuple(available.values()):
         if obj.kind not in {"star", "black_hole", "junction"}:
             continue
-        spread = ((obj.ordinal * 2654435761) % 997) / 997 * 0.018
+        kind_salt = {"star": 17, "black_hole": 43, "junction": 71}[obj.kind]
+        phase = (
+            (obj.ordinal * 2654435761 + obj.arm * 104729 + kind_salt) % 1009
+        ) / 1009
         relocated = obj
 
         # If an object intersects any polity pocket, move it farther out along
-        # the arm. Radial displacement avoids pushing it sideways into the
-        # neighboring polity and retains natural variation instead of a ring.
-        for _ in range(4):
+        # the arm. Scatter both its radius and angle so displaced systems do
+        # not form a dense row immediately outside the polity border.
+        for attempt in range(6):
             overlaps = [
                 clearance - math.hypot(
                     relocated.x - center_x,
@@ -234,8 +237,16 @@ def allocate_frontier_polities(
             if overlap <= 0:
                 break
             angle = math.atan2(relocated.y, relocated.x)
-            angle += (((obj.ordinal * 40503) % 997) / 997 - 0.5) * 0.018
-            radius = math.hypot(relocated.x, relocated.y) + overlap + 0.025 + spread
+            angular_phase = (
+                phase + attempt * 0.3819660112501051
+            ) % 1.0
+            angle += (angular_phase - 0.5) * 0.24
+            radius = (
+                math.hypot(relocated.x, relocated.y)
+                + overlap
+                + 0.03
+                + phase * 0.10
+            )
             relocated = replace(
                 relocated,
                 x=round(math.cos(angle) * radius, 6),

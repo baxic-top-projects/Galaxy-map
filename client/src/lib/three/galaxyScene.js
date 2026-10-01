@@ -1322,7 +1322,7 @@ async function createProceduralPoliticalPlate(galaxy) {
   // that rim fill hugs the constellation instead of the circular galaxy disk.
   const claimR = 0.034
   const frontierClaimMin = 0.07
-  const frontierClaimMax = 0.14
+  const frontierClaimMax = 0.17
   const neutralClaimR = 0.05
   // Systems this close to the Axis Well use full Voronoi cells so claim-radius
   // circles do not leave arc-shaped traces beside the well.
