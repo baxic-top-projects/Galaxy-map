@@ -1323,6 +1323,7 @@ async function createProceduralPoliticalPlate(galaxy) {
   const claimR = 0.034
   const frontierClaimMin = 0.07
   const frontierClaimMax = 0.14
+  const neutralClaimR = 0.05
   // Systems this close to the Axis Well use full Voronoi cells so claim-radius
   // circles do not leave arc-shaped traces beside the well.
   const wellRingR = 0.2
@@ -1407,9 +1408,10 @@ async function createProceduralPoliticalPlate(galaxy) {
       polityStem: neutral ? '__neutral__' : system.stem,
       isWell,
       isNeutral: neutral,
+      isFrontierPolity: !neutral && system.id.startsWith('frontier:'),
       claimRadius:
         neutral && system.id.startsWith('frontier:')
-          ? frontierClaimMax
+          ? neutralClaimR
           : system.id.startsWith('frontier:')
             ? frontierClaimByStem.get(system.stem) || frontierClaimMin
             : claimR,
@@ -1530,7 +1532,7 @@ async function createProceduralPoliticalPlate(galaxy) {
       if (current < 0) continue
       const currentMeta = systemMeta[current]
       const currentStem = currentMeta.polityStem
-      if (currentMeta.isWell) continue
+      if (currentMeta.isNeutral) continue
       territoryAreas[currentStem] = (territoryAreas[currentStem] || 0) + 1
 
       const neighborIndexes = []
@@ -1556,6 +1558,16 @@ async function createProceduralPoliticalPlate(galaxy) {
         }
         const otherMeta = systemMeta[other]
         if (otherMeta.polityStem === currentStem) continue
+        // Free arm stars use the Axis-Well fill but must not create a circular
+        // cream outline around the legacy disk. New frontier polity borders
+        // remain visible against that neutral fill.
+        if (
+          otherMeta.isNeutral &&
+          !otherMeta.isWell &&
+          !currentMeta.isFrontierPolity
+        ) {
+          continue
+        }
         // Single cream ring on the polity side of the Axis Well.
         if (otherMeta.isWell) {
           border = true

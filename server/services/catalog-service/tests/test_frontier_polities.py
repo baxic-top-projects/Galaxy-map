@@ -34,7 +34,7 @@ def test_new_polities_receive_compact_single_arm_pockets():
         center_x = sum(obj.x for obj in cluster) / len(cluster)
         center_y = sum(obj.y for obj in cluster) / len(cluster)
         centers.append((center_x, center_y))
-        assert hypot(center_x, center_y) < 1.15
+        assert hypot(center_x, center_y) < 1.23
         assert max(
             hypot(obj.x - center_x, obj.y - center_y) for obj in cluster
         ) < 0.17
@@ -72,7 +72,7 @@ def test_missing_nearby_special_objects_are_relocated_into_pockets():
     assert relocated > 0
 
 
-def test_neutral_stars_are_moved_outside_new_polity_clusters():
+def test_neutral_objects_are_moved_outside_disk_and_new_polity_clusters():
     objects = generate_arm_objects()
     assignments, clusters = allocate_frontier_polities(objects)
     centers = []
@@ -85,18 +85,19 @@ def test_neutral_stars_are_moved_outside_new_polity_clusters():
             )
         )
 
-    neutral_stars = [
+    neutral_objects = [
         obj
         for obj in objects
-        if obj.kind == "star" and obj.id not in assignments
+        if obj.kind in {"star", "black_hole", "junction"}
+        and obj.id not in assignments
     ]
-    assert neutral_stars
+    assert neutral_objects
     assert min(
         hypot(obj.x - center_x, obj.y - center_y)
-        for obj in neutral_stars
+        for obj in neutral_objects
         for center_x, center_y in centers
     ) >= NEUTRAL_STAR_CLEARANCE
-    assert min(hypot(obj.x, obj.y) for obj in neutral_stars) >= (
+    assert min(hypot(obj.x, obj.y) for obj in neutral_objects) >= (
         NEUTRAL_STAR_MIN_GALACTIC_RADIUS
     )
 

@@ -10,10 +10,8 @@ from app.service.spiral_geometry import ArmObject
 STARS_PER_POLITY = 20
 BLACK_HOLES_PER_POLITY = 1
 JUNCTIONS_PER_POLITY = 1
-POLITY_STAR_RADIUS = 0.055
 NEUTRAL_STAR_CLEARANCE = 0.13
-NEUTRAL_STAR_EJECT_RADIUS = 0.145
-NEUTRAL_STAR_MIN_GALACTIC_RADIUS = 1.19
+NEUTRAL_STAR_MIN_GALACTIC_RADIUS = 1.10
 
 
 @dataclass(frozen=True)
@@ -112,7 +110,7 @@ def allocate_frontier_polities(
         "miradin": sum(polity.bloc == "miradin" for polity in FRONTIER_POLITIES),
         "raih": sum(polity.bloc == "raih" for polity in FRONTIER_POLITIES),
     }
-    cluster_centers: list[tuple[float, float]] = []
+    cluster_zones: list[tuple[float, float, float]] = []
 
     def update_object(obj: ArmObject) -> None:
         objects[object_indexes[obj.id]] = obj
@@ -127,8 +125,8 @@ def allocate_frontier_polities(
             if polity.bloc == "miradin"
             else math.pi / 2 + fraction * math.pi
         )
-        target_x = math.cos(target_angle) * 1.04
-        target_y = math.sin(target_angle) * 1.04
+        target_x = math.cos(target_angle) * 1.12
+        target_y = math.sin(target_angle) * 1.12
 
         candidates = [
             obj
@@ -149,31 +147,22 @@ def allocate_frontier_polities(
         if len(selected_stars) != STARS_PER_POLITY:
             raise RuntimeError(f"Not enough stars available for {polity.stem}")
 
-        # Repack the selected systems into a deterministic round pocket. Merely
-        # selecting nearby generated points can leave unclaimed stars inside
-        # the polity and split its rendered territory into neutral islands.
-        stars: list[ArmObject] = []
-        for index, selected in enumerate(
-            sorted(selected_stars, key=lambda obj: (obj.ordinal, obj.id))
-        ):
-            angle = index * 2.399963229728653
-            radius = POLITY_STAR_RADIUS * math.sqrt(
-                (index + 0.5) / STARS_PER_POLITY
-            )
-            relocated = replace(
-                selected,
-                x=round(target_x + math.cos(angle) * radius, 6),
-                y=round(target_y + math.sin(angle) * radius, 6),
-            )
-            update_object(relocated)
-            stars.append(relocated)
+        # Keep the generator's irregular positions. Repacking onto a synthetic
+        # spiral makes every polity look like an artificial star clump.
+        stars = sorted(selected_stars, key=lambda obj: (obj.ordinal, obj.id))
 
         anchor_x = sum(obj.x for obj in stars) / len(stars)
         anchor_y = sum(obj.y for obj in stars) / len(stars)
-        cluster_centers.append((anchor_x, anchor_y))
         cluster_radius = max(
             math.hypot(obj.x - anchor_x, obj.y - anchor_y)
             for obj in stars
+        )
+        cluster_zones.append(
+            (
+                anchor_x,
+                anchor_y,
+                max(NEUTRAL_STAR_CLEARANCE, cluster_radius + 0.025),
+            )
         )
 
         def take_special(kind: str, offset_index: int) -> ArmObject:
@@ -221,41 +210,36 @@ def allocate_frontier_polities(
             available.pop(obj.id)
         clusters[polity.stem] = cluster
 
-    # Push every still-neutral star beyond all new polity pockets. Keep each
-    # star in its original arm and direction from the pocket so the broad arm
-    # shape is preserved instead of creating empty circular cut-outs.
+    # The arm generator already begins directly outside the legacy disk. Only
+    # eject unclaimed objects that fall inside a new polity pocket; do not
+    # project the whole arm onto a shared radius, which creates a circular row.
     for obj in tuple(available.values()):
-        if obj.kind != "star":
+        if obj.kind not in {"star", "black_hole", "junction"}:
             continue
-        nearest_center = min(
-            cluster_centers,
-            key=lambda center: math.hypot(obj.x - center[0], obj.y - center[1]),
-        )
-        dx = obj.x - nearest_center[0]
-        dy = obj.y - nearest_center[1]
-        distance = math.hypot(dx, dy)
         spread = ((obj.ordinal * 2654435761) % 997) / 997 * 0.018
         relocated = obj
-        if distance < NEUTRAL_STAR_CLEARANCE:
-            angle = (
-                obj.ordinal * 2.399963229728653
-                if distance < 1e-9
-                else math.atan2(dy, dx)
-            )
-            radius = NEUTRAL_STAR_EJECT_RADIUS + spread
-            relocated = replace(
-                obj,
-                x=round(nearest_center[0] + math.cos(angle) * radius, 6),
-                y=round(nearest_center[1] + math.sin(angle) * radius, 6),
-            )
-        galactic_radius = math.hypot(relocated.x, relocated.y)
-        if galactic_radius < NEUTRAL_STAR_MIN_GALACTIC_RADIUS:
-            radial_angle = math.atan2(relocated.y, relocated.x)
-            outer_radius = NEUTRAL_STAR_MIN_GALACTIC_RADIUS + spread
+
+        # If an object intersects any polity pocket, move it farther out along
+        # the arm. Radial displacement avoids pushing it sideways into the
+        # neighboring polity and retains natural variation instead of a ring.
+        for _ in range(4):
+            overlaps = [
+                clearance - math.hypot(
+                    relocated.x - center_x,
+                    relocated.y - center_y,
+                )
+                for center_x, center_y, clearance in cluster_zones
+            ]
+            overlap = max(overlaps)
+            if overlap <= 0:
+                break
+            angle = math.atan2(relocated.y, relocated.x)
+            angle += (((obj.ordinal * 40503) % 997) / 997 - 0.5) * 0.018
+            radius = math.hypot(relocated.x, relocated.y) + overlap + 0.025 + spread
             relocated = replace(
                 relocated,
-                x=round(math.cos(radial_angle) * outer_radius, 6),
-                y=round(math.sin(radial_angle) * outer_radius, 6),
+                x=round(math.cos(angle) * radius, 6),
+                y=round(math.sin(angle) * radius, 6),
             )
         update_object(relocated)
 
