@@ -14,7 +14,9 @@ JUNCTIONS_PER_POLITY = 1
 LEGACY_CLAIM_RADIUS = 0.034
 FRONTIER_CLAIM_MIN = 0.07
 FRONTIER_CLAIM_MAX = 0.17
-BOUNDARY_CAPTURE_MARGIN = 0.02
+TERRITORY_RASTER_SIZE = 1200
+TERRITORY_MAP_LIMIT = 2.8
+MARKER_CAPTURE_PIXELS = 4
 
 
 @dataclass(frozen=True)
@@ -275,28 +277,80 @@ def assign_objects_inside_territories(
         cells.setdefault(key, []).append(host)
 
     additions: dict[str, str] = {}
+    pixel_size = 2 * TERRITORY_MAP_LIMIT / TERRITORY_RASTER_SIZE
+    marker_radius = MARKER_CAPTURE_PIXELS * pixel_size
     search_cells = math.ceil(
-        (FRONTIER_CLAIM_MAX + BOUNDARY_CAPTURE_MARGIN) / cell_size
+        (FRONTIER_CLAIM_MAX + marker_radius) / cell_size
+    )
+    sample_offsets = (
+        (0.0, 0.0),
+        (-marker_radius, 0.0),
+        (marker_radius, 0.0),
+        (0.0, -marker_radius),
+        (0.0, marker_radius),
+        (-marker_radius, -marker_radius),
+        (-marker_radius, marker_radius),
+        (marker_radius, -marker_radius),
+        (marker_radius, marker_radius),
     )
     for obj in objects:
         if obj.id in assignments:
             continue
         cell_x = math.floor(obj.x / cell_size)
         cell_y = math.floor(obj.y / cell_size)
-        candidates = (
+        candidates = [
             host
             for dx in range(-search_cells, search_cells + 1)
             for dy in range(-search_cells, search_cells + 1)
             for host in cells.get((cell_x + dx, cell_y + dy), ())
-        )
-        covered = [
-            (math.hypot(obj.x - x, obj.y - y), stem)
-            for x, y, stem, claim_radius in candidates
-            if math.hypot(obj.x - x, obj.y - y)
-            <= claim_radius + BOUNDARY_CAPTURE_MARGIN
         ]
-        if covered:
-            additions[obj.id] = min(covered, key=lambda item: (item[0], item[1]))[1]
+        pixel_x = math.floor(
+            (obj.x + TERRITORY_MAP_LIMIT)
+            / (2 * TERRITORY_MAP_LIMIT)
+            * TERRITORY_RASTER_SIZE
+        )
+        pixel_y = math.floor(
+            (TERRITORY_MAP_LIMIT - obj.y)
+            / (2 * TERRITORY_MAP_LIMIT)
+            * TERRITORY_RASTER_SIZE
+        )
+        sample_x = (
+            (pixel_x + 0.5)
+            / TERRITORY_RASTER_SIZE
+            * 2
+            * TERRITORY_MAP_LIMIT
+            - TERRITORY_MAP_LIMIT
+        )
+        sample_y = (
+            TERRITORY_MAP_LIMIT
+            - (pixel_y + 0.5)
+            / TERRITORY_RASTER_SIZE
+            * 2
+            * TERRITORY_MAP_LIMIT
+        )
+        coverage: dict[str, tuple[int, float]] = {}
+        for offset_x, offset_y in sample_offsets:
+            x = sample_x + offset_x
+            y = sample_y + offset_y
+            valid = [
+                (math.hypot(x - host_x, y - host_y), stem)
+                for host_x, host_y, stem, claim_radius in candidates
+                if math.hypot(x - host_x, y - host_y) <= claim_radius
+            ]
+            if not valid:
+                continue
+            distance, stem = min(valid, key=lambda item: (item[0], item[1]))
+            count, closest = coverage.get(stem, (0, math.inf))
+            coverage[stem] = (count + 1, min(closest, distance))
+        if coverage:
+            additions[obj.id] = min(
+                coverage,
+                key=lambda stem: (
+                    -coverage[stem][0],
+                    coverage[stem][1],
+                    stem,
+                ),
+            )
 
     return additions
 

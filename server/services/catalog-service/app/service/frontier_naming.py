@@ -20,10 +20,54 @@ STAR_SUF_RU = (
     "ат", "эль", "ирис", "ит", "наэль", "ор", "от",
     "ун", "уликс", "икс", "ан", "ут", "эос", "дел",
 )
+STAR_QUALIFIER_EN = (
+    "Altair", "Vega", "Orion", "Lyra", "Draco", "Cygnus", "Aquila",
+    "Carina", "Eridan", "Helios", "Lunara", "Nerion", "Solis", "Thalassa",
+)
+STAR_QUALIFIER_RU = (
+    "Альтаир", "Вега", "Орион", "Лира", "Дракон", "Лебедь", "Аквила",
+    "Карина", "Эридан", "Гелиос", "Лунара", "Нерион", "Солис", "Таласса",
+)
+HOLE_ROOT_EN = (
+    "Acheron", "Cerberus", "Erebus", "Kharon", "Lethe", "Moirai",
+    "Nox", "Orcus", "Styx", "Tartarus", "Umbra", "Vesper",
+)
+HOLE_ROOT_RU = (
+    "Ахерон", "Цербер", "Эреб", "Харон", "Лета", "Мойры",
+    "Нокс", "Оркус", "Стикс", "Тартар", "Умбра", "Веспер",
+)
+HOLE_SUFFIX_EN = (
+    "Abyss", "Chasm", "Eclipse", "Maw", "Rift", "Shadow",
+    "Singularity", "Veil", "Void", "Well", "Grave", "Horizon",
+    "Nexus", "Depth", "Crown",
+)
+HOLE_SUFFIX_RU = (
+    "Бездна", "Провал", "Затмение", "Пасть", "Разлом", "Тень",
+    "Сингулярность", "Завеса", "Пустота", "Колодец", "Могила", "Горизонт",
+    "Узел", "Глубина", "Корона",
+)
+JUNCTION_ROOT_EN = (
+    "Aurel", "Cael", "Elyr", "Ilyon", "Kael",
+    "Lumen", "Orion", "Solis", "Thalen", "Vesper",
+)
+JUNCTION_ROOT_RU = (
+    "Аурель", "Каэль", "Элир", "Илион", "Каэл",
+    "Люмен", "Орион", "Солис", "Тален", "Веспер",
+)
+JUNCTION_SUFFIX_EN = (
+    "Arch", "Bridge", "Crossing", "Gate", "Link",
+    "Passage", "Span", "Threshold", "Way", "Confluence",
+)
+JUNCTION_SUFFIX_RU = (
+    "Арка", "Мост", "Перекрёсток", "Врата", "Связь",
+    "Проход", "Пролёт", "Порог", "Путь", "Слияние",
+)
 WORLD_ROOT_EN = ("Astra", "Cera", "Doran", "Elya", "Iona", "Kora", "Mira", "Nysa")
 WORLD_ROOT_RU = ("Астра", "Цера", "Доран", "Элия", "Иона", "Кора", "Мира", "Ниса")
 WORLD_SUFFIX_EN = ("Haven", "Reach", "Vale", "Crown", "Quay", "Ridge")
 WORLD_SUFFIX_RU = ("Хейвен", "Рич", "Вейл", "Краун", "Кей", "Ридж")
+WORLD_ORDINAL_EN = ("Prime", "Secunda", "Tertia")
+WORLD_ORDINAL_RU = ("Прима", "Секунда", "Терция")
 WORLD_TYPES = (
     ("continental", "Continental (temperate climate)"),
     ("ocean", "Ocean (ocean climate)"),
@@ -34,15 +78,51 @@ WORLD_TYPES = (
 )
 
 
+def _object_index(system_id: str, per_arm: int) -> int:
+    parts = system_id.split(":")
+    arm = int(parts[1].removeprefix("arm-"))
+    ordinal = int(parts[2].rsplit("-", 1)[-1])
+    return (arm - 1) * per_arm + ordinal - 1
+
+
 def natural_frontier_star_name(system_id: str) -> tuple[str, str, str]:
-    digest = hashlib.md5(f"frontier-star:{system_id}".encode("utf-8")).hexdigest()
-    value = int(digest[:12], 16)
-    stem_index = value % len(STAR_STEM_EN)
-    suffix_index = (value // 13) % len(STAR_SUF_EN)
-    tail = digest[12:18]
-    token = f"{STAR_STEM_EN[stem_index]}{STAR_SUF_EN[suffix_index]}{tail}"
-    name_ru = f"{STAR_STEM_RU[stem_index]}{STAR_SUF_RU[suffix_index]}{tail}"
-    return token, token, name_ru
+    index = _object_index(system_id, 1290)
+    base_count = len(STAR_STEM_EN) * len(STAR_SUF_EN)
+    base_index = index % base_count
+    qualifier_index = index // base_count
+    stem_index = base_index % len(STAR_STEM_EN)
+    suffix_index = base_index // len(STAR_STEM_EN)
+    base_en = f"{STAR_STEM_EN[stem_index]}{STAR_SUF_EN[suffix_index]}"
+    base_ru = f"{STAR_STEM_RU[stem_index]}{STAR_SUF_RU[suffix_index]}"
+    qualifier_en = STAR_QUALIFIER_EN[qualifier_index]
+    qualifier_ru = STAR_QUALIFIER_RU[qualifier_index]
+    return (
+        f"{base_en}{qualifier_en}",
+        f"{base_en} {qualifier_en}",
+        f"{base_ru} {qualifier_ru}",
+    )
+
+
+def natural_frontier_black_hole_name(system_id: str) -> tuple[str, str, str]:
+    index = _object_index(system_id, 43)
+    root_index = index % len(HOLE_ROOT_EN)
+    suffix_index = index // len(HOLE_ROOT_EN)
+    return (
+        f"{HOLE_ROOT_EN[root_index]}{HOLE_SUFFIX_EN[suffix_index]}",
+        f"{HOLE_ROOT_EN[root_index]} {HOLE_SUFFIX_EN[suffix_index]}",
+        f"{HOLE_SUFFIX_RU[suffix_index]} {HOLE_ROOT_RU[root_index]}",
+    )
+
+
+def natural_frontier_junction_name(system_id: str) -> tuple[str, str, str]:
+    index = _object_index(system_id, 25)
+    root_index = index % len(JUNCTION_ROOT_EN)
+    suffix_index = index // len(JUNCTION_ROOT_EN)
+    return (
+        f"{JUNCTION_ROOT_EN[root_index]}{JUNCTION_SUFFIX_EN[suffix_index]}",
+        f"{JUNCTION_ROOT_EN[root_index]} {JUNCTION_SUFFIX_EN[suffix_index]}",
+        f"{JUNCTION_SUFFIX_RU[suffix_index]} {JUNCTION_ROOT_RU[root_index]}",
+    )
 
 
 def generated_frontier_worlds(system_id: str, star_token: str) -> list[dict]:
@@ -52,18 +132,18 @@ def generated_frontier_worlds(system_id: str, star_token: str) -> list[dict]:
         root_index = digest[1 + index] % len(WORLD_ROOT_EN)
         suffix_index = digest[4 + index] % len(WORLD_SUFFIX_EN)
         type_key, planet_type = WORLD_TYPES[digest[7 + index] % len(WORLD_TYPES)]
-        tail = digest[10 + index : 12 + index].hex()
         token = (
             f"{star_token[:5]}{WORLD_ROOT_EN[root_index]}"
-            f"{WORLD_SUFFIX_EN[suffix_index]}{tail}"
+            f"{WORLD_SUFFIX_EN[suffix_index]}{WORLD_ORDINAL_EN[index]}"
         )
+        _token, _name_en, star_name_ru = natural_frontier_star_name(system_id)
         worlds.append(
             {
                 "token": token,
                 "nameEn": token,
                 "nameRu": (
-                    f"{star_token[:5]}{WORLD_ROOT_RU[root_index]}"
-                    f"{WORLD_SUFFIX_RU[suffix_index]}{tail}"
+                    f"{star_name_ru} {WORLD_ROOT_RU[root_index]} "
+                    f"{WORLD_SUFFIX_RU[suffix_index]} {WORLD_ORDINAL_RU[index]}"
                 ),
                 "planetType": planet_type,
                 "planetTypeKey": type_key,

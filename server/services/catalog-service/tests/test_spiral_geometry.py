@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 from math import cos, hypot, sin
+import re
 from types import SimpleNamespace
 
 from app.service.spiral_arm_service import _generated_claim_catalog, gateway_edges
@@ -50,6 +51,8 @@ def test_claimed_objects_receive_stable_names():
         assert catalog["nameEn"]
         assert catalog["nameRu"]
         assert catalog["kind"] == obj.kind
+        assert re.fullmatch(r"[A-Za-z ]+", catalog["nameEn"])
+        assert re.fullmatch(r"[А-Яа-яЁё ]+", catalog["nameRu"])
 
 
 def test_arm_distribution_is_wide_at_disk_and_tapers_toward_tip():

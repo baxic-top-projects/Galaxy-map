@@ -143,6 +143,10 @@ class CatalogQueryService:
                         "y": row.y,
                         "z": row.z,
                         "worldCount": row.world_count,
+                        "territoryAnchor": (row.detail or {}).get(
+                            "territoryAnchor",
+                            True,
+                        ),
                         "shard": row.shard,
                     }
                 )

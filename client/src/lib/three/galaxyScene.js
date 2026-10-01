@@ -1332,6 +1332,7 @@ async function createProceduralPoliticalPlate(galaxy) {
     (system) =>
       system.kind === 'well' ||
       (system.stem &&
+        system.territoryAnchor !== false &&
         (system.kind === 'star' ||
           system.kind === 'black_hole' ||
           system.kind === 'junction')),

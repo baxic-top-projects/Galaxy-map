@@ -21,6 +21,8 @@ from app.service.frontier_polities import (
 )
 from app.service.frontier_naming import (
     generated_frontier_worlds,
+    natural_frontier_black_hole_name,
+    natural_frontier_junction_name,
     natural_frontier_star_name,
 )
 from app.service.spiral_geometry import (
@@ -72,6 +74,7 @@ def _index_payload(
         "y": obj.y,
         "z": obj.z,
         "worldCount": len(canonical.get("worlds") or []),
+        "territoryAnchor": canonical.get("territoryAnchor", True),
         "shard": f"systems/{shard_name}",
     }
 
@@ -94,19 +97,18 @@ def _detail_payload(
     }
 
 
-def _generated_claim_catalog(obj: ArmObject, stem: str) -> dict:
-    polity_name = stem.replace("_", " ")
-    suffix = f"{obj.arm}-{obj.ordinal:04d}"
+def _generated_claim_catalog(
+    obj: ArmObject,
+    stem: str,
+    *,
+    territory_anchor: bool = True,
+) -> dict:
     if obj.kind == "star":
         token, name_en, name_ru = natural_frontier_star_name(obj.id)
     elif obj.kind == "black_hole":
-        token = f"FrontierBlackHole{obj.arm}_{obj.ordinal:04d}"
-        name_en = f"{polity_name} Black Hole {suffix}"
-        name_ru = f"Чёрная дыра {polity_name} {suffix}"
+        token, name_en, name_ru = natural_frontier_black_hole_name(obj.id)
     else:
-        token = f"FrontierJunction{obj.arm}_{obj.ordinal:04d}"
-        name_en = f"{polity_name} Junction {suffix}"
-        name_ru = f"Стык гиперкоридоров {polity_name} {suffix}"
+        token, name_en, name_ru = natural_frontier_junction_name(obj.id)
     return {
         "canonicalId": None,
         "token": token,
@@ -120,6 +122,7 @@ def _generated_claim_catalog(obj: ArmObject, stem: str) -> dict:
         "worlds": [],
         "uninhabited": [],
         "features": [],
+        "territoryAnchor": territory_anchor,
     }
 
 
@@ -177,10 +180,38 @@ def apply_spiral_extension() -> dict[str, int]:
         )
         ownership.update(territory_ownership)
         by_id = {obj.id: obj for obj in generated}
+        outer_floor = {
+            stem: sum(
+                math.hypot(obj.x, obj.y)
+                for obj in cluster
+                if obj.kind == "star"
+            )
+            / sum(obj.kind == "star" for obj in cluster)
+            for stem, cluster in clusters.items()
+        }
+        outer_candidates = assign_objects_inside_territories(
+            generated,
+            ownership,
+            existing,
+        )
+        outer_ownership = {
+            object_id: stem
+            for object_id, stem in outer_candidates.items()
+            if stem in outer_floor
+            and math.hypot(by_id[object_id].x, by_id[object_id].y)
+            >= outer_floor[stem]
+        }
+        ownership.update(outer_ownership)
         for object_id, stem in territory_ownership.items():
             canonical_catalog[object_id] = _generated_claim_catalog(
                 by_id[object_id],
                 stem,
+            )
+        for object_id, stem in outer_ownership.items():
+            canonical_catalog[object_id] = _generated_claim_catalog(
+                by_id[object_id],
+                stem,
+                territory_anchor=False,
             )
         for object_id, stem in manual_ownership.items():
             obj = by_id.get(object_id)
@@ -318,7 +349,9 @@ def apply_spiral_extension() -> dict[str, int]:
                 "spiralJunctions": ARM_COUNT * JUNCTIONS_PER_ARM,
                 "frontierPolities": len(FRONTIER_POLITIES),
                 "frontierAssignedSystems": len(ownership),
-                "frontierTerritoryClaims": len(territory_ownership),
+                "frontierTerritoryClaims": (
+                    len(territory_ownership) + len(outer_ownership)
+                ),
                 "frontierNamedSystems": len(canonical_catalog),
                 "systemCount": system_count,
                 "edgeCountCanon": canon_count,
@@ -334,6 +367,6 @@ def apply_spiral_extension() -> dict[str, int]:
         "gateways": len(gateways),
         "polities": len(clusters),
         "assignedSystems": len(ownership),
-        "territoryClaims": len(territory_ownership),
+        "territoryClaims": len(territory_ownership) + len(outer_ownership),
         "namedSystems": len(canonical_catalog),
     }

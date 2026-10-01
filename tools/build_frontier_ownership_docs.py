@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import math
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -135,9 +136,29 @@ def _index(rows: list[tuple[str, str, Counter]], *, ru: bool) -> str:
 
 def main() -> int:
     objects = generate_arm_objects()
-    ownership, _clusters = allocate_frontier_polities(objects)
+    ownership, clusters = allocate_frontier_polities(objects)
     additions = assign_objects_inside_territories(objects, ownership, [])
+    ownership.update(additions)
     by_id = {obj.id: obj for obj in objects}
+    outer_floor = {
+        stem: sum(
+            math.hypot(obj.x, obj.y)
+            for obj in cluster
+            if obj.kind == "star"
+        )
+        / sum(obj.kind == "star" for obj in cluster)
+        for stem, cluster in clusters.items()
+    }
+    outer_candidates = assign_objects_inside_territories(objects, ownership, [])
+    additions.update(
+        {
+            object_id: stem
+            for object_id, stem in outer_candidates.items()
+            if stem in outer_floor
+            and math.hypot(by_id[object_id].x, by_id[object_id].y)
+            >= outer_floor[stem]
+        }
+    )
     grouped: dict[str, list[dict]] = defaultdict(list)
 
     for object_id, stem in additions.items():
