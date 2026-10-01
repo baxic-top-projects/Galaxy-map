@@ -12,6 +12,7 @@ BLACK_HOLES_PER_POLITY = 1
 JUNCTIONS_PER_POLITY = 1
 NEUTRAL_STAR_CLEARANCE = 0.13
 NEUTRAL_STAR_MIN_GALACTIC_RADIUS = 1.10
+POLITY_ATTACHMENT_RADIUS = 1.075
 
 
 @dataclass(frozen=True)
@@ -157,13 +158,6 @@ def allocate_frontier_polities(
             math.hypot(obj.x - anchor_x, obj.y - anchor_y)
             for obj in stars
         )
-        cluster_zones.append(
-            (
-                anchor_x,
-                anchor_y,
-                max(NEUTRAL_STAR_CLEARANCE, cluster_radius + 0.025),
-            )
-        )
 
         def take_special(kind: str, offset_index: int) -> ArmObject:
             specials = [obj for obj in candidates if obj.kind == kind]
@@ -204,7 +198,38 @@ def allocate_frontier_polities(
         black_hole = take_special("black_hole", 0)
         junction = take_special("junction", 1)
 
-        cluster = tuple([*stars, black_hole, junction])
+        # Move the complete natural pocket toward the legacy disk as one unit.
+        # Relative positions stay untouched, while its inner edge now meets the
+        # old outer territories instead of leaving a visible empty corridor.
+        anchor_radius = math.hypot(anchor_x, anchor_y)
+        shift = POLITY_ATTACHMENT_RADIUS - anchor_radius
+        shift_x = (anchor_x / anchor_radius) * shift
+        shift_y = (anchor_y / anchor_radius) * shift
+        cluster = tuple(
+            replace(
+                obj,
+                x=round(obj.x + shift_x, 6),
+                y=round(obj.y + shift_y, 6),
+            )
+            for obj in (*stars, black_hole, junction)
+        )
+        for obj in cluster:
+            update_object(obj)
+
+        moved_stars = [obj for obj in cluster if obj.kind == "star"]
+        anchor_x = sum(obj.x for obj in moved_stars) / len(moved_stars)
+        anchor_y = sum(obj.y for obj in moved_stars) / len(moved_stars)
+        cluster_radius = max(
+            math.hypot(obj.x - anchor_x, obj.y - anchor_y)
+            for obj in moved_stars
+        )
+        cluster_zones.append(
+            (
+                anchor_x,
+                anchor_y,
+                max(NEUTRAL_STAR_CLEARANCE, cluster_radius + 0.025),
+            )
+        )
         for obj in cluster:
             assignments[obj.id] = polity.stem
             available.pop(obj.id)
@@ -221,6 +246,21 @@ def allocate_frontier_polities(
             (obj.ordinal * 2654435761 + obj.arm * 104729 + kind_salt) % 1009
         ) / 1009
         relocated = obj
+        original_radius = math.hypot(obj.x, obj.y)
+        inward_influence = max(
+            0.0,
+            min(1.0, 1.0 - (original_radius - 1.10) / 0.60),
+        )
+        inward_shift = (0.035 + phase * 0.035) * inward_influence
+        minimum_radius = NEUTRAL_STAR_MIN_GALACTIC_RADIUS + phase * 0.02
+        moved_radius = max(minimum_radius, original_radius - inward_shift)
+        if moved_radius < original_radius:
+            original_angle = math.atan2(obj.y, obj.x)
+            relocated = replace(
+                obj,
+                x=round(math.cos(original_angle) * moved_radius, 6),
+                y=round(math.sin(original_angle) * moved_radius, 6),
+            )
 
         # If an object intersects any polity pocket, move it farther out along
         # the arm. Scatter both its radius and angle so displaced systems do

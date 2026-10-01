@@ -5,6 +5,7 @@ from app.service.frontier_polities import (
     FRONTIER_POLITIES,
     NEUTRAL_STAR_CLEARANCE,
     NEUTRAL_STAR_MIN_GALACTIC_RADIUS,
+    POLITY_ATTACHMENT_RADIUS,
     allocate_frontier_polities,
     map_canonical_frontier_catalog,
 )
@@ -30,6 +31,13 @@ def test_new_polities_receive_compact_single_arm_pockets():
         }
         assert {obj.arm for obj in cluster} == {polity.arm}
         assert all(obj.x * polity.side > 0 for obj in cluster)
+
+        stars = [obj for obj in cluster if obj.kind == "star"]
+        star_center_x = sum(obj.x for obj in stars) / len(stars)
+        star_center_y = sum(obj.y for obj in stars) / len(stars)
+        assert abs(
+            hypot(star_center_x, star_center_y) - POLITY_ATTACHMENT_RADIUS
+        ) < 1e-5
 
         center_x = sum(obj.x for obj in cluster) / len(cluster)
         center_y = sum(obj.y for obj in cluster) / len(cluster)
