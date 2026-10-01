@@ -1323,7 +1323,7 @@ async function createProceduralPoliticalPlate(galaxy) {
   const claimR = 0.034
   const frontierClaimMin = 0.07
   const frontierClaimMax = 0.17
-  const neutralClaimR = 0.085
+  const neutralClaimR = 0.14
   // Systems this close to the Axis Well use full Voronoi cells so claim-radius
   // circles do not leave arc-shaped traces beside the well.
   const wellRingR = 0.2
@@ -1497,7 +1497,9 @@ async function createProceduralPoliticalPlate(galaxy) {
       data[o] = meta.r
       data[o + 1] = meta.g
       data[o + 2] = meta.b
-      data[o + 3] = Math.round((meta.isNeutral ? 100 : 120) * fade)
+      data[o + 3] = Math.round(
+        (meta.isUnnamedNeutral ? 120 : meta.isNeutral ? 100 : 120) * fade,
+      )
     }
   }
 
@@ -1541,7 +1543,9 @@ async function createProceduralPoliticalPlate(galaxy) {
           data[o] = meta.r
           data[o + 1] = meta.g
           data[o + 2] = meta.b
-          data[o + 3] = Math.round((meta.isNeutral ? 100 : 120) * fade)
+          data[o + 3] = Math.round(
+            (meta.isUnnamedNeutral ? 120 : meta.isNeutral ? 100 : 120) * fade,
+          )
         }
       }
     }
@@ -1562,7 +1566,7 @@ async function createProceduralPoliticalPlate(galaxy) {
       if (current < 0) continue
       const currentMeta = systemMeta[current]
       const currentStem = currentMeta.polityStem
-      if (currentMeta.isNeutral) continue
+      if (currentMeta.isWell) continue
       territoryAreas[currentStem] = (territoryAreas[currentStem] || 0) + 1
 
       const neighborIndexes = []

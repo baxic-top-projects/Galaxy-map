@@ -203,12 +203,13 @@
     mode = 'system'
   }
 
-  function applyOwnerLocally(systemId, stem) {
+  function applyOwnerLocally(systemId, stem, patch = {}) {
     if (!galaxy) return null
     const current = galaxy.byId.get(systemId)
     if (!current) return null
     const nextSystem = {
       ...current,
+      ...patch,
       canonicalStem: current.canonicalStem || current.stem,
       stem,
     }
@@ -243,7 +244,17 @@
     }
     ownershipRevision += 1
     try {
-      await updateSystemOwner(system.id, stem)
+      const persisted = await updateSystemOwner(system.id, stem)
+      const synced = applyOwnerLocally(system.id, stem, {
+        token: persisted.token,
+        nameEn: persisted.nameEn,
+        nameRu: persisted.nameRu,
+        worldCount: persisted.worldCount,
+      })
+      if (synced) selected = synced
+      if (detail?.id === system.id) {
+        detail = { ...detail, ...persisted }
+      }
     } catch (err) {
       applyOwnerLocally(system.id, previousStem)
       if (selected?.id === system.id) {
