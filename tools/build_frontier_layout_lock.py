@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+from collections import defaultdict
 from dataclasses import replace
 from pathlib import Path
 
@@ -23,14 +24,80 @@ GALAXY_API = "https://galaxyapi.baxic.ru/api/v1/galaxy"
 sys.path.insert(0, str(CATALOG_SERVICE))
 
 from app.service.frontier_polities import (  # noqa: E402
-    BATCH29_FRONTIER_POLITIES,
     LOCKED_FRONTIER_POLITIES,
-    ORIGINAL_FRONTIER_POLITIES,
-    PREVIOUS_FRONTIER_POLITIES,
-    allocate_frontier_polities,
-    allocate_new_frontier_polities,
 )
-from app.service.spiral_geometry import generate_arm_objects  # noqa: E402
+from app.service.spiral_geometry import ArmObject, generate_arm_objects  # noqa: E402
+
+
+def _cluster_from_owned(
+    object_ids: list[str],
+    by_id: dict,
+    *,
+    objects: list,
+    object_indexes: dict[str, int],
+    coordinates: dict[str, list[float]],
+    ownership: dict[str, str],
+    stem: str,
+    side: int,
+) -> list[str]:
+    """Pick a stable 20-star core (+ specials), minting shortfall into the lock."""
+    owned = [by_id[object_id] for object_id in object_ids if object_id in by_id]
+    stars = sorted(
+        (obj for obj in owned if obj.kind == "star"),
+        key=lambda obj: (obj.ordinal, obj.id),
+    )
+    specials = []
+    for kind in ("black_hole", "junction"):
+        matches = sorted(
+            (obj for obj in owned if obj.kind == kind),
+            key=lambda obj: (obj.ordinal, obj.id),
+        )
+        if matches:
+            specials.append(matches[0])
+
+    if stars:
+        center_x = sum(obj.x for obj in stars) / len(stars)
+        center_y = sum(obj.y for obj in stars) / len(stars)
+        arm = stars[0].arm
+        ordinal = stars[len(stars) // 2].ordinal
+    else:
+        center_x = float(side) * 0.5
+        center_y = 0.0
+        arm = 1 if side > 0 else 2
+        ordinal = 0
+
+    cluster_stars = list(stars[:20])
+    mint_index = 0
+    while len(cluster_stars) < 20:
+        extra_index = sum(
+            1 for obj in objects if obj.kind == "star" and "-extra-" in obj.id
+        )
+        angle = (extra_index + mint_index) * 2.399963229728653
+        radius = 0.012 + (mint_index % 5) * 0.007
+        x = center_x + __import__("math").cos(angle) * radius
+        y = center_y + __import__("math").sin(angle) * radius
+        if x * side <= 0:
+            x = center_x + side * radius
+        minted_id = f"frontier:arm-{arm}:star-extra-{extra_index:03d}"
+        minted = ArmObject(
+            id=minted_id,
+            arm=arm,
+            ordinal=ordinal,
+            kind="star",
+            star_type_key="class_g",
+            x=round(x, 6),
+            y=round(y, 6),
+            z=0.0,
+        )
+        objects.append(minted)
+        object_indexes[minted.id] = len(objects) - 1
+        by_id[minted.id] = minted
+        coordinates[minted.id] = [minted.x, minted.y, minted.z]
+        ownership[minted.id] = stem
+        cluster_stars.append(minted)
+        mint_index += 1
+
+    return [obj.id for obj in (*cluster_stars, *specials)]
 
 
 def main() -> int:
@@ -55,85 +122,23 @@ def main() -> int:
     object_indexes = {obj.id: index for index, obj in enumerate(objects)}
     by_id = {obj.id: obj for obj in objects}
 
-    original_stems = {polity.stem for polity in ORIGINAL_FRONTIER_POLITIES}
-    previous_stems = {polity.stem for polity in PREVIOUS_FRONTIER_POLITIES}
-    locked_49_stems = original_stems | previous_stems
-    prior_polities = list(prior_lock.get("polities") or [])
-    prior_clusters = prior_lock.get("clusters") or {}
-    prior_base = prior_lock.get("baseOwnership") or {}
-    prior_ownership = prior_lock.get("ownership") or {}
-
-    if set(prior_polities) >= locked_49_stems and locked_49_stems <= set(
-        prior_clusters
-    ):
-        original_base = {
-            object_id: stem
-            for object_id, stem in prior_base.items()
-            if stem in original_stems
-        }
-        previous_base = {
-            object_id: stem
-            for object_id, stem in prior_base.items()
-            if stem in previous_stems
-        }
-        original_clusters = {
-            stem: tuple(by_id[object_id] for object_id in prior_clusters[stem])
-            for stem in sorted(original_stems)
-        }
-        previous_clusters = {
-            stem: tuple(by_id[object_id] for object_id in prior_clusters[stem])
-            for stem in sorted(previous_stems)
-        }
-        reserved_49 = {
-            object_id: stem
-            for object_id, stem in prior_ownership.items()
-            if stem in locked_49_stems
-        }
-        if not reserved_49:
-            reserved_49 = {**original_base, **previous_base}
-    else:
-        original_base, original_clusters = allocate_frontier_polities(objects)
-        previous_base, previous_clusters = allocate_new_frontier_polities(
-            objects,
-            original_base,
-            original_base,
-            polities=PREVIOUS_FRONTIER_POLITIES,
-        )
-        reserved_49 = {**original_base, **previous_base}
-
-    batch29_base, batch29_clusters = allocate_new_frontier_polities(
-        objects,
-        set(reserved_49),
-        reserved_49,
-        polities=BATCH29_FRONTIER_POLITIES,
-    )
-
-    clusters = {
-        **original_clusters,
-        **previous_clusters,
-        **batch29_clusters,
-    }
-    base_ownership = {
-        **original_base,
-        **previous_base,
-        **batch29_base,
-    }
-    object_indexes = {obj.id: index for index, obj in enumerate(objects)}
-
-    locked_stems = {polity.stem for polity in LOCKED_FRONTIER_POLITIES}
     expected = [polity.stem for polity in LOCKED_FRONTIER_POLITIES]
-    if len(expected) != 77:
-        raise RuntimeError(f"Expected 77 locked polities, got {len(expected)}")
+    locked_stems = set(expected)
+    if len(expected) != 105:
+        raise RuntimeError(f"Expected 105 locked polities, got {len(expected)}")
 
-    galaxy = requests.get(GALAXY_API, timeout=120).json()
+    galaxy = requests.get(GALAXY_API, timeout=180).json()
     ownership: dict[str, str] = {}
     coordinates: dict[str, list[float]] = {}
+    owned_by_stem: dict[str, list[str]] = defaultdict(list)
+
     for system in galaxy.get("systems") or []:
         system_id = str(system.get("id") or "")
         stem = system.get("stem")
         if not system_id.startswith("frontier:") or stem not in locked_stems:
             continue
         ownership[system_id] = stem
+        owned_by_stem[stem].append(system_id)
         coordinates[system_id] = [
             float(system["x"]),
             float(system["y"]),
@@ -147,29 +152,94 @@ def main() -> int:
                 y=float(system["y"]),
                 z=float(system["z"]),
             )
+            continue
+        kind = str(system.get("kind") or "star")
+        if kind not in {"star", "black_hole", "junction"}:
+            kind = "star"
+        arm = 1
+        if ":arm-" in system_id:
+            try:
+                arm = int(system_id.split(":arm-", 1)[1].split(":", 1)[0])
+            except ValueError:
+                arm = 1
+        objects.append(
+            ArmObject(
+                id=system_id,
+                arm=arm,
+                ordinal=len(objects),
+                kind=kind,
+                star_type_key=(
+                    "black_hole"
+                    if kind == "black_hole"
+                    else "junction"
+                    if kind == "junction"
+                    else str(system.get("starTypeKey") or "class_g")
+                ),
+                x=float(system["x"]),
+                y=float(system["y"]),
+                z=float(system["z"]),
+            )
+        )
+        object_indexes[system_id] = len(objects) - 1
 
-    for object_id, stem in base_ownership.items():
-        ownership.setdefault(object_id, stem)
-        if object_id not in coordinates:
-            obj = objects[object_indexes[object_id]]
-            coordinates[object_id] = [obj.x, obj.y, obj.z]
+    by_id = {obj.id: obj for obj in objects}
+    prior_clusters = prior_lock.get("clusters") or {}
+    prior_base = prior_lock.get("baseOwnership") or {}
+    clusters: dict[str, list[str]] = {}
+    base_ownership: dict[str, str] = {}
 
-    missing_clusters = locked_stems - set(clusters)
-    if missing_clusters:
-        raise RuntimeError(f"Missing locked clusters: {sorted(missing_clusters)}")
+    missing_live = locked_stems - set(owned_by_stem)
+    if missing_live:
+        raise RuntimeError(
+            "Live map is missing locked polities: "
+            + ", ".join(sorted(missing_live))
+        )
+
+    side_by_stem = {polity.stem: polity.side for polity in LOCKED_FRONTIER_POLITIES}
+    for stem in expected:
+        cluster_ids = _cluster_from_owned(
+            owned_by_stem[stem],
+            by_id,
+            objects=objects,
+            object_indexes=object_indexes,
+            coordinates=coordinates,
+            ownership=ownership,
+            stem=stem,
+            side=side_by_stem[stem],
+        )
+        # Prefer a prior compact core only when it still has exactly 20 stars.
+        prior_ids = prior_clusters.get(stem) or []
+        if prior_ids and all(object_id in by_id for object_id in prior_ids):
+            prior_star_count = sum(
+                1 for object_id in prior_ids if by_id[object_id].kind == "star"
+            )
+            if prior_star_count == 20:
+                cluster_ids = list(prior_ids)
+        clusters[stem] = cluster_ids
+        for object_id in cluster_ids:
+            base_ownership[object_id] = stem
+            if object_id not in coordinates:
+                obj = by_id[object_id]
+                coordinates[object_id] = [obj.x, obj.y, obj.z]
+            ownership.setdefault(object_id, stem)
+
+    # Preserve prior base ids when they still belong to the same stem.
+    for object_id, stem in prior_base.items():
+        if stem in locked_stems and ownership.get(object_id) == stem:
+            base_ownership.setdefault(object_id, stem)
 
     fingerprint = "\n".join(
         f"{object_id}={stem}"
         for object_id, stem in sorted(ownership.items())
     )
     payload = {
-        "version": 3,
+        "version": 4,
         "polities": expected,
         "baseOwnership": dict(sorted(base_ownership.items())),
         "ownership": dict(sorted(ownership.items())),
         "clusters": {
-            stem: [obj.id for obj in cluster]
-            for stem, cluster in sorted(clusters.items())
+            stem: clusters[stem]
+            for stem in expected
         },
         "coordinates": {
             object_id: coordinates[object_id]
@@ -183,7 +253,7 @@ def main() -> int:
     )
     print(
         f"Wrote {OUTPUT} with {len(base_ownership)} base and "
-        f"{len(ownership)} total assignments "
+        f"{len(ownership)} total assignments across {len(expected)} polities "
         f"(fingerprint {payload['fingerprint']})"
     )
     return 0

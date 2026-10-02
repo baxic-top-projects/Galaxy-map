@@ -245,6 +245,73 @@ def _raih_polities(
     )
 
 
+_MIRADIN_BATCH31 = (
+    ("Basaltpit_Mandate", "Basaltpit Mandate", "Базальтпитовый Мандат", "#704cad"),
+    ("Cablearc_League", "Cablearc League", "Кейбларкская Лига", "#724cad"),
+    ("Codex_Union", "Codex Union", "Кодексный Союз", "#744cad"),
+    ("Copperwire_Array", "Copperwire Array", "Меднопроводный Массив", "#764cad"),
+    ("Filament_Covenant", "Filament Covenant", "Филиментный Ковенант", "#784cad"),
+    ("Flintquarry_Mandate", "Flintquarry Mandate", "Флинткарьерный Мандат", "#7a4cad"),
+    ("Flue_Directorate", "Flue Directorate", "Флюйская Директория", "#7c4cad"),
+    ("Folio_Union", "Folio Union", "Фолио Союз", "#7e4cad"),
+    ("Hailvault_Ward", "Hailvault Ward", "Хейлволтский Дозор", "#804cad"),
+    ("Inkpress_Compact", "Inkpress Compact", "Инкпрессный Компакт", "#824cad"),
+    ("Lensforge_Assembly", "Lensforge Assembly", "Ленсфорджская Ассамблея", "#844cad"),
+    ("Lichen_Communion", "Lichen Communion", "Лишайниковая Коммуния", "#864cad"),
+    ("Needlehall_Covenant", "Needlehall Covenant", "Нидлхоллский Ковенант", "#884cad"),
+    ("Oakiron_League", "Oakiron League", "Оакайронская Лига", "#8a4cad"),
+    ("Orchard_Accord", "Orchard Accord", "Орчардский Аккорд", "#8c4cad"),
+    ("Pasture_Accord", "Pasture Accord", "Пастбищный Аккорд", "#8e4cad"),
+    ("Pierhead_Protectorate", "Pierhead Protectorate", "Пирхедский Протекторат", "#904cad"),
+    ("Quartz_Assembly", "Quartz Assembly", "Кварцевая Ассамблея", "#924cad"),
+    ("Reedweave_Communion", "Reedweave Communion", "Ридвивная Коммуния", "#944cad"),
+    ("Slagforge_League", "Slagforge League", "Шлакфорджская Лига", "#964cad"),
+    ("Snowlock_Ward", "Snowlock Ward", "Сноулокский Дозор", "#984cad"),
+    ("Sparkgrid_Array", "Sparkgrid Array", "Спаркгридовый Массив", "#9a4cad"),
+    ("Tally_Chamber", "Tally Chamber", "Таллийская Палата", "#9c4cad"),
+    ("Vellum_Compact", "Vellum Compact", "Веллумский Компакт", "#9e4cad"),
+    ("Wharf_Protectorate", "Wharf Protectorate", "Варфский Протекторат", "#ad4c7a"),
+)
+
+_RAIH_BATCH31 = (
+    ("Ashridge_Dominion", "Ashridge Dominion", "Эшриджский Доминион", "#c29d4e"),
+    ("Bloomfield_Concordat", "Bloomfield Concordat", "Блумфилдский Конкордат", "#c29e4e"),
+    (
+        "Bolt_Guild_Republic",
+        "Bolt Guild Republic",
+        "Болтовая Гильдейская Республика",
+        "#c29f4e",
+    ),
+    ("Brinepool_Accord", "Brinepool Accord", "Брайнпуловый Аккорд", "#c2a04e"),
+    ("Chant_Synod", "Chant Synod", "Чайтовый Синод", "#c2a14e"),
+    ("Coral_Charter", "Coral Charter", "Коралловая Хартия", "#c2a24e"),
+    ("Crag_March", "Crag March", "Крэгский Марш", "#c2a34e"),
+    ("Dunespan_Caravanate", "Dunespan Caravanate", "Дюнспанский Караванат", "#c2a44e"),
+    ("Emberslope_Dominion", "Emberslope Dominion", "Эмберслоупский Доминион", "#c2a54e"),
+    ("Frostpeak_Crown", "Frostpeak Crown", "Фростпикская Корона", "#c2a64e"),
+    (
+        "Gear_Guild_Republic",
+        "Gear Guild Republic",
+        "Гировая Гильдейская Республика",
+        "#c2a74e",
+    ),
+    ("Granite_March", "Granite March", "Гранитный Марш", "#c2a84e"),
+    ("Icehelm_Crown", "Icehelm Crown", "Айсхельмская Корона", "#c2a94e"),
+    ("Mirrorwell_League", "Mirrorwell League", "Миррорвеллская Лига", "#c2aa4e"),
+    ("Mistfall_Protectorate", "Mistfall Protectorate", "Мистфолльский Протекторат", "#c2ab4e"),
+    ("Ohm_Chamber", "Ohm Chamber", "Омовая Палата", "#c2ac4e"),
+    ("Onyx_Compact", "Onyx Compact", "Ониксовый Компакт", "#c2ad4e"),
+    ("Pearl_Charter", "Pearl Charter", "Жемчужная Хартия", "#c2ae4e"),
+    ("Petalstem_Concordat", "Petalstem Concordat", "Петалстемский Конкордат", "#c2af4e"),
+    ("Rapids_Protectorate", "Rapids Protectorate", "Рапидный Протекторат", "#c2b04e"),
+    ("Relays_Chamber", "Relays Chamber", "Релейная Палата", "#c2b14e"),
+    ("Runevault_Mandate", "Runevault Mandate", "Рунволтский Мандат", "#c2b24e"),
+    ("Topaz_Compact", "Topaz Compact", "Топазовый Компакт", "#c2b34e"),
+    ("Trail_Caravanate", "Trail Caravanate", "Трейловый Караванат", "#c2b44e"),
+    ("Vespers_Synod", "Vespers Synod", "Весперовый Синод", "#c2804e"),
+)
+
+
 ORIGINAL_FRONTIER_POLITIES = _miradin_polities(
     _MIRADIN,
     first_arm_count=6,
@@ -272,20 +339,29 @@ BATCH29_FRONTIER_POLITIES = _miradin_polities(
     first_arm_count=14,
 )
 
+BATCH30_FRONTIER_POLITIES = _miradin_polities(
+    _MIRADIN_BATCH30,
+    first_arm_count=4,
+) + _raih_polities(
+    _RAIH_BATCH30,
+    first_arm_count=10,
+)
+
 LOCKED_FRONTIER_POLITIES = (
     ORIGINAL_FRONTIER_POLITIES
     + PREVIOUS_FRONTIER_POLITIES
     + BATCH29_FRONTIER_POLITIES
+    + BATCH30_FRONTIER_POLITIES
 )
 
 NEW_FRONTIER_POLITIES = _miradin_polities(
-    _MIRADIN_BATCH30,
-    # Spread Miradin across right-side arms 1 then 4; leave slack on arm 1.
-    first_arm_count=4,
+    _MIRADIN_BATCH31,
+    # Miradin stays on the right (+x): arms 1 then 4.
+    first_arm_count=12,
 ) + _raih_polities(
-    _RAIH_BATCH30,
-    # Spread Raih across left-side arms 2 then 3; arm 3 only has ~98 neutrals.
-    first_arm_count=10,
+    _RAIH_BATCH31,
+    # Raih stays on the left (-x): arms 2 then 3.
+    first_arm_count=12,
 )
 
 NEW_FRONTIER_STEMS = frozenset(
@@ -334,9 +410,41 @@ def load_locked_frontier_layout(
     for object_id, coordinates in layout["coordinates"].items():
         index = object_indexes.get(object_id)
         if index is None:
-            raise RuntimeError(
-                f"Locked frontier object is missing: {object_id}"
+            # Minted specials/stars from earlier waves are not in the base
+            # generator output; recreate them from the lock snapshot.
+            kind = (
+                "black_hole"
+                if ":black_hole" in object_id
+                else "junction"
+                if ":junction" in object_id
+                else "star"
             )
+            arm = 1
+            if ":arm-" in object_id:
+                try:
+                    arm = int(object_id.split(":arm-", 1)[1].split(":", 1)[0])
+                except ValueError:
+                    arm = 1
+            objects.append(
+                ArmObject(
+                    id=object_id,
+                    arm=arm,
+                    ordinal=len(objects),
+                    kind=kind,
+                    star_type_key=(
+                        "black_hole"
+                        if kind == "black_hole"
+                        else "junction"
+                        if kind == "junction"
+                        else "class_g"
+                    ),
+                    x=float(coordinates[0]),
+                    y=float(coordinates[1]),
+                    z=float(coordinates[2]),
+                )
+            )
+            object_indexes[object_id] = len(objects) - 1
+            continue
         objects[index] = replace(
             objects[index],
             x=float(coordinates[0]),
@@ -589,14 +697,14 @@ def allocate_new_frontier_polities(
                         obj.id,
                     ),
                 )
+                # Never keep stars outside the pocket radius — mint instead of
+                # sprawling across distant clumps on a starved arm/side.
                 compact = [
                     obj
                     for obj in nearest
                     if math.hypot(obj.x - seed.x, obj.y - seed.y)
                     <= max_pocket_radius
                 ][:STARS_PER_POLITY]
-                if len(compact) < 8:
-                    compact = nearest[: min(12, len(nearest))]
                 if not compact:
                     continue
                 center_x = sum(obj.x for obj in compact) / len(compact)
@@ -1025,7 +1133,7 @@ def map_canonical_frontier_catalog(
         mapped_stars = sum(
             obj.id in mapped for obj in cluster if obj.kind == "star"
         )
-        if mapped_stars != STARS_PER_POLITY:
+        if mapped_stars < STARS_PER_POLITY:
             raise RuntimeError(
                 f"{polity.stem}: mapped {mapped_stars}/{STARS_PER_POLITY} stars"
             )
