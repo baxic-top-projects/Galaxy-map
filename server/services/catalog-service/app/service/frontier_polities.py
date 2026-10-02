@@ -169,6 +169,45 @@ _RAIH_BATCH29 = (
     ("Glyph_Mandate", "Glyph Mandate", "Глифский Мандат", "#c2804e"),
 )
 
+_MIRADIN_BATCH30 = (
+    ("Arc_Array", "Arc Array", "Арковский Массив", "#b04d5f"),
+    ("Cobble_Mandate", "Cobble Mandate", "Кобблский Мандат", "#704cad"),
+    ("Ironbark_League", "Ironbark League", "Айронбаркская Лига", "#754cad"),
+    ("Jetty_Protectorate", "Jetty Protectorate", "Джеттийский Протекторат", "#7a4cad"),
+    ("Ledger_Chamber", "Ledger Chamber", "Леджерская Палата", "#804cad"),
+    ("Meadow_Accord", "Meadow Accord", "Медоуский Аккорд", "#854cad"),
+    ("Myrtle_Communion", "Myrtle Communion", "Миртовая Коммуния", "#8a4cad"),
+    ("Parch_Compact", "Parch Compact", "Парчский Компакт", "#8f4cad"),
+    ("Pin_Covenant", "Pin Covenant", "Пинский Ковенант", "#944cad"),
+    ("Prismglass_Assembly", "Prismglass Assembly", "Призмгласская Ассамблея", "#994cad"),
+    ("Rimefall_Ward", "Rimefall Ward", "Римфолльский Дозор", "#9e4cad"),
+    ("Scroll_Union", "Scroll Union", "Скролльский Союз", "#a34cad"),
+    ("Soot_Directorate", "Soot Directorate", "Сутовая Директория", "#a84cad"),
+    ("Spanlink_League", "Spanlink League", "Спанлинкская Лига", "#ad4c7a"),
+)
+
+_RAIH_BATCH30 = (
+    ("Alkali_Accord", "Alkali Accord", "Алкалийский Аккорд", "#c29d4e"),
+    ("Blossom_Concordat", "Blossom Concordat", "Блоссомский Конкордат", "#c2a04e"),
+    ("Cascade_Protectorate", "Cascade Protectorate", "Каскадный Протекторат", "#c2a34e"),
+    ("Cinderfall_Dominion", "Cinderfall Dominion", "Синдерфолльский Доминион", "#c2a64e"),
+    ("Drift_Caravanate", "Drift Caravanate", "Дрифтовый Караванат", "#c2a94e"),
+    ("Faraday_Chamber", "Faraday Chamber", "Фарадеевская Палата", "#c2ac4e"),
+    ("Hoarfrost_Crown", "Hoarfrost Crown", "Хоарфростская Корона", "#c2af4e"),
+    ("Ivory_Charter", "Ivory Charter", "Айвори Хартия", "#c2b24e"),
+    ("Jewel_Compact", "Jewel Compact", "Джуэльный Компакт", "#c2b54e"),
+    ("Psalm_Synod", "Psalm Synod", "Псалмовый Синод", "#c2b84e"),
+    (
+        "Rivet_Guild_Republic",
+        "Rivet Guild Republic",
+        "Риветовая Гильдейская Республика",
+        "#c2bb4e",
+    ),
+    ("Shale_March", "Shale March", "Сланцевый Марш", "#c2be4e"),
+    ("Sigil_Mandate", "Sigil Mandate", "Сигильский Мандат", "#c2c14e"),
+    ("Specular_League", "Specular League", "Спекулярная Лига", "#c2804e"),
+)
+
 
 def _miradin_polities(
     rows: tuple[tuple[str, str, str, str], ...],
@@ -222,11 +261,7 @@ PREVIOUS_FRONTIER_POLITIES = _miradin_polities(
     first_arm_count=7,
 )
 
-LOCKED_FRONTIER_POLITIES = (
-    ORIGINAL_FRONTIER_POLITIES + PREVIOUS_FRONTIER_POLITIES
-)
-
-NEW_FRONTIER_POLITIES = _miradin_polities(
+BATCH29_FRONTIER_POLITIES = _miradin_polities(
     _MIRADIN_BATCH29,
     # Arms 1/3 are saturated after the previous wave; keep Miradin on the
     # right by placing the whole batch on arm 4.
@@ -235,6 +270,22 @@ NEW_FRONTIER_POLITIES = _miradin_polities(
     _RAIH_BATCH29,
     # Keep Raih on the left by placing the whole batch on arm 2.
     first_arm_count=14,
+)
+
+LOCKED_FRONTIER_POLITIES = (
+    ORIGINAL_FRONTIER_POLITIES
+    + PREVIOUS_FRONTIER_POLITIES
+    + BATCH29_FRONTIER_POLITIES
+)
+
+NEW_FRONTIER_POLITIES = _miradin_polities(
+    _MIRADIN_BATCH30,
+    # Spread Miradin across right-side arms 1 then 4; leave slack on arm 1.
+    first_arm_count=4,
+) + _raih_polities(
+    _RAIH_BATCH30,
+    # Spread Raih across left-side arms 2 then 3; arm 3 only has ~98 neutrals.
+    first_arm_count=10,
 )
 
 NEW_FRONTIER_STEMS = frozenset(
@@ -436,14 +487,9 @@ def allocate_new_frontier_polities(
         if boundary_ownership is not None
         else reserved
     )
-    if boundary_ownership is not None:
-        reserved.update(
-            assign_objects_inside_territories(
-                objects,
-                boundary_ownership,
-                [],
-            )
-        )
+    # Locked ownership is already a frozen snapshot. Do not also reserve
+    # theoretical territory-fill candidates: that starves the next wave on the
+    # correct left/right sides. Adjacency still uses the boundary ownership set.
     object_indexes = {obj.id: index for index, obj in enumerate(objects)}
     available = {
         obj.id: obj
@@ -470,9 +516,47 @@ def allocate_new_frontier_polities(
         if group:
             groups.append((arm, side, group))
 
-    # Pick the densest 20-star neutral pocket nearest the old boundary, remove
-    # it, and repeat. This produces compact adjacent territories without ever
-    # sampling an object from the immutable ownership snapshot.
+    # Pick the densest compact neutral pocket nearest the old boundary, remove
+    # it, and repeat. Miradin pockets stay on +x; Raih on -x. When a side/arm
+    # no longer has 20 stars inside a compact radius, mint the shortfall into
+    # the pocket instead of sprawling across distant clumps.
+    max_pocket_radius = 0.22
+
+    def mint_star(
+        *,
+        arm: int,
+        side: int,
+        center_x: float,
+        center_y: float,
+        ordinal: int,
+        mint_index: int,
+    ) -> ArmObject:
+        extra_index = sum(
+            1 for obj in objects if obj.kind == "star" and "-extra-" in obj.id
+        )
+        angle = (
+            len(LOCKED_FRONTIER_POLITIES) * 2 + mint_index
+        ) * 2.399963229728653
+        radius = 0.012 + (mint_index % 5) * 0.007
+        x = center_x + math.cos(angle) * radius
+        y = center_y + math.sin(angle) * radius
+        if x * side <= 0:
+            x = center_x + side * radius
+        minted = ArmObject(
+            id=f"frontier:arm-{arm}:star-extra-{extra_index:03d}",
+            arm=arm,
+            ordinal=ordinal,
+            kind="star",
+            star_type_key="class_g",
+            x=round(x, 6),
+            y=round(y, 6),
+            z=0.0,
+        )
+        objects.append(minted)
+        object_indexes[minted.id] = len(objects) - 1
+        available[minted.id] = minted
+        return minted
+
     for arm, side, group in groups:
         adjacent_objects = list(locked_objects)
         candidates = [
@@ -483,7 +567,7 @@ def allocate_new_frontier_polities(
             and obj.x * side > 0
         ]
         for polity in group:
-            if len(candidates) < STARS_PER_POLITY:
+            if not candidates and not adjacent_objects:
                 raise RuntimeError(
                     f"Not enough neutral stars available for {polity.stem}"
                 )
@@ -501,32 +585,87 @@ def allocate_new_frontier_polities(
                         obj.ordinal,
                         obj.id,
                     ),
-                )[:STARS_PER_POLITY]
-                compact_radius = math.hypot(
-                    nearest[-1].x - seed.x,
-                    nearest[-1].y - seed.y,
                 )
+                compact = [
+                    obj
+                    for obj in nearest
+                    if math.hypot(obj.x - seed.x, obj.y - seed.y)
+                    <= max_pocket_radius
+                ][:STARS_PER_POLITY]
+                if len(compact) < 8:
+                    compact = nearest[: min(12, len(nearest))]
+                if not compact:
+                    continue
+                center_x = sum(obj.x for obj in compact) / len(compact)
+                center_y = sum(obj.y for obj in compact) / len(compact)
+                compact_radius = max(
+                    math.hypot(obj.x - center_x, obj.y - center_y)
+                    for obj in compact
+                )
+                mint_need = max(0, STARS_PER_POLITY - len(compact))
                 boundary_gap = min(
-                    math.hypot(seed.x - old.x, seed.y - old.y)
-                    for old in adjacent_objects
+                    (
+                        math.hypot(seed.x - old.x, seed.y - old.y)
+                        for old in adjacent_objects
+                    ),
+                    default=0.0,
                 )
                 candidate = (
-                    compact_radius + boundary_gap * 0.35,
+                    compact_radius + mint_need * 0.05 + boundary_gap * 0.35,
                     seed.ordinal,
                     seed.id,
-                    nearest,
+                    compact,
                 )
                 if best is None or candidate[:3] < best[:3]:
                     best = candidate
+            if best is None:
+                # Side/arm exhausted: seed a new pocket on the polity's side
+                # next to the locked boundary and mint the whole cluster.
+                anchor = min(
+                    (
+                        obj
+                        for obj in adjacent_objects
+                        if obj.arm == arm and obj.x * side > 0
+                    ),
+                    key=lambda obj: (obj.ordinal, obj.id),
+                    default=None,
+                )
+                if anchor is None:
+                    raise RuntimeError(
+                        f"Not enough neutral stars available for {polity.stem}"
+                    )
+                compact = []
+                center_x = anchor.x + side * 0.04
+                center_y = anchor.y
+                best = (0.0, anchor.ordinal, anchor.id, compact)
             assert best is not None
-            selected_by_stem[polity.stem] = best[3]
-            adjacent_objects.extend(best[3])
-            selected_ids = {obj.id for obj in best[3]}
+            selected = list(best[3])
+            if selected:
+                center_x = sum(obj.x for obj in selected) / len(selected)
+                center_y = sum(obj.y for obj in selected) / len(selected)
+                ordinal = selected[len(selected) // 2].ordinal
+            else:
+                ordinal = best[1]
+            mint_index = 0
+            while len(selected) < STARS_PER_POLITY:
+                minted = mint_star(
+                    arm=arm,
+                    side=side,
+                    center_x=center_x,
+                    center_y=center_y,
+                    ordinal=ordinal,
+                    mint_index=mint_index,
+                )
+                selected.append(minted)
+                mint_index += 1
+            selected_by_stem[polity.stem] = selected
+            adjacent_objects.extend(selected)
+            selected_ids = {obj.id for obj in selected}
             candidates = [
                 obj for obj in candidates if obj.id not in selected_ids
             ]
             for object_id in selected_ids:
-                available.pop(object_id)
+                available.pop(object_id, None)
 
     for polity in targets:
         stars = sorted(
@@ -541,6 +680,16 @@ def allocate_new_frontier_polities(
         )
 
         def take_special(kind: str, offset_index: int) -> ArmObject:
+            # Miradin stays on +x (arms 1/4); Raih on -x (arms 2/3). Never
+            # steal a special from the opposite side — mint instead.
+            def pocket_xy(angle: float) -> tuple[float, float]:
+                radius = 0.008
+                x = anchor_x + math.cos(angle) * radius
+                y = anchor_y + math.sin(angle) * radius
+                if x * polity.side <= 0:
+                    x = anchor_x + polity.side * radius
+                return round(x, 6), round(y, 6)
+
             selected = min(
                 (
                     obj
@@ -557,38 +706,39 @@ def allocate_new_frontier_polities(
                 default=None,
             )
             if selected is None:
-                selected = min(
+                extra_index = sum(
+                    1
+                    for obj in objects
+                    if obj.kind == kind and "-extra-" in obj.id
+                )
+                minted_id = (
+                    f"frontier:arm-{polity.arm}:{kind}-extra-{extra_index:03d}"
+                )
+                offset_angle = (
                     (
-                        obj
-                        for obj in available.values()
-                        if obj.kind == kind
-                        and obj.x * polity.side > 0
+                        len(LOCKED_FRONTIER_POLITIES)
+                        + len(clusters)
+                    )
+                    * 2
+                    + offset_index
+                ) * 2.399963229728653
+                minted_x, minted_y = pocket_xy(offset_angle)
+                minted = ArmObject(
+                    id=minted_id,
+                    arm=polity.arm,
+                    ordinal=stars[len(stars) // 2].ordinal,
+                    kind=kind,
+                    star_type_key=(
+                        "black_hole" if kind == "black_hole" else "junction"
                     ),
-                    key=lambda obj: (
-                        math.hypot(obj.x - anchor_x, obj.y - anchor_y),
-                        obj.ordinal,
-                        obj.id,
-                    ),
-                    default=None,
+                    x=minted_x,
+                    y=minted_y,
+                    z=0.0,
                 )
-            if selected is None:
-                selected = min(
-                    (
-                        obj
-                        for obj in available.values()
-                        if obj.kind == kind
-                    ),
-                    key=lambda obj: (
-                        math.hypot(obj.x - anchor_x, obj.y - anchor_y),
-                        obj.ordinal,
-                        obj.id,
-                    ),
-                    default=None,
-                )
-            if selected is None:
-                raise RuntimeError(
-                    f"No neutral {kind} available for {polity.stem}"
-                )
+                objects.append(minted)
+                object_indexes[minted.id] = len(objects) - 1
+                available[minted.id] = minted
+                return minted
             distance = math.hypot(
                 selected.x - anchor_x,
                 selected.y - anchor_y,
@@ -607,11 +757,12 @@ def allocate_new_frontier_polities(
                 * 2
                 + offset_index
             ) * 2.399963229728653
+            relocated_x, relocated_y = pocket_xy(offset_angle)
             relocated = replace(
                 selected,
                 arm=polity.arm,
-                x=round(anchor_x + math.cos(offset_angle) * 0.008, 6),
-                y=round(anchor_y + math.sin(offset_angle) * 0.008, 6),
+                x=relocated_x,
+                y=relocated_y,
                 ordinal=stars[len(stars) // 2].ordinal,
             )
             objects[object_indexes[selected.id]] = relocated

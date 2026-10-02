@@ -92,12 +92,10 @@ def main() -> int:
     for stem, entries in records.items():
         entries.sort(key=lambda entry: (entry["kind"], entry["token"]))
         star_count = sum(entry["kind"] == "star" for entry in entries)
-        if stem in NEW_FRONTIER_STEMS:
-            # Newest wave may still be authored as single-star dossiers; the
-            # runtime fills the remaining pocket stars with generated names.
+        if stem in NEW_FRONTIER_STEMS or star_count < 20:
+            # Incomplete dossiers (newest wave or sparse locked polities) are
+            # filled at runtime with generated pocket-star names and worlds.
             continue
-        if star_count < 20:
-            raise RuntimeError(f"{stem}: expected at least 20 stars, found {star_count}")
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(

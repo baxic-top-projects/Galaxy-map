@@ -23,6 +23,9 @@ ID_PREFIX = "frontier:"
 # ordinal, and an ordinal-only neighbor window would otherwise draw base↔tip links.
 MAX_LOCAL_EDGE_LENGTH = 0.14
 MAX_LOCAL_EDGE_LENGTH_SQ = MAX_LOCAL_EDGE_LENGTH * MAX_LOCAL_EDGE_LENGTH
+# Prim may still bridge relocated specials across an arm; drop those spans.
+MAX_SPAN_EDGE_LENGTH = 0.35
+MAX_SPAN_EDGE_LENGTH_SQ = MAX_SPAN_EDGE_LENGTH * MAX_SPAN_EDGE_LENGTH
 
 def _spread_slots(count: int, occupied: frozenset[int] = frozenset()) -> frozenset[int]:
     slots: set[int] = set()
@@ -196,7 +199,10 @@ def arm_edges(objects: list[ArmObject]) -> set[tuple[str, str]]:
             )[2]
             in_tree[current] = True
             parent = best_parent[current]
-            if parent >= 0:
+            if (
+                parent >= 0
+                and best_distance[current] <= MAX_SPAN_EDGE_LENGTH_SQ
+            ):
                 edges.add(
                     tuple(sorted((ordered[current].id, ordered[parent].id)))
                 )
