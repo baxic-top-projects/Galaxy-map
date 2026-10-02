@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections import Counter
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Iterable
@@ -617,70 +618,33 @@ def allocate_new_frontier_polities(
         for object_id in boundary
         if object_id in object_indexes
     ]
-    groups: list[tuple[int, int, list[FrontierPolity]]] = []
-    for arm, side in ((1, 1), (4, 1), (2, -1), (3, -1)):
-        group = [
-            polity
-            for polity in targets
-            if polity.arm == arm and polity.side == side
-        ]
+    # Group only by map side: Miradin right (+x), Raih left (-x). Do not
+    # starve a side by locking it to one spiral arm — free stars already sit
+    # further out in the arms on the correct half of the map.
+    groups: list[tuple[int, list[FrontierPolity]]] = []
+    for side in (1, -1):
+        group = [polity for polity in targets if polity.side == side]
         if group:
-            groups.append((arm, side, group))
+            groups.append((side, group))
 
-    # Pick the densest compact neutral pocket nearest the old boundary, remove
-    # it, and repeat. Miradin pockets stay on +x; Raih on -x. When a side/arm
-    # no longer has 20 stars inside a compact radius, mint the shortfall into
-    # the pocket instead of sprawling across distant clumps.
-    max_pocket_radius = 0.22
+    # Never mint stars. Use existing neutrals on the correct map half
+    # (Miradin +x, Raih -x), expanding the pocket until 20 fit.
+    pocket_radii = (0.22, 0.30, 0.40, 0.55, 0.75, 1.10)
 
-    def mint_star(
-        *,
-        arm: int,
-        side: int,
-        center_x: float,
-        center_y: float,
-        ordinal: int,
-        mint_index: int,
-    ) -> ArmObject:
-        extra_index = sum(
-            1 for obj in objects if obj.kind == "star" and "-extra-" in obj.id
-        )
-        angle = (
-            len(LOCKED_FRONTIER_POLITIES) * 2 + mint_index
-        ) * 2.399963229728653
-        radius = 0.012 + (mint_index % 5) * 0.007
-        x = center_x + math.cos(angle) * radius
-        y = center_y + math.sin(angle) * radius
-        if x * side <= 0:
-            x = center_x + side * radius
-        minted = ArmObject(
-            id=f"frontier:arm-{arm}:star-extra-{extra_index:03d}",
-            arm=arm,
-            ordinal=ordinal,
-            kind="star",
-            star_type_key="class_g",
-            x=round(x, 6),
-            y=round(y, 6),
-            z=0.0,
-        )
-        objects.append(minted)
-        object_indexes[minted.id] = len(objects) - 1
-        available[minted.id] = minted
-        return minted
-
-    for arm, side, group in groups:
+    for side, group in groups:
         adjacent_objects = list(locked_objects)
         candidates = [
             obj
             for obj in available.values()
             if obj.kind == "star"
-            and obj.arm == arm
+            and "-extra-" not in obj.id
             and obj.x * side > 0
         ]
         for polity in group:
-            if not candidates and not adjacent_objects:
+            if len(candidates) < STARS_PER_POLITY:
                 raise RuntimeError(
-                    f"Not enough neutral stars available for {polity.stem}"
+                    f"Not enough natural neutral stars on side {side} "
+                    f"for {polity.stem} ({len(candidates)} left)"
                 )
             best: tuple[
                 float,
@@ -688,7 +652,64 @@ def allocate_new_frontier_polities(
                 str,
                 list[ArmObject],
             ] | None = None
-            for seed in candidates:
+            for max_pocket_radius in pocket_radii:
+                for seed in candidates:
+                    nearest = sorted(
+                        candidates,
+                        key=lambda obj: (
+                            math.hypot(obj.x - seed.x, obj.y - seed.y),
+                            obj.ordinal,
+                            obj.id,
+                        ),
+                    )
+                    compact = [
+                        obj
+                        for obj in nearest
+                        if math.hypot(obj.x - seed.x, obj.y - seed.y)
+                        <= max_pocket_radius
+                    ][:STARS_PER_POLITY]
+                    if len(compact) < STARS_PER_POLITY:
+                        continue
+                    center_x = sum(obj.x for obj in compact) / len(compact)
+                    center_y = sum(obj.y for obj in compact) / len(compact)
+                    compact_radius = max(
+                        math.hypot(obj.x - center_x, obj.y - center_y)
+                        for obj in compact
+                    )
+                    boundary_gap = min(
+                        (
+                            math.hypot(seed.x - old.x, seed.y - old.y)
+                            for old in adjacent_objects
+                        ),
+                        default=0.0,
+                    )
+                    candidate = (
+                        compact_radius + boundary_gap * 0.35,
+                        seed.ordinal,
+                        seed.id,
+                        compact,
+                    )
+                    if best is None or candidate[:3] < best[:3]:
+                        best = candidate
+                if best is not None:
+                    break
+            if best is None:
+                # Last resort: nearest 20 natural stars on this side — still
+                # no minting / no synthetic arm growth.
+                seed = min(
+                    candidates,
+                    key=lambda obj: (
+                        min(
+                            (
+                                math.hypot(obj.x - old.x, obj.y - old.y)
+                                for old in adjacent_objects
+                            ),
+                            default=0.0,
+                        ),
+                        obj.ordinal,
+                        obj.id,
+                    ),
+                )
                 nearest = sorted(
                     candidates,
                     key=lambda obj: (
@@ -696,79 +717,14 @@ def allocate_new_frontier_polities(
                         obj.ordinal,
                         obj.id,
                     ),
-                )
-                # Never keep stars outside the pocket radius — mint instead of
-                # sprawling across distant clumps on a starved arm/side.
-                compact = [
-                    obj
-                    for obj in nearest
-                    if math.hypot(obj.x - seed.x, obj.y - seed.y)
-                    <= max_pocket_radius
-                ][:STARS_PER_POLITY]
-                if not compact:
-                    continue
-                center_x = sum(obj.x for obj in compact) / len(compact)
-                center_y = sum(obj.y for obj in compact) / len(compact)
-                compact_radius = max(
-                    math.hypot(obj.x - center_x, obj.y - center_y)
-                    for obj in compact
-                )
-                mint_need = max(0, STARS_PER_POLITY - len(compact))
-                boundary_gap = min(
-                    (
-                        math.hypot(seed.x - old.x, seed.y - old.y)
-                        for old in adjacent_objects
-                    ),
-                    default=0.0,
-                )
-                candidate = (
-                    compact_radius + mint_need * 0.05 + boundary_gap * 0.35,
-                    seed.ordinal,
-                    seed.id,
-                    compact,
-                )
-                if best is None or candidate[:3] < best[:3]:
-                    best = candidate
-            if best is None:
-                # Side/arm exhausted: seed a new pocket on the polity's side
-                # next to the locked boundary and mint the whole cluster.
-                anchor = min(
-                    (
-                        obj
-                        for obj in adjacent_objects
-                        if obj.arm == arm and obj.x * side > 0
-                    ),
-                    key=lambda obj: (obj.ordinal, obj.id),
-                    default=None,
-                )
-                if anchor is None:
-                    raise RuntimeError(
-                        f"Not enough neutral stars available for {polity.stem}"
-                    )
-                compact = []
-                center_x = anchor.x + side * 0.04
-                center_y = anchor.y
-                best = (0.0, anchor.ordinal, anchor.id, compact)
-            assert best is not None
+                )[:STARS_PER_POLITY]
+                best = (0.0, seed.ordinal, seed.id, nearest)
             selected = list(best[3])
-            if selected:
-                center_x = sum(obj.x for obj in selected) / len(selected)
-                center_y = sum(obj.y for obj in selected) / len(selected)
-                ordinal = selected[len(selected) // 2].ordinal
-            else:
-                ordinal = best[1]
-            mint_index = 0
-            while len(selected) < STARS_PER_POLITY:
-                minted = mint_star(
-                    arm=arm,
-                    side=side,
-                    center_x=center_x,
-                    center_y=center_y,
-                    ordinal=ordinal,
-                    mint_index=mint_index,
+            if len(selected) < STARS_PER_POLITY:
+                raise RuntimeError(
+                    f"Could not gather {STARS_PER_POLITY} natural stars "
+                    f"for {polity.stem}"
                 )
-                selected.append(minted)
-                mint_index += 1
             selected_by_stem[polity.stem] = selected
             adjacent_objects.extend(selected)
             selected_ids = {obj.id for obj in selected}
@@ -789,10 +745,11 @@ def allocate_new_frontier_polities(
             math.hypot(obj.x - anchor_x, obj.y - anchor_y)
             for obj in stars
         )
+        home_arm = Counter(obj.arm for obj in stars).most_common(1)[0][0]
 
         def take_special(kind: str, offset_index: int) -> ArmObject:
-            # Miradin stays on +x (arms 1/4); Raih on -x (arms 2/3). Never
-            # steal a special from the opposite side — mint instead.
+            # Prefer same-side specials (any arm), then any free special
+            # relocated into the pocket. Mint only when none remain.
             def pocket_xy(angle: float) -> tuple[float, float]:
                 radius = 0.008
                 x = anchor_x + math.cos(angle) * radius
@@ -801,14 +758,21 @@ def allocate_new_frontier_polities(
                     x = anchor_x + polity.side * radius
                 return round(x, 6), round(y, 6)
 
+            same_side = [
+                obj
+                for obj in available.values()
+                if obj.kind == kind
+                and "-extra-" not in obj.id
+                and obj.x * polity.side > 0
+            ]
+            any_free = [
+                obj
+                for obj in available.values()
+                if obj.kind == kind and "-extra-" not in obj.id
+            ]
+            pool = same_side or any_free
             selected = min(
-                (
-                    obj
-                    for obj in available.values()
-                    if obj.kind == kind
-                    and obj.arm == polity.arm
-                    and obj.x * polity.side > 0
-                ),
+                pool,
                 key=lambda obj: (
                     math.hypot(obj.x - anchor_x, obj.y - anchor_y),
                     obj.ordinal,
@@ -823,7 +787,7 @@ def allocate_new_frontier_polities(
                     if obj.kind == kind and "-extra-" in obj.id
                 )
                 minted_id = (
-                    f"frontier:arm-{polity.arm}:{kind}-extra-{extra_index:03d}"
+                    f"frontier:arm-{home_arm}:{kind}-extra-{extra_index:03d}"
                 )
                 offset_angle = (
                     (
@@ -836,7 +800,7 @@ def allocate_new_frontier_polities(
                 minted_x, minted_y = pocket_xy(offset_angle)
                 minted = ArmObject(
                     id=minted_id,
-                    arm=polity.arm,
+                    arm=home_arm,
                     ordinal=stars[len(stars) // 2].ordinal,
                     kind=kind,
                     star_type_key=(
@@ -855,8 +819,7 @@ def allocate_new_frontier_polities(
                 selected.y - anchor_y,
             )
             if (
-                selected.arm == polity.arm
-                and selected.x * polity.side > 0
+                selected.x * polity.side > 0
                 and distance <= max(0.08, cluster_radius * 1.2)
             ):
                 return selected
@@ -871,7 +834,7 @@ def allocate_new_frontier_polities(
             relocated_x, relocated_y = pocket_xy(offset_angle)
             relocated = replace(
                 selected,
-                arm=polity.arm,
+                arm=home_arm,
                 x=relocated_x,
                 y=relocated_y,
                 ordinal=stars[len(stars) // 2].ordinal,
@@ -891,6 +854,7 @@ def allocate_new_frontier_polities(
         clusters[polity.stem] = cluster
 
     return assignments, clusters
+
 
 
 def assign_objects_inside_territories(

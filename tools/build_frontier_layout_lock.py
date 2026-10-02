@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import sys
 from collections import defaultdict
 from dataclasses import replace
@@ -33,23 +34,30 @@ def _cluster_from_owned(
     object_ids: list[str],
     by_id: dict,
     *,
-    objects: list,
-    object_indexes: dict[str, int],
+    free_stars: list[ArmObject],
     coordinates: dict[str, list[float]],
     ownership: dict[str, str],
     stem: str,
     side: int,
 ) -> list[str]:
-    """Pick a stable 20-star core (+ specials), minting shortfall into the lock."""
+    """Pick a stable 20-star core (+ specials) from natural objects only."""
     owned = [by_id[object_id] for object_id in object_ids if object_id in by_id]
     stars = sorted(
-        (obj for obj in owned if obj.kind == "star"),
+        (
+            obj
+            for obj in owned
+            if obj.kind == "star" and "-extra-" not in obj.id
+        ),
         key=lambda obj: (obj.ordinal, obj.id),
     )
     specials = []
     for kind in ("black_hole", "junction"):
         matches = sorted(
-            (obj for obj in owned if obj.kind == kind),
+            (
+                obj
+                for obj in owned
+                if obj.kind == kind and "-extra-" not in obj.id
+            ),
             key=lambda obj: (obj.ordinal, obj.id),
         )
         if matches:
@@ -58,44 +66,42 @@ def _cluster_from_owned(
     if stars:
         center_x = sum(obj.x for obj in stars) / len(stars)
         center_y = sum(obj.y for obj in stars) / len(stars)
-        arm = stars[0].arm
-        ordinal = stars[len(stars) // 2].ordinal
     else:
         center_x = float(side) * 0.5
         center_y = 0.0
-        arm = 1 if side > 0 else 2
-        ordinal = 0
 
     cluster_stars = list(stars[:20])
-    mint_index = 0
+    used_ids = {obj.id for obj in cluster_stars}
     while len(cluster_stars) < 20:
-        extra_index = sum(
-            1 for obj in objects if obj.kind == "star" and "-extra-" in obj.id
+        candidates = [
+            obj
+            for obj in free_stars
+            if obj.id not in used_ids and obj.x * side > 0
+        ]
+        if not candidates:
+            raise RuntimeError(
+                f"Cannot fill {stem} to 20 natural stars on side {side}"
+            )
+        pick = min(
+            candidates,
+            key=lambda obj: (
+                math.hypot(obj.x - center_x, obj.y - center_y),
+                obj.ordinal,
+                obj.id,
+            ),
         )
-        angle = (extra_index + mint_index) * 2.399963229728653
-        radius = 0.012 + (mint_index % 5) * 0.007
-        x = center_x + __import__("math").cos(angle) * radius
-        y = center_y + __import__("math").sin(angle) * radius
-        if x * side <= 0:
-            x = center_x + side * radius
-        minted_id = f"frontier:arm-{arm}:star-extra-{extra_index:03d}"
-        minted = ArmObject(
-            id=minted_id,
-            arm=arm,
-            ordinal=ordinal,
-            kind="star",
-            star_type_key="class_g",
-            x=round(x, 6),
-            y=round(y, 6),
-            z=0.0,
-        )
-        objects.append(minted)
-        object_indexes[minted.id] = len(objects) - 1
-        by_id[minted.id] = minted
-        coordinates[minted.id] = [minted.x, minted.y, minted.z]
-        ownership[minted.id] = stem
-        cluster_stars.append(minted)
-        mint_index += 1
+        cluster_stars.append(pick)
+        used_ids.add(pick.id)
+        ownership[pick.id] = stem
+        coordinates[pick.id] = [pick.x, pick.y, pick.z]
+        center_x = sum(obj.x for obj in cluster_stars) / len(cluster_stars)
+        center_y = sum(obj.y for obj in cluster_stars) / len(cluster_stars)
+
+    # Drop any previously owned extras for this stem from the lock.
+    for object_id in list(ownership):
+        if ownership[object_id] == stem and "-extra-" in object_id:
+            ownership.pop(object_id)
+            coordinates.pop(object_id, None)
 
     return [obj.id for obj in (*cluster_stars, *specials)]
 
@@ -110,6 +116,8 @@ def main() -> int:
         prior_lock = json.loads(OUTPUT.read_text(encoding="utf-8"))
 
     for object_id, coordinates in (prior_lock.get("coordinates") or {}).items():
+        if "-extra-" in object_id:
+            continue
         index = object_indexes.get(object_id)
         if index is None:
             continue
@@ -136,6 +144,9 @@ def main() -> int:
         system_id = str(system.get("id") or "")
         stem = system.get("stem")
         if not system_id.startswith("frontier:") or stem not in locked_stems:
+            continue
+        if "-extra-" in system_id:
+            # Drop minted extras from the frozen layout.
             continue
         ownership[system_id] = stem
         owned_by_stem[stem].append(system_id)
@@ -195,20 +206,34 @@ def main() -> int:
             + ", ".join(sorted(missing_live))
         )
 
+    claimed = set(ownership)
+    free_stars = [
+        obj
+        for obj in objects
+        if obj.kind == "star"
+        and "-extra-" not in obj.id
+        and obj.id not in claimed
+    ]
+
     side_by_stem = {polity.stem: polity.side for polity in LOCKED_FRONTIER_POLITIES}
     for stem in expected:
         cluster_ids = _cluster_from_owned(
             owned_by_stem[stem],
             by_id,
-            objects=objects,
-            object_indexes=object_indexes,
+            free_stars=free_stars,
             coordinates=coordinates,
             ownership=ownership,
             stem=stem,
             side=side_by_stem[stem],
         )
-        # Prefer a prior compact core only when it still has exactly 20 stars.
-        prior_ids = prior_clusters.get(stem) or []
+        claimed.update(cluster_ids)
+        free_stars = [obj for obj in free_stars if obj.id not in claimed]
+        # Prefer a prior compact core only when it is natural and complete.
+        prior_ids = [
+            object_id
+            for object_id in (prior_clusters.get(stem) or [])
+            if "-extra-" not in object_id
+        ]
         if prior_ids and all(object_id in by_id for object_id in prior_ids):
             prior_star_count = sum(
                 1 for object_id in prior_ids if by_id[object_id].kind == "star"
@@ -225,8 +250,31 @@ def main() -> int:
 
     # Preserve prior base ids when they still belong to the same stem.
     for object_id, stem in prior_base.items():
+        if "-extra-" in object_id:
+            continue
         if stem in locked_stems and ownership.get(object_id) == stem:
             base_ownership.setdefault(object_id, stem)
+
+    # Final sweep: never keep minted extras in the lock.
+    ownership = {
+        object_id: stem
+        for object_id, stem in ownership.items()
+        if "-extra-" not in object_id
+    }
+    base_ownership = {
+        object_id: stem
+        for object_id, stem in base_ownership.items()
+        if "-extra-" not in object_id
+    }
+    coordinates = {
+        object_id: coords
+        for object_id, coords in coordinates.items()
+        if object_id in ownership
+    }
+    clusters = {
+        stem: [object_id for object_id in ids if "-extra-" not in object_id]
+        for stem, ids in clusters.items()
+    }
 
     fingerprint = "\n".join(
         f"{object_id}={stem}"
@@ -251,10 +299,11 @@ def main() -> int:
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    extras_left = sum(1 for object_id in ownership if "-extra-" in object_id)
     print(
         f"Wrote {OUTPUT} with {len(base_ownership)} base and "
         f"{len(ownership)} total assignments across {len(expected)} polities "
-        f"(fingerprint {payload['fingerprint']})"
+        f"(fingerprint {payload['fingerprint']}, extras={extras_left})"
     )
     return 0
 

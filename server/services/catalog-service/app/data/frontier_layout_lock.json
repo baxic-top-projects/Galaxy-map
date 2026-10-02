@@ -272,28 +272,39 @@
     "frontier:arm-1:star-480": "Jetty_Protectorate",
     "frontier:arm-1:star-486": "Jetty_Protectorate",
     "frontier:arm-1:star-492": "Jetty_Protectorate",
+    "frontier:arm-1:star-493": "Ivory_Charter",
     "frontier:arm-1:star-496": "Jetty_Protectorate",
     "frontier:arm-1:star-497": "Jetty_Protectorate",
+    "frontier:arm-1:star-501": "Ivory_Charter",
     "frontier:arm-1:star-502": "Ironbark_League",
+    "frontier:arm-1:star-506": "Soot_Directorate",
     "frontier:arm-1:star-508": "Jetty_Protectorate",
     "frontier:arm-1:star-511": "Ironbark_League",
     "frontier:arm-1:star-517": "Arc_Array",
+    "frontier:arm-1:star-523": "Soot_Directorate",
+    "frontier:arm-1:star-524": "Ironbark_League",
+    "frontier:arm-1:star-527": "Ironbark_League",
     "frontier:arm-1:star-529": "Ironbark_League",
     "frontier:arm-1:star-534": "Arc_Array",
     "frontier:arm-1:star-535": "Arc_Array",
     "frontier:arm-1:star-538": "Arc_Array",
+    "frontier:arm-1:star-540": "Ivory_Charter",
     "frontier:arm-1:star-544": "Jetty_Protectorate",
     "frontier:arm-1:star-546": "Arc_Array",
     "frontier:arm-1:star-550": "Jetty_Protectorate",
     "frontier:arm-1:star-552": "Ironbark_League",
+    "frontier:arm-1:star-555": "Ivory_Charter",
     "frontier:arm-1:star-556": "Ironbark_League",
     "frontier:arm-1:star-557": "Jetty_Protectorate",
     "frontier:arm-1:star-559": "Arc_Array",
+    "frontier:arm-1:star-560": "Ivory_Charter",
     "frontier:arm-1:star-567": "Arc_Array",
     "frontier:arm-1:star-570": "Prism_Assembly",
     "frontier:arm-1:star-571": "Jetty_Protectorate",
     "frontier:arm-1:star-572": "Arc_Array",
+    "frontier:arm-1:star-575": "Ivory_Charter",
     "frontier:arm-1:star-576": "Prism_Assembly",
+    "frontier:arm-1:star-577": "Ivory_Charter",
     "frontier:arm-1:star-578": "Ironbark_League",
     "frontier:arm-1:star-581": "Basalt_Mandate",
     "frontier:arm-1:star-582": "Arc_Array",
@@ -311,6 +322,7 @@
     "frontier:arm-1:star-603": "Prism_Assembly",
     "frontier:arm-1:star-604": "Arc_Array",
     "frontier:arm-1:star-605": "Arc_Array",
+    "frontier:arm-1:star-606": "Soot_Directorate",
     "frontier:arm-1:star-607": "Basalt_Mandate",
     "frontier:arm-1:star-608": "Basalt_Mandate",
     "frontier:arm-1:star-613": "Wren_Accord",
@@ -434,6 +446,7 @@
     "frontier:arm-1:star-798": "Grove_Communion",
     "frontier:arm-1:star-804": "Frost_Ward",
     "frontier:arm-1:star-805": "Grove_Communion",
+    "frontier:arm-1:star-807": "Jewel_Compact",
     "frontier:arm-1:star-809": "Cobble_Mandate",
     "frontier:arm-1:star-814": "Cobble_Mandate",
     "frontier:arm-1:star-815": "Grove_Communion",
@@ -474,17 +487,7 @@
     "frontier:arm-1:star-936": "Cobble_Mandate",
     "frontier:arm-1:star-941": "Cobble_Mandate",
     "frontier:arm-1:star-944": "Cobble_Mandate",
-    "frontier:arm-1:star-extra-000": "Ironbark_League",
-    "frontier:arm-1:star-extra-001": "Ironbark_League",
-    "frontier:arm-1:star-extra-002": "Ironbark_League",
-    "frontier:arm-1:star-extra-003": "Ironbark_League",
-    "frontier:arm-1:star-extra-004": "Ironbark_League",
-    "frontier:arm-1:star-extra-005": "Ironbark_League",
-    "frontier:arm-1:star-extra-006": "Jetty_Protectorate",
-    "frontier:arm-1:star-extra-007": "Jetty_Protectorate",
-    "frontier:arm-1:star-extra-008": "Jetty_Protectorate",
-    "frontier:arm-1:star-extra-009": "Jetty_Protectorate",
-    "frontier:arm-1:star-extra-010": "Jetty_Protectorate",
+    "frontier:arm-1:star-989": "Psalm_Synod",
     "frontier:arm-2:black_hole-010": "Selqari_Synod",
     "frontier:arm-2:black_hole-011": "Dravorn_Dominion",
     "frontier:arm-2:black_hole-012": "Auric_Charter",
@@ -841,9 +844,13 @@
     "frontier:arm-2:star-401": "Faraday_Chamber",
     "frontier:arm-2:star-406": "Faraday_Chamber",
     "frontier:arm-2:star-425": "Jewel_Compact",
+    "frontier:arm-2:star-426": "Jewel_Compact",
+    "frontier:arm-2:star-439": "Jewel_Compact",
+    "frontier:arm-2:star-443": "Jewel_Compact",
     "frontier:arm-2:star-445": "Jewel_Compact",
     "frontier:arm-2:star-446": "Jewel_Compact",
     "frontier:arm-2:star-463": "Faraday_Chamber",
+    "frontier:arm-2:star-466": "Jewel_Compact",
     "frontier:arm-2:star-473": "Faraday_Chamber",
     "frontier:arm-2:star-475": "Jewel_Compact",
     "frontier:arm-2:star-476": "Jewel_Compact",
@@ -1076,10 +1083,13 @@
     "frontier:arm-2:star-768": "Silt_Caravanate",
     "frontier:arm-2:star-770": "Grit_March",
     "frontier:arm-2:star-772": "Bloom_Concordat",
+    "frontier:arm-2:star-774": "Psalm_Synod",
     "frontier:arm-2:star-775": "Choir_Synod",
+    "frontier:arm-2:star-776": "Psalm_Synod",
     "frontier:arm-2:star-777": "Latch_Guild_Republic",
     "frontier:arm-2:star-778": "Latch_Guild_Republic",
     "frontier:arm-2:star-779": "Bloom_Concordat",
+    "frontier:arm-2:star-780": "Hoarfrost_Crown",
     "frontier:arm-2:star-781": "Grit_March",
     "frontier:arm-2:star-782": "Dune_Caravanate",
     "frontier:arm-2:star-783": "Silt_Caravanate",
@@ -1087,12 +1097,15 @@
     "frontier:arm-2:star-785": "Bloom_Concordat",
     "frontier:arm-2:star-786": "Slag_Dominion",
     "frontier:arm-2:star-787": "Slag_Dominion",
+    "frontier:arm-2:star-788": "Hoarfrost_Crown",
     "frontier:arm-2:star-789": "Slag_Dominion",
     "frontier:arm-2:star-790": "Latch_Guild_Republic",
     "frontier:arm-2:star-791": "Dune_Caravanate",
     "frontier:arm-2:star-792": "Slag_Dominion",
     "frontier:arm-2:star-795": "Slag_Dominion",
+    "frontier:arm-2:star-796": "Hoarfrost_Crown",
     "frontier:arm-2:star-797": "Slag_Dominion",
+    "frontier:arm-2:star-798": "Psalm_Synod",
     "frontier:arm-2:star-799": "Dune_Caravanate",
     "frontier:arm-2:star-801": "Grit_March",
     "frontier:arm-2:star-802": "Silt_Caravanate",
@@ -1100,9 +1113,12 @@
     "frontier:arm-2:star-804": "Latch_Guild_Republic",
     "frontier:arm-2:star-805": "Slag_Dominion",
     "frontier:arm-2:star-806": "Silt_Caravanate",
+    "frontier:arm-2:star-807": "Psalm_Synod",
     "frontier:arm-2:star-808": "Dune_Caravanate",
+    "frontier:arm-2:star-809": "Psalm_Synod",
     "frontier:arm-2:star-810": "Dune_Caravanate",
     "frontier:arm-2:star-811": "Dune_Caravanate",
+    "frontier:arm-2:star-812": "Hoarfrost_Crown",
     "frontier:arm-2:star-813": "Dune_Caravanate",
     "frontier:arm-2:star-814": "Slag_Dominion",
     "frontier:arm-2:star-815": "Bloom_Concordat",
@@ -1164,6 +1180,7 @@
     "frontier:arm-2:star-881": "Bloom_Concordat",
     "frontier:arm-2:star-882": "Pebble_March",
     "frontier:arm-2:star-883": "Grit_March",
+    "frontier:arm-2:star-884": "Sigil_Mandate",
     "frontier:arm-2:star-885": "Bloom_Concordat",
     "frontier:arm-2:star-886": "Pebble_March",
     "frontier:arm-2:star-887": "Hail_Crown",
@@ -1209,12 +1226,14 @@
     "frontier:arm-2:star-934": "Bloom_Concordat",
     "frontier:arm-2:star-935": "Hinge_Guild_Republic",
     "frontier:arm-2:star-936": "Hinge_Guild_Republic",
+    "frontier:arm-2:star-937": "Sigil_Mandate",
     "frontier:arm-2:star-938": "Cantor_Synod",
     "frontier:arm-2:star-939": "Hail_Crown",
     "frontier:arm-2:star-940": "Hinge_Guild_Republic",
     "frontier:arm-2:star-941": "Hinge_Guild_Republic",
     "frontier:arm-2:star-942": "Hinge_Guild_Republic",
     "frontier:arm-2:star-944": "Cantor_Synod",
+    "frontier:arm-2:star-945": "Sigil_Mandate",
     "frontier:arm-2:star-947": "Cantor_Synod",
     "frontier:arm-2:star-949": "Hail_Crown",
     "frontier:arm-2:star-950": "Pebble_March",
@@ -1243,31 +1262,6 @@
     "frontier:arm-2:star-994": "Hail_Crown",
     "frontier:arm-2:star-995": "Petal_Concordat",
     "frontier:arm-2:star-997": "Gem_Compact",
-    "frontier:arm-2:star-extra-029": "Hoarfrost_Crown",
-    "frontier:arm-2:star-extra-030": "Hoarfrost_Crown",
-    "frontier:arm-2:star-extra-031": "Hoarfrost_Crown",
-    "frontier:arm-2:star-extra-032": "Hoarfrost_Crown",
-    "frontier:arm-2:star-extra-033": "Ivory_Charter",
-    "frontier:arm-2:star-extra-034": "Ivory_Charter",
-    "frontier:arm-2:star-extra-035": "Ivory_Charter",
-    "frontier:arm-2:star-extra-036": "Ivory_Charter",
-    "frontier:arm-2:star-extra-037": "Ivory_Charter",
-    "frontier:arm-2:star-extra-038": "Ivory_Charter",
-    "frontier:arm-2:star-extra-039": "Ivory_Charter",
-    "frontier:arm-2:star-extra-040": "Jewel_Compact",
-    "frontier:arm-2:star-extra-041": "Jewel_Compact",
-    "frontier:arm-2:star-extra-042": "Jewel_Compact",
-    "frontier:arm-2:star-extra-043": "Jewel_Compact",
-    "frontier:arm-2:star-extra-044": "Jewel_Compact",
-    "frontier:arm-2:star-extra-045": "Psalm_Synod",
-    "frontier:arm-2:star-extra-046": "Psalm_Synod",
-    "frontier:arm-2:star-extra-047": "Psalm_Synod",
-    "frontier:arm-2:star-extra-048": "Psalm_Synod",
-    "frontier:arm-2:star-extra-049": "Psalm_Synod",
-    "frontier:arm-2:star-extra-050": "Psalm_Synod",
-    "frontier:arm-2:star-extra-051": "Psalm_Synod",
-    "frontier:arm-2:star-extra-052": "Psalm_Synod",
-    "frontier:arm-2:star-extra-053": "Psalm_Synod",
     "frontier:arm-3:black_hole-004": "Yssarian_Concordat",
     "frontier:arm-3:black_hole-006": "Brumal_Crown",
     "frontier:arm-3:black_hole-009": "Lumenar_Chamber",
@@ -1401,12 +1395,16 @@
     "frontier:arm-3:star-328": "Theros_Compact",
     "frontier:arm-3:star-329": "Theros_Compact",
     "frontier:arm-3:star-358": "Theros_Compact",
+    "frontier:arm-3:star-421": "Shale_March",
+    "frontier:arm-3:star-462": "Shale_March",
     "frontier:arm-3:star-466": "Rivet_Guild_Republic",
     "frontier:arm-3:star-469": "Shale_March",
     "frontier:arm-3:star-481": "Rivet_Guild_Republic",
+    "frontier:arm-3:star-486": "Psalm_Synod",
     "frontier:arm-3:star-488": "Specular_League",
     "frontier:arm-3:star-489": "Rivet_Guild_Republic",
     "frontier:arm-3:star-490": "Specular_League",
+    "frontier:arm-3:star-492": "Psalm_Synod",
     "frontier:arm-3:star-495": "Specular_League",
     "frontier:arm-3:star-496": "Specular_League",
     "frontier:arm-3:star-497": "Rivet_Guild_Republic",
@@ -1414,6 +1412,7 @@
     "frontier:arm-3:star-499": "Rivet_Guild_Republic",
     "frontier:arm-3:star-500": "Shale_March",
     "frontier:arm-3:star-501": "Specular_League",
+    "frontier:arm-3:star-502": "Specular_League",
     "frontier:arm-3:star-504": "Sigil_Mandate",
     "frontier:arm-3:star-505": "Rivet_Guild_Republic",
     "frontier:arm-3:star-506": "Sigil_Mandate",
@@ -1434,11 +1433,13 @@
     "frontier:arm-3:star-524": "Rivet_Guild_Republic",
     "frontier:arm-3:star-525": "Shale_March",
     "frontier:arm-3:star-526": "Specular_League",
+    "frontier:arm-3:star-527": "Specular_League",
     "frontier:arm-3:star-528": "Rime_Crown",
     "frontier:arm-3:star-529": "Shale_March",
     "frontier:arm-3:star-531": "Shale_March",
     "frontier:arm-3:star-532": "Specular_League",
     "frontier:arm-3:star-533": "Rime_Crown",
+    "frontier:arm-3:star-534": "Psalm_Synod",
     "frontier:arm-3:star-539": "Rivet_Guild_Republic",
     "frontier:arm-3:star-540": "Rime_Crown",
     "frontier:arm-3:star-541": "Sigil_Mandate",
@@ -1453,6 +1454,7 @@
     "frontier:arm-3:star-556": "Sigil_Mandate",
     "frontier:arm-3:star-559": "Sigil_Mandate",
     "frontier:arm-3:star-561": "Specular_League",
+    "frontier:arm-3:star-563": "Specular_League",
     "frontier:arm-3:star-566": "Shale_March",
     "frontier:arm-3:star-567": "Shale_March",
     "frontier:arm-3:star-568": "Specular_League",
@@ -1505,6 +1507,7 @@
     "frontier:arm-3:star-630": "Mirror_League",
     "frontier:arm-3:star-632": "Salt_Accord",
     "frontier:arm-3:star-633": "Mirror_League",
+    "frontier:arm-3:star-634": "Spanlink_League",
     "frontier:arm-3:star-635": "Salt_Accord",
     "frontier:arm-3:star-636": "Volt_Chamber",
     "frontier:arm-3:star-637": "Hex_Mandate",
@@ -1517,9 +1520,11 @@
     "frontier:arm-3:star-645": "Coil_Protectorate",
     "frontier:arm-3:star-646": "Rime_Crown",
     "frontier:arm-3:star-647": "Coil_Protectorate",
+    "frontier:arm-3:star-649": "Spanlink_League",
     "frontier:arm-3:star-650": "Volt_Chamber",
     "frontier:arm-3:star-651": "Mirror_League",
     "frontier:arm-3:star-653": "Mirror_League",
+    "frontier:arm-3:star-654": "Spanlink_League",
     "frontier:arm-3:star-657": "Volt_Chamber",
     "frontier:arm-3:star-660": "Rime_Crown",
     "frontier:arm-3:star-661": "Rime_Crown",
@@ -1531,7 +1536,10 @@
     "frontier:arm-3:star-669": "Hex_Mandate",
     "frontier:arm-3:star-671": "Salt_Accord",
     "frontier:arm-3:star-672": "Coil_Protectorate",
+    "frontier:arm-3:star-673": "Spanlink_League",
+    "frontier:arm-3:star-675": "Spanlink_League",
     "frontier:arm-3:star-676": "Hex_Mandate",
+    "frontier:arm-3:star-677": "Spanlink_League",
     "frontier:arm-3:star-678": "Coil_Protectorate",
     "frontier:arm-3:star-679": "Rime_Crown",
     "frontier:arm-3:star-680": "Salt_Accord",
@@ -1542,6 +1550,7 @@
     "frontier:arm-3:star-691": "Volt_Chamber",
     "frontier:arm-3:star-693": "Mirror_League",
     "frontier:arm-3:star-694": "Salt_Accord",
+    "frontier:arm-3:star-695": "Spanlink_League",
     "frontier:arm-3:star-696": "Salt_Accord",
     "frontier:arm-3:star-697": "Hex_Mandate",
     "frontier:arm-3:star-698": "Hex_Mandate",
@@ -1611,16 +1620,6 @@
     "frontier:arm-3:star-906": "Facet_Compact",
     "frontier:arm-3:star-909": "Facet_Compact",
     "frontier:arm-3:star-914": "Facet_Compact",
-    "frontier:arm-3:star-extra-054": "Shale_March",
-    "frontier:arm-3:star-extra-055": "Shale_March",
-    "frontier:arm-3:star-extra-056": "Sigil_Mandate",
-    "frontier:arm-3:star-extra-057": "Sigil_Mandate",
-    "frontier:arm-3:star-extra-058": "Sigil_Mandate",
-    "frontier:arm-3:star-extra-059": "Specular_League",
-    "frontier:arm-3:star-extra-060": "Specular_League",
-    "frontier:arm-3:star-extra-061": "Specular_League",
-    "frontier:arm-3:star-extra-062": "Specular_League",
-    "frontier:arm-3:star-extra-063": "Specular_League",
     "frontier:arm-4:black_hole-002": "Damar_Covenant",
     "frontier:arm-4:black_hole-004": "Ilyr_Assembly",
     "frontier:arm-4:black_hole-010": "Ceryn_League",
@@ -1688,8 +1687,10 @@
     "frontier:arm-4:star-076": "Damar_Covenant",
     "frontier:arm-4:star-078": "Ilyr_Assembly",
     "frontier:arm-4:star-080": "Ceryn_League",
+    "frontier:arm-4:star-082": "Rimefall_Ward",
     "frontier:arm-4:star-087": "Serrin_Cordon",
     "frontier:arm-4:star-089": "Damar_Covenant",
+    "frontier:arm-4:star-090": "Rimefall_Ward",
     "frontier:arm-4:star-091": "Serrin_Cordon",
     "frontier:arm-4:star-094": "Ceryn_League",
     "frontier:arm-4:star-1000": "Glacier_Ward",
@@ -1776,6 +1777,7 @@
     "frontier:arm-4:star-1097": "Spindle_Union",
     "frontier:arm-4:star-1098": "Harbor_Protectorate",
     "frontier:arm-4:star-1099": "Harbor_Protectorate",
+    "frontier:arm-4:star-110": "Rimefall_Ward",
     "frontier:arm-4:star-1100": "Crystal_League",
     "frontier:arm-4:star-1101": "Harbor_Protectorate",
     "frontier:arm-4:star-1102": "Spindle_Union",
@@ -1974,6 +1976,7 @@
     "frontier:arm-4:star-311": "Ceryn_League",
     "frontier:arm-4:star-326": "Damar_Covenant",
     "frontier:arm-4:star-359": "Khelar_Union",
+    "frontier:arm-4:star-456": "Jetty_Protectorate",
     "frontier:arm-4:star-460": "Rimefall_Ward",
     "frontier:arm-4:star-463": "Myrtle_Communion",
     "frontier:arm-4:star-471": "Soot_Directorate",
@@ -1981,7 +1984,13 @@
     "frontier:arm-4:star-477": "Scroll_Union",
     "frontier:arm-4:star-479": "Rimefall_Ward",
     "frontier:arm-4:star-480": "Rimefall_Ward",
+    "frontier:arm-4:star-486": "Jetty_Protectorate",
+    "frontier:arm-4:star-487": "Specular_League",
+    "frontier:arm-4:star-488": "Jetty_Protectorate",
+    "frontier:arm-4:star-491": "Jetty_Protectorate",
     "frontier:arm-4:star-492": "Meadow_Accord",
+    "frontier:arm-4:star-495": "Specular_League",
+    "frontier:arm-4:star-498": "Jetty_Protectorate",
     "frontier:arm-4:star-502": "Myrtle_Communion",
     "frontier:arm-4:star-504": "Meadow_Accord",
     "frontier:arm-4:star-505": "Myrtle_Communion",
@@ -2001,6 +2010,7 @@
     "frontier:arm-4:star-525": "Meadow_Accord",
     "frontier:arm-4:star-527": "Meadow_Accord",
     "frontier:arm-4:star-528": "Rimefall_Ward",
+    "frontier:arm-4:star-531": "Scroll_Union",
     "frontier:arm-4:star-533": "Spanlink_League",
     "frontier:arm-4:star-534": "Spanlink_League",
     "frontier:arm-4:star-536": "Meadow_Accord",
@@ -2115,6 +2125,7 @@
     "frontier:arm-4:star-667": "Pin_Covenant",
     "frontier:arm-4:star-668": "Quill_Compact",
     "frontier:arm-4:star-669": "Tide_Protectorate",
+    "frontier:arm-4:star-670": "Ironbark_League",
     "frontier:arm-4:star-672": "Quill_Compact",
     "frontier:arm-4:star-673": "Parch_Compact",
     "frontier:arm-4:star-674": "Glass_League",
@@ -2126,6 +2137,7 @@
     "frontier:arm-4:star-680": "Tide_Protectorate",
     "frontier:arm-4:star-681": "Quiet_Chamber",
     "frontier:arm-4:star-682": "Quiet_Chamber",
+    "frontier:arm-4:star-683": "Ironbark_League",
     "frontier:arm-4:star-684": "Glass_League",
     "frontier:arm-4:star-685": "Anvil_Covenant",
     "frontier:arm-4:star-686": "Glass_League",
@@ -2159,6 +2171,7 @@
     "frontier:arm-4:star-716": "Quiet_Chamber",
     "frontier:arm-4:star-717": "Needle_Union",
     "frontier:arm-4:star-718": "Scroll_Union",
+    "frontier:arm-4:star-719": "Ironbark_League",
     "frontier:arm-4:star-721": "Quill_Compact",
     "frontier:arm-4:star-722": "Needle_Union",
     "frontier:arm-4:star-723": "Needle_Union",
@@ -2166,6 +2179,7 @@
     "frontier:arm-4:star-726": "Tide_Protectorate",
     "frontier:arm-4:star-727": "Anvil_Covenant",
     "frontier:arm-4:star-729": "Parch_Compact",
+    "frontier:arm-4:star-730": "Ironbark_League",
     "frontier:arm-4:star-732": "Tide_Protectorate",
     "frontier:arm-4:star-734": "Tide_Protectorate",
     "frontier:arm-4:star-735": "Parch_Compact",
@@ -2286,9 +2300,12 @@
     "frontier:arm-4:star-877": "Ash_Directorate",
     "frontier:arm-4:star-878": "Amber_Accord",
     "frontier:arm-4:star-879": "Span_League",
+    "frontier:arm-4:star-881": "Prismglass_Assembly",
+    "frontier:arm-4:star-882": "Soot_Directorate",
     "frontier:arm-4:star-883": "Amber_Accord",
     "frontier:arm-4:star-884": "Spark_Array",
     "frontier:arm-4:star-885": "Amber_Accord",
+    "frontier:arm-4:star-886": "Soot_Directorate",
     "frontier:arm-4:star-889": "Ash_Directorate",
     "frontier:arm-4:star-890": "Prismglass_Assembly",
     "frontier:arm-4:star-891": "Flint_Mandate",
@@ -2297,6 +2314,7 @@
     "frontier:arm-4:star-894": "Amber_Accord",
     "frontier:arm-4:star-895": "Prismglass_Assembly",
     "frontier:arm-4:star-896": "Span_League",
+    "frontier:arm-4:star-897": "Soot_Directorate",
     "frontier:arm-4:star-900": "Ash_Directorate",
     "frontier:arm-4:star-901": "Flint_Mandate",
     "frontier:arm-4:star-902": "Flint_Mandate",
@@ -2372,25 +2390,7 @@
     "frontier:arm-4:star-995": "Spark_Array",
     "frontier:arm-4:star-996": "Willow_Communion",
     "frontier:arm-4:star-998": "Willow_Communion",
-    "frontier:arm-4:star-999": "Prismglass_Assembly",
-    "frontier:arm-4:star-extra-011": "Prismglass_Assembly",
-    "frontier:arm-4:star-extra-012": "Rimefall_Ward",
-    "frontier:arm-4:star-extra-013": "Rimefall_Ward",
-    "frontier:arm-4:star-extra-014": "Rimefall_Ward",
-    "frontier:arm-4:star-extra-015": "Scroll_Union",
-    "frontier:arm-4:star-extra-016": "Soot_Directorate",
-    "frontier:arm-4:star-extra-017": "Soot_Directorate",
-    "frontier:arm-4:star-extra-018": "Soot_Directorate",
-    "frontier:arm-4:star-extra-019": "Soot_Directorate",
-    "frontier:arm-4:star-extra-020": "Soot_Directorate",
-    "frontier:arm-4:star-extra-021": "Soot_Directorate",
-    "frontier:arm-4:star-extra-022": "Spanlink_League",
-    "frontier:arm-4:star-extra-023": "Spanlink_League",
-    "frontier:arm-4:star-extra-024": "Spanlink_League",
-    "frontier:arm-4:star-extra-025": "Spanlink_League",
-    "frontier:arm-4:star-extra-026": "Spanlink_League",
-    "frontier:arm-4:star-extra-027": "Spanlink_League",
-    "frontier:arm-4:star-extra-028": "Spanlink_League"
+    "frontier:arm-4:star-999": "Prismglass_Assembly"
   },
   "ownership": {
     "frontier:arm-1:black_hole-001": "Ilyr_Assembly",
@@ -2923,24 +2923,30 @@
     "frontier:arm-1:star-489": "Veyran_Accord",
     "frontier:arm-1:star-491": "Nivor_Protectorate",
     "frontier:arm-1:star-492": "Jetty_Protectorate",
+    "frontier:arm-1:star-493": "Ivory_Charter",
     "frontier:arm-1:star-494": "Nivor_Protectorate",
     "frontier:arm-1:star-495": "Ossirian_Mandate",
     "frontier:arm-1:star-496": "Jetty_Protectorate",
     "frontier:arm-1:star-497": "Jetty_Protectorate",
     "frontier:arm-1:star-498": "Veyran_Accord",
     "frontier:arm-1:star-499": "Pyralis_Directorate",
+    "frontier:arm-1:star-501": "Ivory_Charter",
     "frontier:arm-1:star-502": "Ironbark_League",
     "frontier:arm-1:star-503": "Talaris_Communion",
     "frontier:arm-1:star-504": "Ossirian_Mandate",
     "frontier:arm-1:star-505": "Talaris_Communion",
+    "frontier:arm-1:star-506": "Soot_Directorate",
     "frontier:arm-1:star-507": "Veyran_Accord",
     "frontier:arm-1:star-508": "Jetty_Protectorate",
     "frontier:arm-1:star-511": "Ironbark_League",
     "frontier:arm-1:star-517": "Arc_Array",
     "frontier:arm-1:star-519": "Nivor_Protectorate",
     "frontier:arm-1:star-521": "Nivor_Protectorate",
+    "frontier:arm-1:star-523": "Soot_Directorate",
+    "frontier:arm-1:star-524": "Ironbark_League",
     "frontier:arm-1:star-525": "Veyran_Accord",
     "frontier:arm-1:star-526": "Prism_Assembly",
+    "frontier:arm-1:star-527": "Ironbark_League",
     "frontier:arm-1:star-529": "Ironbark_League",
     "frontier:arm-1:star-530": "Prism_Assembly",
     "frontier:arm-1:star-531": "Veyran_Accord",
@@ -2950,6 +2956,7 @@
     "frontier:arm-1:star-535": "Arc_Array",
     "frontier:arm-1:star-536": "Talaris_Communion",
     "frontier:arm-1:star-538": "Arc_Array",
+    "frontier:arm-1:star-540": "Ivory_Charter",
     "frontier:arm-1:star-542": "Haldor_Compact",
     "frontier:arm-1:star-543": "Haldor_Compact",
     "frontier:arm-1:star-544": "Jetty_Protectorate",
@@ -2962,10 +2969,12 @@
     "frontier:arm-1:star-552": "Ironbark_League",
     "frontier:arm-1:star-553": "Haldor_Compact",
     "frontier:arm-1:star-554": "Haldor_Compact",
+    "frontier:arm-1:star-555": "Ivory_Charter",
     "frontier:arm-1:star-556": "Ironbark_League",
     "frontier:arm-1:star-557": "Jetty_Protectorate",
     "frontier:arm-1:star-558": "Basalt_Mandate",
     "frontier:arm-1:star-559": "Arc_Array",
+    "frontier:arm-1:star-560": "Ivory_Charter",
     "frontier:arm-1:star-561": "Wren_Accord",
     "frontier:arm-1:star-565": "Basalt_Mandate",
     "frontier:arm-1:star-566": "Basalt_Mandate",
@@ -2976,7 +2985,9 @@
     "frontier:arm-1:star-572": "Arc_Array",
     "frontier:arm-1:star-573": "Basalt_Mandate",
     "frontier:arm-1:star-574": "Basalt_Mandate",
+    "frontier:arm-1:star-575": "Ivory_Charter",
     "frontier:arm-1:star-576": "Prism_Assembly",
+    "frontier:arm-1:star-577": "Ivory_Charter",
     "frontier:arm-1:star-578": "Ironbark_League",
     "frontier:arm-1:star-579": "Basalt_Mandate",
     "frontier:arm-1:star-580": "Haldor_Compact",
@@ -3001,6 +3012,7 @@
     "frontier:arm-1:star-603": "Prism_Assembly",
     "frontier:arm-1:star-604": "Arc_Array",
     "frontier:arm-1:star-605": "Arc_Array",
+    "frontier:arm-1:star-606": "Soot_Directorate",
     "frontier:arm-1:star-607": "Basalt_Mandate",
     "frontier:arm-1:star-608": "Basalt_Mandate",
     "frontier:arm-1:star-609": "Haldor_Compact",
@@ -3155,6 +3167,7 @@
     "frontier:arm-1:star-802": "Ember_Array",
     "frontier:arm-1:star-804": "Frost_Ward",
     "frontier:arm-1:star-805": "Grove_Communion",
+    "frontier:arm-1:star-807": "Jewel_Compact",
     "frontier:arm-1:star-808": "Grove_Communion",
     "frontier:arm-1:star-809": "Cobble_Mandate",
     "frontier:arm-1:star-812": "Ember_Array",
@@ -3201,17 +3214,7 @@
     "frontier:arm-1:star-936": "Cobble_Mandate",
     "frontier:arm-1:star-941": "Cobble_Mandate",
     "frontier:arm-1:star-944": "Cobble_Mandate",
-    "frontier:arm-1:star-extra-000": "Ironbark_League",
-    "frontier:arm-1:star-extra-001": "Ironbark_League",
-    "frontier:arm-1:star-extra-002": "Ironbark_League",
-    "frontier:arm-1:star-extra-003": "Ironbark_League",
-    "frontier:arm-1:star-extra-004": "Ironbark_League",
-    "frontier:arm-1:star-extra-005": "Ironbark_League",
-    "frontier:arm-1:star-extra-006": "Jetty_Protectorate",
-    "frontier:arm-1:star-extra-007": "Jetty_Protectorate",
-    "frontier:arm-1:star-extra-008": "Jetty_Protectorate",
-    "frontier:arm-1:star-extra-009": "Jetty_Protectorate",
-    "frontier:arm-1:star-extra-010": "Jetty_Protectorate",
+    "frontier:arm-1:star-989": "Psalm_Synod",
     "frontier:arm-2:black_hole-001": "Caldris_Compact",
     "frontier:arm-2:black_hole-002": "Talaris_Communion",
     "frontier:arm-2:black_hole-003": "Ossirian_Mandate",
@@ -3934,6 +3937,7 @@
     "frontier:arm-2:star-423": "Caldris_Compact",
     "frontier:arm-2:star-424": "Veyran_Accord",
     "frontier:arm-2:star-425": "Jewel_Compact",
+    "frontier:arm-2:star-426": "Jewel_Compact",
     "frontier:arm-2:star-427": "Selqari_Synod",
     "frontier:arm-2:star-428": "Auric_Charter",
     "frontier:arm-2:star-429": "Caldris_Compact",
@@ -3946,9 +3950,11 @@
     "frontier:arm-2:star-436": "Ortheon_Guild_Republic",
     "frontier:arm-2:star-437": "Dravorn_Dominion",
     "frontier:arm-2:star-438": "Dravorn_Dominion",
+    "frontier:arm-2:star-439": "Jewel_Compact",
     "frontier:arm-2:star-440": "Vhalian_Caravanate",
     "frontier:arm-2:star-441": "Caldris_Compact",
     "frontier:arm-2:star-442": "Vhalian_Caravanate",
+    "frontier:arm-2:star-443": "Jewel_Compact",
     "frontier:arm-2:star-444": "Caldris_Compact",
     "frontier:arm-2:star-445": "Jewel_Compact",
     "frontier:arm-2:star-446": "Jewel_Compact",
@@ -3969,6 +3975,7 @@
     "frontier:arm-2:star-461": "Auric_Charter",
     "frontier:arm-2:star-463": "Faraday_Chamber",
     "frontier:arm-2:star-464": "Kharad_March",
+    "frontier:arm-2:star-466": "Jewel_Compact",
     "frontier:arm-2:star-467": "Auric_Charter",
     "frontier:arm-2:star-468": "Caldris_Compact",
     "frontier:arm-2:star-469": "Kharad_March",
@@ -4265,10 +4272,13 @@
     "frontier:arm-2:star-771": "Cinder_Dominion",
     "frontier:arm-2:star-772": "Bloom_Concordat",
     "frontier:arm-2:star-773": "Slag_Dominion",
+    "frontier:arm-2:star-774": "Psalm_Synod",
     "frontier:arm-2:star-775": "Choir_Synod",
+    "frontier:arm-2:star-776": "Psalm_Synod",
     "frontier:arm-2:star-777": "Latch_Guild_Republic",
     "frontier:arm-2:star-778": "Latch_Guild_Republic",
     "frontier:arm-2:star-779": "Bloom_Concordat",
+    "frontier:arm-2:star-780": "Hoarfrost_Crown",
     "frontier:arm-2:star-781": "Grit_March",
     "frontier:arm-2:star-782": "Dune_Caravanate",
     "frontier:arm-2:star-783": "Silt_Caravanate",
@@ -4276,6 +4286,7 @@
     "frontier:arm-2:star-785": "Bloom_Concordat",
     "frontier:arm-2:star-786": "Slag_Dominion",
     "frontier:arm-2:star-787": "Slag_Dominion",
+    "frontier:arm-2:star-788": "Hoarfrost_Crown",
     "frontier:arm-2:star-789": "Slag_Dominion",
     "frontier:arm-2:star-790": "Latch_Guild_Republic",
     "frontier:arm-2:star-791": "Dune_Caravanate",
@@ -4283,7 +4294,9 @@
     "frontier:arm-2:star-793": "Pebble_March",
     "frontier:arm-2:star-794": "Pebble_March",
     "frontier:arm-2:star-795": "Slag_Dominion",
+    "frontier:arm-2:star-796": "Hoarfrost_Crown",
     "frontier:arm-2:star-797": "Slag_Dominion",
+    "frontier:arm-2:star-798": "Psalm_Synod",
     "frontier:arm-2:star-799": "Dune_Caravanate",
     "frontier:arm-2:star-801": "Grit_March",
     "frontier:arm-2:star-802": "Silt_Caravanate",
@@ -4291,9 +4304,12 @@
     "frontier:arm-2:star-804": "Latch_Guild_Republic",
     "frontier:arm-2:star-805": "Slag_Dominion",
     "frontier:arm-2:star-806": "Silt_Caravanate",
+    "frontier:arm-2:star-807": "Psalm_Synod",
     "frontier:arm-2:star-808": "Dune_Caravanate",
+    "frontier:arm-2:star-809": "Psalm_Synod",
     "frontier:arm-2:star-810": "Dune_Caravanate",
     "frontier:arm-2:star-811": "Dune_Caravanate",
+    "frontier:arm-2:star-812": "Hoarfrost_Crown",
     "frontier:arm-2:star-813": "Dune_Caravanate",
     "frontier:arm-2:star-814": "Slag_Dominion",
     "frontier:arm-2:star-815": "Bloom_Concordat",
@@ -4365,6 +4381,7 @@
     "frontier:arm-2:star-881": "Bloom_Concordat",
     "frontier:arm-2:star-882": "Pebble_March",
     "frontier:arm-2:star-883": "Grit_March",
+    "frontier:arm-2:star-884": "Sigil_Mandate",
     "frontier:arm-2:star-885": "Bloom_Concordat",
     "frontier:arm-2:star-886": "Pebble_March",
     "frontier:arm-2:star-887": "Hail_Crown",
@@ -4416,6 +4433,7 @@
     "frontier:arm-2:star-934": "Bloom_Concordat",
     "frontier:arm-2:star-935": "Hinge_Guild_Republic",
     "frontier:arm-2:star-936": "Hinge_Guild_Republic",
+    "frontier:arm-2:star-937": "Sigil_Mandate",
     "frontier:arm-2:star-938": "Cantor_Synod",
     "frontier:arm-2:star-939": "Hail_Crown",
     "frontier:arm-2:star-940": "Hinge_Guild_Republic",
@@ -4423,6 +4441,7 @@
     "frontier:arm-2:star-942": "Hinge_Guild_Republic",
     "frontier:arm-2:star-943": "Pebble_March",
     "frontier:arm-2:star-944": "Cantor_Synod",
+    "frontier:arm-2:star-945": "Sigil_Mandate",
     "frontier:arm-2:star-947": "Cantor_Synod",
     "frontier:arm-2:star-948": "Hail_Crown",
     "frontier:arm-2:star-949": "Hail_Crown",
@@ -4472,31 +4491,6 @@
     "frontier:arm-2:star-996": "Hail_Crown",
     "frontier:arm-2:star-997": "Gem_Compact",
     "frontier:arm-2:star-999": "Hail_Crown",
-    "frontier:arm-2:star-extra-029": "Hoarfrost_Crown",
-    "frontier:arm-2:star-extra-030": "Hoarfrost_Crown",
-    "frontier:arm-2:star-extra-031": "Hoarfrost_Crown",
-    "frontier:arm-2:star-extra-032": "Hoarfrost_Crown",
-    "frontier:arm-2:star-extra-033": "Ivory_Charter",
-    "frontier:arm-2:star-extra-034": "Ivory_Charter",
-    "frontier:arm-2:star-extra-035": "Ivory_Charter",
-    "frontier:arm-2:star-extra-036": "Ivory_Charter",
-    "frontier:arm-2:star-extra-037": "Ivory_Charter",
-    "frontier:arm-2:star-extra-038": "Ivory_Charter",
-    "frontier:arm-2:star-extra-039": "Ivory_Charter",
-    "frontier:arm-2:star-extra-040": "Jewel_Compact",
-    "frontier:arm-2:star-extra-041": "Jewel_Compact",
-    "frontier:arm-2:star-extra-042": "Jewel_Compact",
-    "frontier:arm-2:star-extra-043": "Jewel_Compact",
-    "frontier:arm-2:star-extra-044": "Jewel_Compact",
-    "frontier:arm-2:star-extra-045": "Psalm_Synod",
-    "frontier:arm-2:star-extra-046": "Psalm_Synod",
-    "frontier:arm-2:star-extra-047": "Psalm_Synod",
-    "frontier:arm-2:star-extra-048": "Psalm_Synod",
-    "frontier:arm-2:star-extra-049": "Psalm_Synod",
-    "frontier:arm-2:star-extra-050": "Psalm_Synod",
-    "frontier:arm-2:star-extra-051": "Psalm_Synod",
-    "frontier:arm-2:star-extra-052": "Psalm_Synod",
-    "frontier:arm-2:star-extra-053": "Psalm_Synod",
     "frontier:arm-3:black_hole-001": "Brumal_Crown",
     "frontier:arm-3:black_hole-002": "Serrin_Cordon",
     "frontier:arm-3:black_hole-003": "Serrin_Cordon",
@@ -4967,6 +4961,7 @@
     "frontier:arm-3:star-418": "Ortheon_Guild_Republic",
     "frontier:arm-3:star-419": "Vhalian_Caravanate",
     "frontier:arm-3:star-420": "Kharad_March",
+    "frontier:arm-3:star-421": "Shale_March",
     "frontier:arm-3:star-422": "Brumal_Crown",
     "frontier:arm-3:star-423": "Yssarian_Concordat",
     "frontier:arm-3:star-424": "Kharad_March",
@@ -5004,6 +4999,7 @@
     "frontier:arm-3:star-458": "Yssarian_Concordat",
     "frontier:arm-3:star-459": "Kharad_March",
     "frontier:arm-3:star-461": "Lumenar_Chamber",
+    "frontier:arm-3:star-462": "Shale_March",
     "frontier:arm-3:star-463": "Serrin_Cordon",
     "frontier:arm-3:star-464": "Brumal_Crown",
     "frontier:arm-3:star-465": "Yssarian_Concordat",
@@ -5025,10 +5021,12 @@
     "frontier:arm-3:star-481": "Rivet_Guild_Republic",
     "frontier:arm-3:star-483": "Rime_Crown",
     "frontier:arm-3:star-485": "Kharad_March",
+    "frontier:arm-3:star-486": "Psalm_Synod",
     "frontier:arm-3:star-487": "Brumal_Crown",
     "frontier:arm-3:star-488": "Specular_League",
     "frontier:arm-3:star-489": "Rivet_Guild_Republic",
     "frontier:arm-3:star-490": "Specular_League",
+    "frontier:arm-3:star-492": "Psalm_Synod",
     "frontier:arm-3:star-493": "Brumal_Crown",
     "frontier:arm-3:star-494": "Theros_Compact",
     "frontier:arm-3:star-495": "Specular_League",
@@ -5038,6 +5036,7 @@
     "frontier:arm-3:star-499": "Rivet_Guild_Republic",
     "frontier:arm-3:star-500": "Shale_March",
     "frontier:arm-3:star-501": "Specular_League",
+    "frontier:arm-3:star-502": "Specular_League",
     "frontier:arm-3:star-504": "Sigil_Mandate",
     "frontier:arm-3:star-505": "Rivet_Guild_Republic",
     "frontier:arm-3:star-506": "Sigil_Mandate",
@@ -5058,11 +5057,13 @@
     "frontier:arm-3:star-524": "Rivet_Guild_Republic",
     "frontier:arm-3:star-525": "Shale_March",
     "frontier:arm-3:star-526": "Specular_League",
+    "frontier:arm-3:star-527": "Specular_League",
     "frontier:arm-3:star-528": "Rime_Crown",
     "frontier:arm-3:star-529": "Shale_March",
     "frontier:arm-3:star-531": "Shale_March",
     "frontier:arm-3:star-532": "Specular_League",
     "frontier:arm-3:star-533": "Rime_Crown",
+    "frontier:arm-3:star-534": "Psalm_Synod",
     "frontier:arm-3:star-536": "Volt_Chamber",
     "frontier:arm-3:star-538": "Rime_Crown",
     "frontier:arm-3:star-539": "Rivet_Guild_Republic",
@@ -5084,6 +5085,7 @@
     "frontier:arm-3:star-559": "Sigil_Mandate",
     "frontier:arm-3:star-561": "Specular_League",
     "frontier:arm-3:star-562": "Volt_Chamber",
+    "frontier:arm-3:star-563": "Specular_League",
     "frontier:arm-3:star-564": "Mirror_League",
     "frontier:arm-3:star-566": "Shale_March",
     "frontier:arm-3:star-567": "Shale_March",
@@ -5143,6 +5145,7 @@
     "frontier:arm-3:star-630": "Mirror_League",
     "frontier:arm-3:star-632": "Salt_Accord",
     "frontier:arm-3:star-633": "Mirror_League",
+    "frontier:arm-3:star-634": "Spanlink_League",
     "frontier:arm-3:star-635": "Salt_Accord",
     "frontier:arm-3:star-636": "Volt_Chamber",
     "frontier:arm-3:star-637": "Hex_Mandate",
@@ -5155,9 +5158,11 @@
     "frontier:arm-3:star-645": "Coil_Protectorate",
     "frontier:arm-3:star-646": "Rime_Crown",
     "frontier:arm-3:star-647": "Coil_Protectorate",
+    "frontier:arm-3:star-649": "Spanlink_League",
     "frontier:arm-3:star-650": "Volt_Chamber",
     "frontier:arm-3:star-651": "Mirror_League",
     "frontier:arm-3:star-653": "Mirror_League",
+    "frontier:arm-3:star-654": "Spanlink_League",
     "frontier:arm-3:star-656": "Volt_Chamber",
     "frontier:arm-3:star-657": "Volt_Chamber",
     "frontier:arm-3:star-659": "Hex_Mandate",
@@ -5172,7 +5177,10 @@
     "frontier:arm-3:star-670": "Volt_Chamber",
     "frontier:arm-3:star-671": "Salt_Accord",
     "frontier:arm-3:star-672": "Coil_Protectorate",
+    "frontier:arm-3:star-673": "Spanlink_League",
+    "frontier:arm-3:star-675": "Spanlink_League",
     "frontier:arm-3:star-676": "Hex_Mandate",
+    "frontier:arm-3:star-677": "Spanlink_League",
     "frontier:arm-3:star-678": "Coil_Protectorate",
     "frontier:arm-3:star-679": "Rime_Crown",
     "frontier:arm-3:star-680": "Salt_Accord",
@@ -5185,6 +5193,7 @@
     "frontier:arm-3:star-692": "Hex_Mandate",
     "frontier:arm-3:star-693": "Mirror_League",
     "frontier:arm-3:star-694": "Salt_Accord",
+    "frontier:arm-3:star-695": "Spanlink_League",
     "frontier:arm-3:star-696": "Salt_Accord",
     "frontier:arm-3:star-697": "Hex_Mandate",
     "frontier:arm-3:star-698": "Hex_Mandate",
@@ -5286,16 +5295,6 @@
     "frontier:arm-3:star-919": "Facet_Compact",
     "frontier:arm-3:star-930": "Facet_Compact",
     "frontier:arm-3:star-946": "Facet_Compact",
-    "frontier:arm-3:star-extra-054": "Shale_March",
-    "frontier:arm-3:star-extra-055": "Shale_March",
-    "frontier:arm-3:star-extra-056": "Sigil_Mandate",
-    "frontier:arm-3:star-extra-057": "Sigil_Mandate",
-    "frontier:arm-3:star-extra-058": "Sigil_Mandate",
-    "frontier:arm-3:star-extra-059": "Specular_League",
-    "frontier:arm-3:star-extra-060": "Specular_League",
-    "frontier:arm-3:star-extra-061": "Specular_League",
-    "frontier:arm-3:star-extra-062": "Specular_League",
-    "frontier:arm-3:star-extra-063": "Specular_League",
     "frontier:arm-4:black_hole-001": "Ceryn_League",
     "frontier:arm-4:black_hole-002": "Damar_Covenant",
     "frontier:arm-4:black_hole-003": "Pyralis_Directorate",
@@ -5441,6 +5440,7 @@
     "frontier:arm-4:star-079": "Yssarian_Concordat",
     "frontier:arm-4:star-080": "Ceryn_League",
     "frontier:arm-4:star-081": "Nivor_Protectorate",
+    "frontier:arm-4:star-082": "Rimefall_Ward",
     "frontier:arm-4:star-083": "Theros_Compact",
     "frontier:arm-4:star-084": "Ortheon_Guild_Republic",
     "frontier:arm-4:star-085": "Khelar_Union",
@@ -5448,6 +5448,7 @@
     "frontier:arm-4:star-087": "Serrin_Cordon",
     "frontier:arm-4:star-088": "Lumenar_Chamber",
     "frontier:arm-4:star-089": "Damar_Covenant",
+    "frontier:arm-4:star-090": "Rimefall_Ward",
     "frontier:arm-4:star-091": "Serrin_Cordon",
     "frontier:arm-4:star-092": "Pyralis_Directorate",
     "frontier:arm-4:star-093": "Theros_Compact",
@@ -5567,6 +5568,7 @@
     "frontier:arm-4:star-1097": "Spindle_Union",
     "frontier:arm-4:star-1098": "Harbor_Protectorate",
     "frontier:arm-4:star-1099": "Harbor_Protectorate",
+    "frontier:arm-4:star-110": "Rimefall_Ward",
     "frontier:arm-4:star-1100": "Crystal_League",
     "frontier:arm-4:star-1101": "Harbor_Protectorate",
     "frontier:arm-4:star-1102": "Spindle_Union",
@@ -6054,6 +6056,7 @@
     "frontier:arm-4:star-453": "Khelar_Union",
     "frontier:arm-4:star-454": "Pyralis_Directorate",
     "frontier:arm-4:star-455": "Ilyr_Assembly",
+    "frontier:arm-4:star-456": "Jetty_Protectorate",
     "frontier:arm-4:star-457": "Theros_Compact",
     "frontier:arm-4:star-458": "Ilyr_Assembly",
     "frontier:arm-4:star-459": "Ceryn_League",
@@ -6082,11 +6085,17 @@
     "frontier:arm-4:star-482": "Damar_Covenant",
     "frontier:arm-4:star-483": "Lumenar_Chamber",
     "frontier:arm-4:star-485": "Theros_Compact",
+    "frontier:arm-4:star-486": "Jetty_Protectorate",
+    "frontier:arm-4:star-487": "Specular_League",
+    "frontier:arm-4:star-488": "Jetty_Protectorate",
     "frontier:arm-4:star-489": "Khelar_Union",
     "frontier:arm-4:star-490": "Theros_Compact",
+    "frontier:arm-4:star-491": "Jetty_Protectorate",
     "frontier:arm-4:star-492": "Meadow_Accord",
+    "frontier:arm-4:star-495": "Specular_League",
     "frontier:arm-4:star-496": "Pyralis_Directorate",
     "frontier:arm-4:star-497": "Khelar_Union",
+    "frontier:arm-4:star-498": "Jetty_Protectorate",
     "frontier:arm-4:star-499": "Damar_Covenant",
     "frontier:arm-4:star-500": "Pyralis_Directorate",
     "frontier:arm-4:star-501": "Glass_League",
@@ -6116,6 +6125,7 @@
     "frontier:arm-4:star-526": "Needle_Union",
     "frontier:arm-4:star-527": "Meadow_Accord",
     "frontier:arm-4:star-528": "Rimefall_Ward",
+    "frontier:arm-4:star-531": "Scroll_Union",
     "frontier:arm-4:star-533": "Spanlink_League",
     "frontier:arm-4:star-534": "Spanlink_League",
     "frontier:arm-4:star-535": "Needle_Union",
@@ -6250,6 +6260,7 @@
     "frontier:arm-4:star-667": "Pin_Covenant",
     "frontier:arm-4:star-668": "Quill_Compact",
     "frontier:arm-4:star-669": "Tide_Protectorate",
+    "frontier:arm-4:star-670": "Ironbark_League",
     "frontier:arm-4:star-671": "Quill_Compact",
     "frontier:arm-4:star-672": "Quill_Compact",
     "frontier:arm-4:star-673": "Parch_Compact",
@@ -6262,6 +6273,7 @@
     "frontier:arm-4:star-680": "Tide_Protectorate",
     "frontier:arm-4:star-681": "Quiet_Chamber",
     "frontier:arm-4:star-682": "Quiet_Chamber",
+    "frontier:arm-4:star-683": "Ironbark_League",
     "frontier:arm-4:star-684": "Glass_League",
     "frontier:arm-4:star-685": "Anvil_Covenant",
     "frontier:arm-4:star-686": "Glass_League",
@@ -6297,6 +6309,7 @@
     "frontier:arm-4:star-716": "Quiet_Chamber",
     "frontier:arm-4:star-717": "Needle_Union",
     "frontier:arm-4:star-718": "Scroll_Union",
+    "frontier:arm-4:star-719": "Ironbark_League",
     "frontier:arm-4:star-720": "Amber_Accord",
     "frontier:arm-4:star-721": "Quill_Compact",
     "frontier:arm-4:star-722": "Needle_Union",
@@ -6307,6 +6320,7 @@
     "frontier:arm-4:star-727": "Anvil_Covenant",
     "frontier:arm-4:star-728": "Quiet_Chamber",
     "frontier:arm-4:star-729": "Parch_Compact",
+    "frontier:arm-4:star-730": "Ironbark_League",
     "frontier:arm-4:star-731": "Quill_Compact",
     "frontier:arm-4:star-732": "Tide_Protectorate",
     "frontier:arm-4:star-733": "Anvil_Covenant",
@@ -6454,9 +6468,12 @@
     "frontier:arm-4:star-877": "Ash_Directorate",
     "frontier:arm-4:star-878": "Amber_Accord",
     "frontier:arm-4:star-879": "Span_League",
+    "frontier:arm-4:star-881": "Prismglass_Assembly",
+    "frontier:arm-4:star-882": "Soot_Directorate",
     "frontier:arm-4:star-883": "Amber_Accord",
     "frontier:arm-4:star-884": "Spark_Array",
     "frontier:arm-4:star-885": "Amber_Accord",
+    "frontier:arm-4:star-886": "Soot_Directorate",
     "frontier:arm-4:star-887": "Ash_Directorate",
     "frontier:arm-4:star-888": "Ash_Directorate",
     "frontier:arm-4:star-889": "Ash_Directorate",
@@ -6467,6 +6484,7 @@
     "frontier:arm-4:star-894": "Amber_Accord",
     "frontier:arm-4:star-895": "Prismglass_Assembly",
     "frontier:arm-4:star-896": "Span_League",
+    "frontier:arm-4:star-897": "Soot_Directorate",
     "frontier:arm-4:star-899": "Span_League",
     "frontier:arm-4:star-900": "Ash_Directorate",
     "frontier:arm-4:star-901": "Flint_Mandate",
@@ -6557,25 +6575,7 @@
     "frontier:arm-4:star-996": "Willow_Communion",
     "frontier:arm-4:star-997": "Span_League",
     "frontier:arm-4:star-998": "Willow_Communion",
-    "frontier:arm-4:star-999": "Prismglass_Assembly",
-    "frontier:arm-4:star-extra-011": "Prismglass_Assembly",
-    "frontier:arm-4:star-extra-012": "Rimefall_Ward",
-    "frontier:arm-4:star-extra-013": "Rimefall_Ward",
-    "frontier:arm-4:star-extra-014": "Rimefall_Ward",
-    "frontier:arm-4:star-extra-015": "Scroll_Union",
-    "frontier:arm-4:star-extra-016": "Soot_Directorate",
-    "frontier:arm-4:star-extra-017": "Soot_Directorate",
-    "frontier:arm-4:star-extra-018": "Soot_Directorate",
-    "frontier:arm-4:star-extra-019": "Soot_Directorate",
-    "frontier:arm-4:star-extra-020": "Soot_Directorate",
-    "frontier:arm-4:star-extra-021": "Soot_Directorate",
-    "frontier:arm-4:star-extra-022": "Spanlink_League",
-    "frontier:arm-4:star-extra-023": "Spanlink_League",
-    "frontier:arm-4:star-extra-024": "Spanlink_League",
-    "frontier:arm-4:star-extra-025": "Spanlink_League",
-    "frontier:arm-4:star-extra-026": "Spanlink_League",
-    "frontier:arm-4:star-extra-027": "Spanlink_League",
-    "frontier:arm-4:star-extra-028": "Spanlink_League"
+    "frontier:arm-4:star-999": "Prismglass_Assembly"
   },
   "clusters": {
     "Caldris_Compact": [
@@ -8488,12 +8488,12 @@
       "frontier:arm-1:star-669",
       "frontier:arm-1:star-680",
       "frontier:arm-1:star-686",
-      "frontier:arm-1:star-extra-000",
-      "frontier:arm-1:star-extra-001",
-      "frontier:arm-1:star-extra-002",
-      "frontier:arm-1:star-extra-003",
-      "frontier:arm-1:star-extra-004",
-      "frontier:arm-1:star-extra-005"
+      "frontier:arm-1:star-527",
+      "frontier:arm-4:star-670",
+      "frontier:arm-4:star-730",
+      "frontier:arm-4:star-683",
+      "frontier:arm-4:star-719",
+      "frontier:arm-1:star-524"
     ],
     "Jetty_Protectorate": [
       "frontier:arm-1:star-465",
@@ -8511,11 +8511,11 @@
       "frontier:arm-1:star-550",
       "frontier:arm-1:star-557",
       "frontier:arm-1:star-571",
-      "frontier:arm-1:star-extra-006",
-      "frontier:arm-1:star-extra-007",
-      "frontier:arm-1:star-extra-008",
-      "frontier:arm-1:star-extra-009",
-      "frontier:arm-1:star-extra-010"
+      "frontier:arm-4:star-498",
+      "frontier:arm-4:star-456",
+      "frontier:arm-4:star-486",
+      "frontier:arm-4:star-491",
+      "frontier:arm-4:star-488"
     ],
     "Ledger_Chamber": [
       "frontier:arm-4:star-1180",
@@ -8651,7 +8651,7 @@
       "frontier:arm-4:star-999",
       "frontier:arm-4:star-1007",
       "frontier:arm-4:star-1017",
-      "frontier:arm-4:star-extra-011"
+      "frontier:arm-4:star-881"
     ],
     "Rimefall_Ward": [
       "frontier:arm-4:star-460",
@@ -8671,9 +8671,9 @@
       "frontier:arm-4:star-642",
       "frontier:arm-4:star-657",
       "frontier:arm-4:star-691",
-      "frontier:arm-4:star-extra-012",
-      "frontier:arm-4:star-extra-013",
-      "frontier:arm-4:star-extra-014"
+      "frontier:arm-4:star-090",
+      "frontier:arm-4:star-082",
+      "frontier:arm-4:star-110"
     ],
     "Scroll_Union": [
       "frontier:arm-4:star-477",
@@ -8695,7 +8695,7 @@
       "frontier:arm-4:star-769",
       "frontier:arm-4:star-772",
       "frontier:arm-4:star-791",
-      "frontier:arm-4:star-extra-015"
+      "frontier:arm-4:star-531"
     ],
     "Soot_Directorate": [
       "frontier:arm-4:star-471",
@@ -8712,12 +8712,12 @@
       "frontier:arm-4:star-577",
       "frontier:arm-4:star-592",
       "frontier:arm-4:star-596",
-      "frontier:arm-4:star-extra-016",
-      "frontier:arm-4:star-extra-017",
-      "frontier:arm-4:star-extra-018",
-      "frontier:arm-4:star-extra-019",
-      "frontier:arm-4:star-extra-020",
-      "frontier:arm-4:star-extra-021"
+      "frontier:arm-1:star-506",
+      "frontier:arm-1:star-606",
+      "frontier:arm-1:star-523",
+      "frontier:arm-4:star-882",
+      "frontier:arm-4:star-886",
+      "frontier:arm-4:star-897"
     ],
     "Spanlink_League": [
       "frontier:arm-4:star-510",
@@ -8733,13 +8733,13 @@
       "frontier:arm-4:star-636",
       "frontier:arm-4:star-643",
       "frontier:arm-4:star-655",
-      "frontier:arm-4:star-extra-022",
-      "frontier:arm-4:star-extra-023",
-      "frontier:arm-4:star-extra-024",
-      "frontier:arm-4:star-extra-025",
-      "frontier:arm-4:star-extra-026",
-      "frontier:arm-4:star-extra-027",
-      "frontier:arm-4:star-extra-028"
+      "frontier:arm-3:star-634",
+      "frontier:arm-3:star-649",
+      "frontier:arm-3:star-675",
+      "frontier:arm-3:star-654",
+      "frontier:arm-3:star-673",
+      "frontier:arm-3:star-677",
+      "frontier:arm-3:star-695"
     ],
     "Alkali_Accord": [
       "frontier:arm-2:star-1136",
@@ -8893,10 +8893,10 @@
       "frontier:arm-2:star-716",
       "frontier:arm-2:star-722",
       "frontier:arm-2:star-727",
-      "frontier:arm-2:star-extra-029",
-      "frontier:arm-2:star-extra-030",
-      "frontier:arm-2:star-extra-031",
-      "frontier:arm-2:star-extra-032"
+      "frontier:arm-2:star-780",
+      "frontier:arm-2:star-788",
+      "frontier:arm-2:star-796",
+      "frontier:arm-2:star-812"
     ],
     "Ivory_Charter": [
       "frontier:arm-2:star-479",
@@ -8912,13 +8912,13 @@
       "frontier:arm-2:star-582",
       "frontier:arm-2:star-603",
       "frontier:arm-2:star-618",
-      "frontier:arm-2:star-extra-033",
-      "frontier:arm-2:star-extra-034",
-      "frontier:arm-2:star-extra-035",
-      "frontier:arm-2:star-extra-036",
-      "frontier:arm-2:star-extra-037",
-      "frontier:arm-2:star-extra-038",
-      "frontier:arm-2:star-extra-039"
+      "frontier:arm-1:star-577",
+      "frontier:arm-1:star-560",
+      "frontier:arm-1:star-575",
+      "frontier:arm-1:star-555",
+      "frontier:arm-1:star-540",
+      "frontier:arm-1:star-493",
+      "frontier:arm-1:star-501"
     ],
     "Jewel_Compact": [
       "frontier:arm-2:star-425",
@@ -8936,11 +8936,11 @@
       "frontier:arm-2:star-524",
       "frontier:arm-2:star-529",
       "frontier:arm-2:star-558",
-      "frontier:arm-2:star-extra-040",
-      "frontier:arm-2:star-extra-041",
-      "frontier:arm-2:star-extra-042",
-      "frontier:arm-2:star-extra-043",
-      "frontier:arm-2:star-extra-044"
+      "frontier:arm-2:star-466",
+      "frontier:arm-2:star-439",
+      "frontier:arm-2:star-443",
+      "frontier:arm-2:star-426",
+      "frontier:arm-1:star-807"
     ],
     "Psalm_Synod": [
       "frontier:arm-2:star-486",
@@ -8954,15 +8954,15 @@
       "frontier:arm-2:star-538",
       "frontier:arm-2:star-541",
       "frontier:arm-2:star-552",
-      "frontier:arm-2:star-extra-045",
-      "frontier:arm-2:star-extra-046",
-      "frontier:arm-2:star-extra-047",
-      "frontier:arm-2:star-extra-048",
-      "frontier:arm-2:star-extra-049",
-      "frontier:arm-2:star-extra-050",
-      "frontier:arm-2:star-extra-051",
-      "frontier:arm-2:star-extra-052",
-      "frontier:arm-2:star-extra-053"
+      "frontier:arm-3:star-486",
+      "frontier:arm-3:star-492",
+      "frontier:arm-3:star-534",
+      "frontier:arm-2:star-776",
+      "frontier:arm-2:star-774",
+      "frontier:arm-2:star-798",
+      "frontier:arm-2:star-807",
+      "frontier:arm-2:star-809",
+      "frontier:arm-1:star-989"
     ],
     "Rivet_Guild_Republic": [
       "frontier:arm-3:star-466",
@@ -9007,8 +9007,8 @@
       "frontier:arm-3:star-644",
       "frontier:arm-3:star-663",
       "frontier:arm-3:star-666",
-      "frontier:arm-3:star-extra-054",
-      "frontier:arm-3:star-extra-055"
+      "frontier:arm-3:star-421",
+      "frontier:arm-3:star-462"
     ],
     "Sigil_Mandate": [
       "frontier:arm-3:star-498",
@@ -9028,9 +9028,9 @@
       "frontier:arm-3:star-573",
       "frontier:arm-3:star-574",
       "frontier:arm-3:star-597",
-      "frontier:arm-3:star-extra-056",
-      "frontier:arm-3:star-extra-057",
-      "frontier:arm-3:star-extra-058"
+      "frontier:arm-2:star-884",
+      "frontier:arm-2:star-937",
+      "frontier:arm-2:star-945"
     ],
     "Specular_League": [
       "frontier:arm-3:star-488",
@@ -9048,11 +9048,11 @@
       "frontier:arm-3:star-554",
       "frontier:arm-3:star-561",
       "frontier:arm-3:star-568",
-      "frontier:arm-3:star-extra-059",
-      "frontier:arm-3:star-extra-060",
-      "frontier:arm-3:star-extra-061",
-      "frontier:arm-3:star-extra-062",
-      "frontier:arm-3:star-extra-063"
+      "frontier:arm-4:star-495",
+      "frontier:arm-3:star-502",
+      "frontier:arm-4:star-487",
+      "frontier:arm-3:star-527",
+      "frontier:arm-3:star-563"
     ]
   },
   "coordinates": {
@@ -11706,6 +11706,11 @@
       -0.357863,
       0.002131
     ],
+    "frontier:arm-1:star-493": [
+      -0.067351,
+      1.285884,
+      -0.010253
+    ],
     "frontier:arm-1:star-494": [
       1.158284,
       0.548537,
@@ -11736,6 +11741,11 @@
       -0.008339,
       0.005968
     ],
+    "frontier:arm-1:star-501": [
+      -0.055044,
+      1.286376,
+      0.004853
+    ],
     "frontier:arm-1:star-502": [
       1.149987,
       0.593539,
@@ -11755,6 +11765,11 @@
       1.051696,
       0.754583,
       -0.006882
+    ],
+    "frontier:arm-1:star-506": [
+      1.284711,
+      0.225443,
+      -0.006133
     ],
     "frontier:arm-1:star-507": [
       0.466352,
@@ -11786,6 +11801,16 @@
       0.265711,
       -0.001208
     ],
+    "frontier:arm-1:star-523": [
+      1.317069,
+      0.101903,
+      0.003453
+    ],
+    "frontier:arm-1:star-524": [
+      0.977674,
+      0.893124,
+      -0.011544
+    ],
     "frontier:arm-1:star-525": [
       0.602386,
       1.169328,
@@ -11795,6 +11820,11 @@
       0.012516,
       1.320912,
       0.007001
+    ],
+    "frontier:arm-1:star-527": [
+      1.060185,
+      0.782482,
+      -0.009775
     ],
     "frontier:arm-1:star-529": [
       1.14163,
@@ -11840,6 +11870,11 @@
       1.239636,
       0.496127,
       -0.015773
+    ],
+    "frontier:arm-1:star-540": [
+      -0.046626,
+      1.338009,
+      0.012262
     ],
     "frontier:arm-1:star-542": [
       1.055651,
@@ -11901,6 +11936,11 @@
       0.842765,
       -0.008741
     ],
+    "frontier:arm-1:star-555": [
+      -0.053031,
+      1.353404,
+      -0.009401
+    ],
     "frontier:arm-1:star-556": [
       1.171766,
       0.668785,
@@ -11920,6 +11960,11 @@
       1.320506,
       0.325714,
       -0.010083
+    ],
+    "frontier:arm-1:star-560": [
+      -0.077291,
+      1.357242,
+      0.007874
     ],
     "frontier:arm-1:star-561": [
       0.954418,
@@ -11971,10 +12016,20 @@
       1.277574,
       0.003396
     ],
+    "frontier:arm-1:star-575": [
+      -0.139447,
+      1.371445,
+      0.015852
+    ],
     "frontier:arm-1:star-576": [
       0.04708,
       1.373699,
       0.008379
+    ],
+    "frontier:arm-1:star-577": [
+      -0.107447,
+      1.376359,
+      -0.005704
     ],
     "frontier:arm-1:star-578": [
       1.213627,
@@ -12095,6 +12150,11 @@
       1.342019,
       0.46009,
       0.002569
+    ],
+    "frontier:arm-1:star-606": [
+      1.39442,
+      0.203117,
+      0.012983
     ],
     "frontier:arm-1:star-607": [
       0.714841,
@@ -12866,6 +12926,11 @@
       1.445424,
       0.007255
     ],
+    "frontier:arm-1:star-807": [
+      -0.914145,
+      1.42982,
+      0.000586
+    ],
     "frontier:arm-1:star-808": [
       0.676715,
       1.55656,
@@ -13096,60 +13161,10 @@
       1.912003,
       0.002617
     ],
-    "frontier:arm-1:star-extra-000": [
-      1.250512,
-      0.66812,
-      0.0
-    ],
-    "frontier:arm-1:star-extra-001": [
-      1.240174,
-      0.649193,
-      0.0
-    ],
-    "frontier:arm-1:star-extra-002": [
-      1.21291,
-      0.663591,
-      0.0
-    ],
-    "frontier:arm-1:star-extra-003": [
-      1.229945,
-      0.699989,
-      0.0
-    ],
-    "frontier:arm-1:star-extra-004": [
-      1.276085,
-      0.681841,
-      0.0
-    ],
-    "frontier:arm-1:star-extra-005": [
-      1.243599,
-      0.657251,
-      0.0
-    ],
-    "frontier:arm-1:star-extra-006": [
-      1.275263,
-      -0.13657,
-      0.0
-    ],
-    "frontier:arm-1:star-extra-007": [
-      1.296225,
-      -0.141641,
-      0.0
-    ],
-    "frontier:arm-1:star-extra-008": [
-      1.289398,
-      -0.171708,
-      0.0
-    ],
-    "frontier:arm-1:star-extra-009": [
-      1.249826,
-      -0.164706,
-      0.0
-    ],
-    "frontier:arm-1:star-extra-010": [
-      1.255373,
-      -0.115437,
-      0.0
+    "frontier:arm-1:star-989": [
+      -1.634954,
+      1.140569,
+      -0.009923
     ],
     "frontier:arm-2:black_hole-001": [
       0.144385,
@@ -16761,6 +16776,11 @@
       0.979939,
       -0.012071
     ],
+    "frontier:arm-2:star-426": [
+      -0.985189,
+      0.714426,
+      -0.012895
+    ],
     "frontier:arm-2:star-427": [
       -0.959698,
       0.754477,
@@ -16821,6 +16841,11 @@
       1.04954,
       -0.004754
     ],
+    "frontier:arm-2:star-439": [
+      -0.978267,
+      0.738518,
+      0.002306
+    ],
     "frontier:arm-2:star-440": [
       -1.165775,
       0.406026,
@@ -16835,6 +16860,11 @@
       -1.122008,
       0.529929,
       0.005564
+    ],
+    "frontier:arm-2:star-443": [
+      -0.997705,
+      0.731799,
+      -0.013543
     ],
     "frontier:arm-2:star-444": [
       0.208264,
@@ -16935,6 +16965,11 @@
       -1.247402,
       -0.060626,
       -0.009585
+    ],
+    "frontier:arm-2:star-466": [
+      -0.940501,
+      0.824261,
+      -0.008663
     ],
     "frontier:arm-2:star-467": [
       -0.153125,
@@ -18416,10 +18451,20 @@
       -0.193796,
       -0.003865
     ],
+    "frontier:arm-2:star-774": [
+      -1.359534,
+      0.917096,
+      -0.007704
+    ],
     "frontier:arm-2:star-775": [
       -1.201147,
       1.121871,
       0.011584
+    ],
+    "frontier:arm-2:star-776": [
+      -1.373275,
+      0.912432,
+      0.006699
     ],
     "frontier:arm-2:star-777": [
       -1.640759,
@@ -18435,6 +18480,11 @@
       -1.647234,
       0.051539,
       -0.0122
+    ],
+    "frontier:arm-2:star-780": [
+      -1.652213,
+      -0.096865,
+      -0.001619
     ],
     "frontier:arm-2:star-781": [
       -1.603834,
@@ -18471,6 +18521,11 @@
       -0.4187,
       0.007539
     ],
+    "frontier:arm-2:star-788": [
+      -1.66081,
+      -0.109249,
+      -0.002207
+    ],
     "frontier:arm-2:star-789": [
       -1.628881,
       -0.304341,
@@ -18506,10 +18561,20 @@
       -0.398855,
       0.007162
     ],
+    "frontier:arm-2:star-796": [
+      -1.677437,
+      -0.051368,
+      0.01044
+    ],
     "frontier:arm-2:star-797": [
       -1.638205,
       -0.368548,
       -0.005132
+    ],
+    "frontier:arm-2:star-798": [
+      -1.331834,
+      1.013251,
+      0.001146
     ],
     "frontier:arm-2:star-799": [
       -1.535923,
@@ -18546,10 +18611,20 @@
       0.782124,
       -0.009299
     ],
+    "frontier:arm-2:star-807": [
+      -1.360395,
+      1.012508,
+      -0.012285
+    ],
     "frontier:arm-2:star-808": [
       -1.54022,
       -0.716854,
       -0.0112
+    ],
+    "frontier:arm-2:star-809": [
+      -1.351353,
+      1.016152,
+      0.008083
     ],
     "frontier:arm-2:star-810": [
       -1.511631,
@@ -18560,6 +18635,11 @@
       -1.578407,
       -0.628068,
       0.008618
+    ],
+    "frontier:arm-2:star-812": [
+      -1.699598,
+      -0.100884,
+      0.012761
     ],
     "frontier:arm-2:star-813": [
       -1.506293,
@@ -18916,6 +18996,11 @@
       0.518742,
       0.013559
     ],
+    "frontier:arm-2:star-884": [
+      -1.812675,
+      -0.085407,
+      -0.006708
+    ],
     "frontier:arm-2:star-885": [
       -1.79391,
       0.260425,
@@ -19171,6 +19256,11 @@
       -0.986479,
       -0.000969
     ],
+    "frontier:arm-2:star-937": [
+      -1.901331,
+      -0.052231,
+      0.011056
+    ],
     "frontier:arm-2:star-938": [
       -1.812422,
       -0.605227,
@@ -19205,6 +19295,11 @@
       -1.850835,
       -0.509991,
       0.012161
+    ],
+    "frontier:arm-2:star-945": [
+      -1.911863,
+      -0.099696,
+      -0.002172
     ],
     "frontier:arm-2:star-947": [
       -1.817927,
@@ -19450,131 +19545,6 @@
       -1.413798,
       -1.438475,
       -0.003505
-    ],
-    "frontier:arm-2:star-extra-029": [
-      -1.411481,
-      -0.011783,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-030": [
-      -1.411827,
-      -0.033347,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-031": [
-      -1.442659,
-      -0.033286,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-032": [
-      -1.444512,
-      0.006858,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-033": [
-      -0.12373,
-      1.327816,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-034": [
-      -0.127145,
-      1.34911,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-035": [
-      -0.096774,
-      1.35442,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-036": [
-      -0.087956,
-      1.315213,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-037": [
-      -0.135547,
-      1.301309,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-038": [
-      -0.124919,
-      1.340642,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-039": [
-      -0.107079,
-      1.352761,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-040": [
-      -0.751432,
-      1.048414,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-041": [
-      -0.73096,
-      1.04163,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-042": [
-      -0.740246,
-      1.012229,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-043": [
-      -0.779105,
-      1.022475,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-044": [
-      -0.769509,
-      1.071118,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-045": [
-      -1.218038,
-      0.501001,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-046": [
-      -1.204406,
-      0.484288,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-047": [
-      -1.228021,
-      0.464466,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-048": [
-      -1.255309,
-      0.493967,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-049": [
-      -1.221105,
-      0.52986,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-050": [
-      -1.210578,
-      0.490499,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-051": [
-      -1.219937,
-      0.471068,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-052": [
-      -1.247901,
-      0.484056,
-      0.0
-    ],
-    "frontier:arm-2:star-extra-053": [
-      -1.232746,
-      0.521276,
-      0.0
     ],
     "frontier:arm-3:black_hole-001": [
       -0.642775,
@@ -21926,6 +21896,11 @@
       0.209998,
       -0.005495
     ],
+    "frontier:arm-3:star-421": [
+      -0.977385,
+      -0.727141,
+      0.014501
+    ],
     "frontier:arm-3:star-422": [
       -0.745113,
       -0.954312,
@@ -22111,6 +22086,11 @@
       -1.17851,
       0.001677
     ],
+    "frontier:arm-3:star-462": [
+      -0.993712,
+      -0.767313,
+      -0.015821
+    ],
     "frontier:arm-3:star-463": [
       0.112496,
       -1.248246,
@@ -22216,6 +22196,11 @@
       0.20686,
       -0.003614
     ],
+    "frontier:arm-3:star-486": [
+      -1.206236,
+      0.435329,
+      0.00744
+    ],
     "frontier:arm-3:star-487": [
       -0.827583,
       -0.963105,
@@ -22235,6 +22220,11 @@
       -0.441122,
       -1.204436,
       -0.00345
+    ],
+    "frontier:arm-3:star-492": [
+      -1.211246,
+      0.418585,
+      -0.010016
     ],
     "frontier:arm-3:star-493": [
       -0.914669,
@@ -22280,6 +22270,11 @@
       -0.612222,
       -1.140754,
       -0.014699
+    ],
+    "frontier:arm-3:star-502": [
+      -0.390642,
+      -1.240933,
+      2.1e-05
     ],
     "frontier:arm-3:star-504": [
       -1.294898,
@@ -22381,6 +22376,11 @@
       -1.070396,
       0.007114
     ],
+    "frontier:arm-3:star-527": [
+      -0.377273,
+      -1.26858,
+      0.00025
+    ],
     "frontier:arm-3:star-528": [
       -1.08582,
       -0.756476,
@@ -22405,6 +22405,11 @@
       -1.080722,
       -0.775999,
       0.002857
+    ],
+    "frontier:arm-3:star-534": [
+      -1.299874,
+      0.285808,
+      0.007112
     ],
     "frontier:arm-3:star-536": [
       -0.035017,
@@ -22510,6 +22515,11 @@
       0.001151,
       -1.366124,
       0.007659
+    ],
+    "frontier:arm-3:star-563": [
+      -0.380936,
+      -1.315111,
+      -0.011795
     ],
     "frontier:arm-3:star-564": [
       -0.411954,
@@ -22806,6 +22816,11 @@
       -1.381059,
       0.005412
     ],
+    "frontier:arm-3:star-634": [
+      0.445492,
+      -1.37016,
+      -0.015276
+    ],
     "frontier:arm-3:star-635": [
       -0.607058,
       -1.314439,
@@ -22866,6 +22881,11 @@
       -1.433615,
       -0.007096
     ],
+    "frontier:arm-3:star-649": [
+      0.48237,
+      -1.391514,
+      0.002802
+    ],
     "frontier:arm-3:star-650": [
       -0.210638,
       -1.451958,
@@ -22880,6 +22900,11 @@
       -0.460456,
       -1.395073,
       -0.003467
+    ],
+    "frontier:arm-3:star-654": [
+      0.469385,
+      -1.400057,
+      0.015235
     ],
     "frontier:arm-3:star-656": [
       0.033484,
@@ -22951,10 +22976,25 @@
       -1.44527,
       -0.002028
     ],
+    "frontier:arm-3:star-673": [
+      0.497536,
+      -1.407793,
+      -0.002479
+    ],
+    "frontier:arm-3:star-675": [
+      0.51533,
+      -1.405411,
+      -0.001611
+    ],
     "frontier:arm-3:star-676": [
       -0.923341,
       -1.188428,
       -0.011017
+    ],
+    "frontier:arm-3:star-677": [
+      0.508419,
+      -1.422531,
+      1.3e-05
     ],
     "frontier:arm-3:star-678": [
       -0.29022,
@@ -23015,6 +23055,11 @@
       -0.622685,
       -1.392213,
       0.007254
+    ],
+    "frontier:arm-3:star-695": [
+      0.56574,
+      -1.414024,
+      0.006445
     ],
     "frontier:arm-3:star-696": [
       -0.748093,
@@ -23520,56 +23565,6 @@
       -0.028746,
       -1.919688,
       -0.010483
-    ],
-    "frontier:arm-3:star-extra-054": [
-      -1.261476,
-      -0.579028,
-      0.0
-    ],
-    "frontier:arm-3:star-extra-055": [
-      -1.267701,
-      -0.558378,
-      0.0
-    ],
-    "frontier:arm-3:star-extra-056": [
-      -1.334549,
-      0.013594,
-      0.0
-    ],
-    "frontier:arm-3:star-extra-057": [
-      -1.314523,
-      0.021599,
-      0.0
-    ],
-    "frontier:arm-3:star-extra-058": [
-      -1.302677,
-      -0.006866,
-      0.0
-    ],
-    "frontier:arm-3:star-extra-059": [
-      -0.646652,
-      -1.14547,
-      0.0
-    ],
-    "frontier:arm-3:star-extra-060": [
-      -0.640821,
-      -1.124706,
-      0.0
-    ],
-    "frontier:arm-3:star-extra-061": [
-      -0.611022,
-      -1.132625,
-      0.0
-    ],
-    "frontier:arm-3:star-extra-062": [
-      -0.619463,
-      -1.171915,
-      0.0
-    ],
-    "frontier:arm-3:star-extra-063": [
-      -0.668497,
-      -1.164577,
-      0.0
     ],
     "frontier:arm-4:black_hole-001": [
       0.824987,
@@ -24296,6 +24291,11 @@
       0.131161,
       0.014013
     ],
+    "frontier:arm-4:star-082": [
+      0.925675,
+      -0.415559,
+      -0.004318
+    ],
     "frontier:arm-4:star-083": [
       -0.149266,
       -0.998201,
@@ -24330,6 +24330,11 @@
       0.722617,
       -0.717196,
       -0.003918
+    ],
+    "frontier:arm-4:star-090": [
+      0.934198,
+      -0.403074,
+      -0.008798
     ],
     "frontier:arm-4:star-091": [
       0.192559,
@@ -24925,6 +24930,11 @@
       0.982163,
       1.977209,
       -0.003535
+    ],
+    "frontier:arm-4:star-110": [
+      0.936776,
+      -0.391076,
+      0.006717
     ],
     "frontier:arm-4:star-1100": [
       1.45285,
@@ -27361,6 +27371,11 @@
       -0.4989,
       -0.003048
     ],
+    "frontier:arm-4:star-456": [
+      1.242486,
+      -0.173807,
+      -0.005673
+    ],
     "frontier:arm-4:star-457": [
       -0.370322,
       -1.19882,
@@ -27501,6 +27516,21 @@
       -1.213918,
       0.006763
     ],
+    "frontier:arm-4:star-486": [
+      1.256081,
+      -0.205973,
+      -0.015252
+    ],
+    "frontier:arm-4:star-487": [
+      -0.379864,
+      -1.221396,
+      0.012001
+    ],
+    "frontier:arm-4:star-488": [
+      1.250467,
+      -0.232093,
+      -0.006755
+    ],
     "frontier:arm-4:star-489": [
       0.40862,
       -1.206125,
@@ -27511,10 +27541,20 @@
       -1.247745,
       0.00374
     ],
+    "frontier:arm-4:star-491": [
+      1.26193,
+      -0.228573,
+      0.005718
+    ],
     "frontier:arm-4:star-492": [
       0.312718,
       -1.248202,
       0.004991
+    ],
+    "frontier:arm-4:star-495": [
+      -0.425632,
+      -1.217051,
+      -0.006866
     ],
     "frontier:arm-4:star-496": [
       1.28704,
@@ -27525,6 +27565,11 @@
       0.429301,
       -1.210065,
       0.003307
+    ],
+    "frontier:arm-4:star-498": [
+      1.280833,
+      -0.153688,
+      -0.000695
     ],
     "frontier:arm-4:star-499": [
       0.754029,
@@ -27670,6 +27715,11 @@
       1.189561,
       -0.587569,
       0.016287
+    ],
+    "frontier:arm-4:star-531": [
+      0.758699,
+      -1.089682,
+      -0.003181
     ],
     "frontier:arm-4:star-533": [
       0.446789,
@@ -28341,6 +28391,11 @@
       0.163839,
       0.007678
     ],
+    "frontier:arm-4:star-670": [
+      1.39921,
+      0.517132,
+      -0.005004
+    ],
     "frontier:arm-4:star-671": [
       0.648657,
       -1.343066,
@@ -28400,6 +28455,11 @@
       1.485551,
       0.310627,
       -0.011451
+    ],
+    "frontier:arm-4:star-683": [
+      1.421878,
+      0.522773,
+      0.002106
     ],
     "frontier:arm-4:star-684": [
       1.448474,
@@ -28576,6 +28636,11 @@
       -1.161973,
       0.000484
     ],
+    "frontier:arm-4:star-719": [
+      1.466217,
+      0.555741,
+      -0.000178
+    ],
     "frontier:arm-4:star-720": [
       1.412279,
       0.658816,
@@ -28625,6 +28690,11 @@
       1.336107,
       -0.836064,
       -0.013759
+    ],
+    "frontier:arm-4:star-730": [
+      1.456295,
+      0.587744,
+      0.010441
     ],
     "frontier:arm-4:star-731": [
       0.954754,
@@ -29361,6 +29431,16 @@
       0.26497,
       0.012169
     ],
+    "frontier:arm-4:star-881": [
+      1.804961,
+      0.139492,
+      5.2e-05
+    ],
+    "frontier:arm-4:star-882": [
+      1.804967,
+      0.128681,
+      0.012859
+    ],
     "frontier:arm-4:star-883": [
       1.610848,
       0.837597,
@@ -29375,6 +29455,11 @@
       1.635656,
       0.775081,
       0.004464
+    ],
+    "frontier:arm-4:star-886": [
+      1.81238,
+      0.106569,
+      -0.011867
     ],
     "frontier:arm-4:star-887": [
       1.81559,
@@ -29425,6 +29510,11 @@
       1.818105,
       0.281517,
       0.011382
+    ],
+    "frontier:arm-4:star-897": [
+      1.829662,
+      0.118695,
+      0.009668
     ],
     "frontier:arm-4:star-899": [
       1.772855,
@@ -29880,97 +29970,7 @@
       1.940868,
       0.530056,
       0.005845
-    ],
-    "frontier:arm-4:star-extra-011": [
-      1.799689,
-      0.59176,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-012": [
-      1.227841,
-      -0.573539,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-013": [
-      1.227296,
-      -0.551979,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-014": [
-      1.258104,
-      -0.550766,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-015": [
-      1.021895,
-      -1.121306,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-016": [
-      1.329279,
-      0.2219,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-017": [
-      1.333571,
-      0.200764,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-018": [
-      1.303445,
-      0.194204,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-019": [
-      1.293015,
-      0.233014,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-020": [
-      1.33999,
-      0.248872,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-021": [
-      1.330997,
-      0.209133,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-022": [
-      0.510523,
-      -1.264032,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-023": [
-      0.52982,
-      -1.254401,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-024": [
-      0.543976,
-      -1.281791,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-025": [
-      0.509204,
-      -1.301938,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-026": [
-      0.481694,
-      -1.26069,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-027": [
-      0.522406,
-      -1.259059,
-      0.0
-    ],
-    "frontier:arm-4:star-extra-028": [
-      0.539308,
-      -1.272455,
-      0.0
     ]
   },
-  "fingerprint": "e7b3109feee052fccb18f07dc51cf8ba88a8447d0ab0acc8e63875d744f02568"
+  "fingerprint": "014af96f0c07f71f6ebfbc43b1cecaaa94b728437409a55416162125ac0be5b6"
 }

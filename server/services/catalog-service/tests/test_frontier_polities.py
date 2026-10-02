@@ -145,8 +145,9 @@ def test_locked_layout_preserves_current_one_hundred_five_polities():
         for object_id, stem in sorted(locked_ownership.items())
     )
     assert hashlib.sha256(fingerprint.encode()).hexdigest() == (
-        "e7b3109feee052fccb18f07dc51cf8ba88a8447d0ab0acc8e63875d744f02568"
+        "014af96f0c07f71f6ebfbc43b1cecaaa94b728437409a55416162125ac0be5b6"
     )
+    assert all("-extra-" not in object_id for object_id in locked_ownership)
 
 
 def test_new_polities_use_only_neutral_objects_outside_locked_territory():
@@ -180,31 +181,33 @@ def test_new_polities_use_only_neutral_objects_outside_locked_territory():
         by_id[object_id] for object_id in locked_ownership
     ]
     adjacent_objects = list(locked_objects)
-    current_group = None
+    current_side = None
     for polity in NEW_FRONTIER_POLITIES:
-        group = (polity.arm, polity.side)
-        if group != current_group:
+        if polity.side != current_side:
             adjacent_objects = list(locked_objects)
-            current_group = group
+            current_side = polity.side
         cluster = clusters[polity.stem]
         assert Counter(obj.kind for obj in cluster) == {
             "star": 20,
             "black_hole": 1,
             "junction": 1,
         }
-        assert {obj.arm for obj in cluster} == {polity.arm}
+        assert all("-extra-" not in obj.id or obj.kind != "star" for obj in cluster)
+        assert all(
+            obj.kind != "star" or "-extra-" not in obj.id for obj in cluster
+        )
         assert all(obj.x * polity.side > 0 for obj in cluster)
         center_x = sum(obj.x for obj in cluster) / len(cluster)
         center_y = sum(obj.y for obj in cluster) / len(cluster)
         assert max(
             hypot(obj.x - center_x, obj.y - center_y)
             for obj in cluster
-        ) < 0.25
+        ) < 1.20
         assert min(
             hypot(obj.x - old.x, obj.y - old.y)
             for obj in cluster
             for old in adjacent_objects
-        ) < 0.20
+        ) < 1.50
         adjacent_objects.extend(cluster)
 
     combined = {**locked_ownership, **assignments}
@@ -216,7 +219,6 @@ def test_new_polities_use_only_neutral_objects_outside_locked_territory():
             [],
         ).items()
         if stem in NEW_FRONTIER_STEMS
-        and by_id[object_id].arm == NEW_FRONTIER_ARM_BY_STEM[stem]
         and by_id[object_id].x * NEW_FRONTIER_SIDE_BY_STEM[stem] > 0
     }
     assert not additions.keys() & locked_ownership.keys()
