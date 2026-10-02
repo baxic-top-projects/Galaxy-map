@@ -1,0 +1,22 @@
+{
+  "short_name": "Galaxy Map",
+  "name": "The Universe — Galaxy Map",
+  "icons": [
+    {
+      "src": "favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#05070f",
+  "background_color": "#05070f"
+}
