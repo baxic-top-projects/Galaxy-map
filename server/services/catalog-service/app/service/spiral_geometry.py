@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 ARM_COUNT = 4
 STARS_PER_ARM = 1290
@@ -19,6 +19,10 @@ ARM_HALF_WIDTH_TIP = 0.315
 ARM_PROGRESS_EXPONENT = 1.80
 GENERATOR_SEED = 20260930
 ID_PREFIX = "frontier:"
+# Local lookaround corridors must stay short; relocated specials can keep a stale
+# ordinal, and an ordinal-only neighbor window would otherwise draw base↔tip links.
+MAX_LOCAL_EDGE_LENGTH = 0.14
+MAX_LOCAL_EDGE_LENGTH_SQ = MAX_LOCAL_EDGE_LENGTH * MAX_LOCAL_EDGE_LENGTH
 
 def _spread_slots(count: int, occupied: frozenset[int] = frozenset()) -> frozenset[int]:
     slots: set[int] = set()
@@ -142,6 +146,29 @@ def generate_arm_objects() -> list[ArmObject]:
     return objects
 
 
+def resync_arm_ordinals(objects: list[ArmObject]) -> None:
+    """Reassign ordinals from current coordinates so local edge windows stay local.
+
+    Relocated black holes / junctions keep their generator slot ordinal unless
+    this runs after coordinate overrides. Ordering by radius along each arm is a
+    stable proxy for spiral progress (inner base → outer tip).
+    """
+    by_arm: dict[int, list[int]] = {}
+    for index, obj in enumerate(objects):
+        by_arm.setdefault(obj.arm, []).append(index)
+    for indexes in by_arm.values():
+        ordered = sorted(
+            indexes,
+            key=lambda index: (
+                math.hypot(objects[index].x, objects[index].y),
+                objects[index].id,
+            ),
+        )
+        for ordinal, index in enumerate(ordered):
+            if objects[index].ordinal != ordinal:
+                objects[index] = replace(objects[index], ordinal=ordinal)
+
+
 def arm_edges(objects: list[ArmObject]) -> set[tuple[str, str]]:
     by_arm: dict[int, list[ArmObject]] = {}
     for obj in objects:
@@ -199,6 +226,8 @@ def arm_edges(objects: list[ArmObject]) -> set[tuple[str, str]]:
                     and abs(other_index - index) <= lookaround
                 ),
             )[:2]
-            for _, neighbor_id in nearest:
+            for distance_sq, neighbor_id in nearest:
+                if distance_sq > MAX_LOCAL_EDGE_LENGTH_SQ:
+                    continue
                 edges.add(tuple(sorted((obj.id, neighbor_id))))
     return edges

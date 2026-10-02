@@ -40,6 +40,7 @@ from app.service.spiral_geometry import (
     ArmObject,
     arm_edges,
     generate_arm_objects,
+    resync_arm_ordinals,
 )
 
 
@@ -240,6 +241,7 @@ def apply_spiral_extension() -> dict[str, int]:
             for object_id, canonical in canonical_catalog.items()
         }
         effective_ownership = {**ownership, **manual_ownership}
+        resync_arm_ordinals(generated)
         gateways = gateway_edges(generated, existing)
         generated_edges = arm_edges(generated) | gateways
 

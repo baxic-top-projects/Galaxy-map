@@ -120,3 +120,33 @@ def test_each_arm_is_connected_without_cross_arm_corridors():
         for a, b in gateways
     }
     assert stitched_arms == set(range(1, ARM_COUNT + 1))
+
+
+def test_arm_edges_stay_local_after_frontier_relocation():
+    from app.service.frontier_polities import (
+        allocate_new_frontier_polities,
+        load_locked_frontier_layout,
+    )
+    from app.service.spiral_geometry import (
+        MAX_LOCAL_EDGE_LENGTH,
+        resync_arm_ordinals,
+    )
+
+    generated = generate_arm_objects()
+    _, _, locked_ownership = load_locked_frontier_layout(generated)
+    allocate_new_frontier_polities(
+        generated,
+        set(locked_ownership),
+        locked_ownership,
+    )
+    resync_arm_ordinals(generated)
+    by_id = {obj.id: obj for obj in generated}
+    edges = arm_edges(generated)
+    lengths = [
+        hypot(by_id[a].x - by_id[b].x, by_id[a].y - by_id[b].y)
+        for a, b in edges
+    ]
+    assert max(lengths) <= 0.35
+    # Lookaround extras are hard-capped; MST spans may be a bit longer.
+    lookaround_like = sum(1 for length in lengths if length > MAX_LOCAL_EDGE_LENGTH)
+    assert lookaround_like < len(edges) * 0.02

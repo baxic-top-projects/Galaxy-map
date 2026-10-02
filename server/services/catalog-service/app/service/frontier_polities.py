@@ -405,6 +405,7 @@ def allocate_frontier_polities(
                 selected,
                 x=round(anchor_x + math.cos(offset_angle) * 0.008, 6),
                 y=round(anchor_y + math.sin(offset_angle) * 0.008, 6),
+                ordinal=stars[len(stars) // 2].ordinal,
             )
             update_object(relocated)
             return relocated
@@ -611,6 +612,7 @@ def allocate_new_frontier_polities(
                 arm=polity.arm,
                 x=round(anchor_x + math.cos(offset_angle) * 0.008, 6),
                 y=round(anchor_y + math.sin(offset_angle) * 0.008, 6),
+                ordinal=stars[len(stars) // 2].ordinal,
             )
             objects[object_indexes[selected.id]] = relocated
             available[selected.id] = relocated
