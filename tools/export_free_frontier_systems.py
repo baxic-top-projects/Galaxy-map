@@ -11,17 +11,19 @@ CANON = ROOT.parent / "EfolsMiradinsPact"
 API = "https://galaxyapi.baxic.ru/api/v1/galaxy"
 
 
-def _free_count() -> int:
+def _free_counts() -> tuple[int, dict[str, int]]:
     request = urllib.request.Request(API, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(request, timeout=120) as response:
         data = json.load(response)
-    return sum(
-        1
-        for system in data.get("systems") or []
-        if str(system.get("id") or "").startswith("frontier:")
-        and not system.get("stem")
-        and system.get("kind") in {"star", "black_hole", "junction"}
-    )
+    by_kind = {"star": 0, "black_hole": 0, "junction": 0}
+    for system in data.get("systems") or []:
+        if (
+            str(system.get("id") or "").startswith("frontier:")
+            and not system.get("stem")
+            and system.get("kind") in by_kind
+        ):
+            by_kind[str(system["kind"])] += 1
+    return sum(by_kind.values()), by_kind
 
 
 def _patch(path: Path, marker: str, block: str) -> None:
@@ -37,18 +39,22 @@ def _patch(path: Path, marker: str, block: str) -> None:
 
 
 def main() -> int:
-    free = _free_count()
+    free, by_kind = _free_counts()
     _patch(
         CANON / "UNIVERSE" / "GALAXY" / "FRONTIER_SYSTEMS" / "EN" / "README.md",
         "## Free neutral objects",
         f"## Free neutral objects\n\n"
-        f"Unowned arm objects remaining on the live map: **{free}**.\n",
+        f"Unowned arm objects remaining on the live map: **{free}**  \n"
+        f"(stars: **{by_kind['star']}**; black holes: **{by_kind['black_hole']}**; "
+        f"junctions: **{by_kind['junction']}**).\n",
     )
     _patch(
         CANON / "UNIVERSE" / "GALAXY" / "FRONTIER_SYSTEMS" / "RU" / "README.md",
         "## Свободные нейтральные объекты",
         f"## Свободные нейтральные объекты\n\n"
-        f"Свободных объектов рукавов на текущей карте: **{free}**.\n",
+        f"Свободных объектов рукавов на текущей карте: **{free}**  \n"
+        f"(звёзд: **{by_kind['star']}**; чёрных дыр: **{by_kind['black_hole']}**; "
+        f"стыков: **{by_kind['junction']}**).\n",
     )
 
     galaxy_readme = CANON / "UNIVERSE" / "GALAXY" / "README.md"
@@ -57,7 +63,8 @@ def main() -> int:
         if "`FRONTIER_SYSTEMS/`" in line:
             lines.append(
                 "- `FRONTIER_SYSTEMS/` — дополнительные системы держав на спиральных рукавах; "
-                f"свободных нейтральных объектов: **{free}**"
+                f"свободных нейтральных объектов: **{free}** "
+                f"(звёзд: **{by_kind['star']}**)"
             )
         else:
             lines.append(line)
@@ -69,7 +76,8 @@ def main() -> int:
             if not inserted and "`RESOURCES_" in line:
                 out.append(
                     "- `FRONTIER_SYSTEMS/` — дополнительные системы держав на спиральных рукавах; "
-                    f"свободных нейтральных объектов: **{free}**"
+                    f"свободных нейтральных объектов: **{free}** "
+                    f"(звёзд: **{by_kind['star']}**)"
                 )
                 inserted = True
             out.append(line)
@@ -89,7 +97,11 @@ def main() -> int:
         if path.is_file():
             path.unlink()
 
-    print(f"Updated free-object count: {free}")
+    print(
+        f"Updated free-object count: {free} "
+        f"(stars={by_kind['star']}, black_holes={by_kind['black_hole']}, "
+        f"junctions={by_kind['junction']})"
+    )
     return 0
 
 
