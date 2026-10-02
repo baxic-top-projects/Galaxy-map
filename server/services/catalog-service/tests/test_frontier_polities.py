@@ -8,6 +8,7 @@ from app.service.frontier_polities import (
     LOCKED_FRONTIER_POLITIES,
     NEW_FRONTIER_ARM_BY_STEM,
     NEW_FRONTIER_POLITIES,
+    NEW_FRONTIER_SIDE_BY_STEM,
     NEW_FRONTIER_STEMS,
     ORIGINAL_FRONTIER_POLITIES,
     PREVIOUS_FRONTIER_POLITIES,
@@ -216,6 +217,7 @@ def test_new_polities_use_only_neutral_objects_outside_locked_territory():
         ).items()
         if stem in NEW_FRONTIER_STEMS
         and by_id[object_id].arm == NEW_FRONTIER_ARM_BY_STEM[stem]
+        and by_id[object_id].x * NEW_FRONTIER_SIDE_BY_STEM[stem] > 0
     }
     assert additions
     assert not additions.keys() & locked_ownership.keys()

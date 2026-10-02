@@ -17,6 +17,7 @@ from _gen_states_planets import EN_TO_RU  # noqa: E402
 from app.service.frontier_polities import (  # noqa: E402
     FRONTIER_POLITIES,
     NEW_FRONTIER_ARM_BY_STEM,
+    NEW_FRONTIER_SIDE_BY_STEM,
     NEW_FRONTIER_STEMS,
     allocate_new_frontier_polities,
     assign_objects_inside_territories,
@@ -167,6 +168,7 @@ def main() -> int:
         ).items()
         if stem in NEW_FRONTIER_STEMS
         and by_id[object_id].arm == NEW_FRONTIER_ARM_BY_STEM[stem]
+        and by_id[object_id].x * NEW_FRONTIER_SIDE_BY_STEM[stem] > 0
     }
     additions = {
         **{
