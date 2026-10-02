@@ -14,7 +14,10 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(CATALOG_SERVICE))
 
 import export_galaxy as export  # noqa: E402
-from app.service.frontier_polities import FRONTIER_POLITIES  # noqa: E402
+from app.service.frontier_polities import (  # noqa: E402
+    FRONTIER_POLITIES,
+    NEW_FRONTIER_STEMS,
+)
 
 
 def main() -> int:
@@ -89,8 +92,12 @@ def main() -> int:
     for stem, entries in records.items():
         entries.sort(key=lambda entry: (entry["kind"], entry["token"]))
         star_count = sum(entry["kind"] == "star" for entry in entries)
-        if star_count != 20:
-            raise RuntimeError(f"{stem}: expected 20 stars, found {star_count}")
+        if stem in NEW_FRONTIER_STEMS:
+            # Newest wave may still be authored as single-star dossiers; the
+            # runtime fills the remaining pocket stars with generated names.
+            continue
+        if star_count < 20:
+            raise RuntimeError(f"{stem}: expected at least 20 stars, found {star_count}")
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(

@@ -125,34 +125,116 @@ _RAIH_BATCH28 = (
     ("Hex_Mandate", "Hex Mandate", "Гекс Мандат", "#c27e4e"),
 )
 
-LOCKED_FRONTIER_POLITIES = tuple(
-    FrontierPolity(row[0], row[1], row[2], "miradin", row[3], arm=1 if index < 6 else 4)
-    for index, row in enumerate(_MIRADIN)
-) + tuple(
-    FrontierPolity(row[0], row[1], row[2], "raih", row[3], arm=2 if index < 5 else 3)
-    for index, row in enumerate(_RAIH)
+_MIRADIN_BATCH29 = (
+    ("Quill_Compact", "Quill Compact", "Квилльский Компакт", "#b04d5f"),
+    ("Amber_Accord", "Amber Accord", "Амберский Аккорд", "#704cad"),
+    ("Flint_Mandate", "Flint Mandate", "Флинтский Мандат", "#754cad"),
+    ("Willow_Communion", "Willow Communion", "Виллоуская Коммуния", "#7a4cad"),
+    ("Glacier_Ward", "Glacier Ward", "Глейшерский Дозор", "#804cad"),
+    ("Spark_Array", "Spark Array", "Спаркский Массив", "#854cad"),
+    ("Lens_Assembly", "Lens Assembly", "Ленсская Ассамблея", "#8a4cad"),
+    ("Crystal_League", "Crystal League", "Кристальная Лига", "#8f4cad"),
+    ("Hammer_Covenant", "Hammer Covenant", "Хаммерский Ковенант", "#944cad"),
+    ("Spindle_Union", "Spindle Union", "Спиндельский Союз", "#994cad"),
+    ("Harbor_Protectorate", "Harbor Protectorate", "Харборский Протекторат", "#9e4cad"),
+    ("Smoke_Directorate", "Smoke Directorate", "Смоукская Директория", "#a34cad"),
+    ("Archive_Chamber", "Archive Chamber", "Архивная Палата", "#a84cad"),
+    ("Bridge_League", "Bridge League", "Бриджская Лига", "#ad4c7a"),
 )
 
-NEW_FRONTIER_POLITIES = tuple(
-    FrontierPolity(
-        row[0],
-        row[1],
-        row[2],
-        "miradin",
-        row[3],
-        arm=1 if index < 7 else 4,
+_RAIH_BATCH29 = (
+    ("Opal_Charter", "Opal Charter", "Опаловая Хартия", "#c29d4e"),
+    ("Slag_Dominion", "Slag Dominion", "Шлаковый Доминион", "#c2a04e"),
+    ("Cantor_Synod", "Cantor Synod", "Канторский Синод", "#c2a34e"),
+    ("Dune_Caravanate", "Dune Caravanate", "Дюнный Караванат", "#c2a64e"),
+    ("Pebble_March", "Pebble March", "Пебблский Марш", "#c2a94e"),
+    (
+        "Hinge_Guild_Republic",
+        "Hinge Guild Republic",
+        "Хинджевая Гильдейская Республика",
+        "#c2ac4e",
+    ),
+    ("Petal_Concordat", "Petal Concordat", "Петалский Конкордат", "#c2af4e"),
+    ("Hail_Crown", "Hail Crown", "Хейльская Корона", "#c2b24e"),
+    ("Ampere_Chamber", "Ampere Chamber", "Амперная Палата", "#c2b54e"),
+    ("Gem_Compact", "Gem Compact", "Гемский Компакт", "#c2b84e"),
+    (
+        "Spring_Protectorate",
+        "Spring Protectorate",
+        "Спрингский Протекторат",
+        "#c2bb4e",
+    ),
+    ("Reflect_League", "Reflect League", "Рефлектская Лига", "#c2be4e"),
+    ("Brine_Accord", "Brine Accord", "Брайновый Аккорд", "#c2c14e"),
+    ("Glyph_Mandate", "Glyph Mandate", "Глифский Мандат", "#c2804e"),
+)
+
+
+def _miradin_polities(
+    rows: tuple[tuple[str, str, str, str], ...],
+    *,
+    first_arm_count: int,
+) -> tuple[FrontierPolity, ...]:
+    return tuple(
+        FrontierPolity(
+            row[0],
+            row[1],
+            row[2],
+            "miradin",
+            row[3],
+            arm=1 if index < first_arm_count else 4,
+        )
+        for index, row in enumerate(rows)
     )
-    for index, row in enumerate(_MIRADIN_BATCH28)
-) + tuple(
-    FrontierPolity(
-        row[0],
-        row[1],
-        row[2],
-        "raih",
-        row[3],
-        arm=2 if index < 7 else 3,
+
+
+def _raih_polities(
+    rows: tuple[tuple[str, str, str, str], ...],
+    *,
+    first_arm_count: int,
+) -> tuple[FrontierPolity, ...]:
+    return tuple(
+        FrontierPolity(
+            row[0],
+            row[1],
+            row[2],
+            "raih",
+            row[3],
+            arm=2 if index < first_arm_count else 3,
+        )
+        for index, row in enumerate(rows)
     )
-    for index, row in enumerate(_RAIH_BATCH28)
+
+
+ORIGINAL_FRONTIER_POLITIES = _miradin_polities(
+    _MIRADIN,
+    first_arm_count=6,
+) + _raih_polities(
+    _RAIH,
+    first_arm_count=5,
+)
+
+PREVIOUS_FRONTIER_POLITIES = _miradin_polities(
+    _MIRADIN_BATCH28,
+    first_arm_count=7,
+) + _raih_polities(
+    _RAIH_BATCH28,
+    first_arm_count=7,
+)
+
+LOCKED_FRONTIER_POLITIES = (
+    ORIGINAL_FRONTIER_POLITIES + PREVIOUS_FRONTIER_POLITIES
+)
+
+NEW_FRONTIER_POLITIES = _miradin_polities(
+    _MIRADIN_BATCH29,
+    # Arms 1/3 are saturated after the previous wave; keep Miradin on the
+    # right by placing the whole batch on arm 4.
+    first_arm_count=0,
+) + _raih_polities(
+    _RAIH_BATCH29,
+    # Keep Raih on the left by placing the whole batch on arm 2.
+    first_arm_count=14,
 )
 
 NEW_FRONTIER_STEMS = frozenset(
@@ -238,18 +320,18 @@ def allocate_frontier_polities(
     bloc_totals = {
         "miradin": sum(
             polity.bloc == "miradin"
-            for polity in LOCKED_FRONTIER_POLITIES
+            for polity in ORIGINAL_FRONTIER_POLITIES
         ),
         "raih": sum(
             polity.bloc == "raih"
-            for polity in LOCKED_FRONTIER_POLITIES
+            for polity in ORIGINAL_FRONTIER_POLITIES
         ),
     }
     def update_object(obj: ArmObject) -> None:
         objects[object_indexes[obj.id]] = obj
         available[obj.id] = obj
 
-    for polity in LOCKED_FRONTIER_POLITIES:
+    for polity in ORIGINAL_FRONTIER_POLITIES:
         position = bloc_indexes[polity.bloc]
         bloc_indexes[polity.bloc] += 1
         fraction = (position + 0.5) / bloc_totals[polity.bloc]
@@ -343,8 +425,10 @@ def allocate_new_frontier_polities(
     objects: list[ArmObject],
     reserved_ids: Iterable[str],
     boundary_ownership: dict[str, str] | None = None,
+    polities: tuple[FrontierPolity, ...] | None = None,
 ) -> tuple[dict[str, str], dict[str, tuple[ArmObject, ...]]]:
     """Allocate new polities only on neutral objects outside the layout lock."""
+    targets = polities or NEW_FRONTIER_POLITIES
     reserved = set(reserved_ids)
     boundary = (
         set(boundary_ownership)
@@ -368,24 +452,27 @@ def allocate_new_frontier_polities(
     assignments: dict[str, str] = {}
     clusters: dict[str, tuple[ArmObject, ...]] = {}
     selected_by_stem: dict[str, list[ArmObject]] = {
-        polity.stem: [] for polity in NEW_FRONTIER_POLITIES
+        polity.stem: [] for polity in targets
     }
     locked_objects = [
         objects[object_indexes[object_id]]
         for object_id in boundary
         if object_id in object_indexes
     ]
-    groups = (
-        (1, 1, NEW_FRONTIER_POLITIES[:7]),
-        (4, 1, NEW_FRONTIER_POLITIES[7:14]),
-        (2, -1, NEW_FRONTIER_POLITIES[14:21]),
-        (3, -1, NEW_FRONTIER_POLITIES[21:]),
-    )
+    groups: list[tuple[int, int, list[FrontierPolity]]] = []
+    for arm, side in ((1, 1), (4, 1), (2, -1), (3, -1)):
+        group = [
+            polity
+            for polity in targets
+            if polity.arm == arm and polity.side == side
+        ]
+        if group:
+            groups.append((arm, side, group))
 
     # Pick the densest 20-star neutral pocket nearest the old boundary, remove
     # it, and repeat. This produces compact adjacent territories without ever
     # sampling an object from the immutable ownership snapshot.
-    for arm, side, polities in groups:
+    for arm, side, group in groups:
         adjacent_objects = list(locked_objects)
         candidates = [
             obj
@@ -394,7 +481,7 @@ def allocate_new_frontier_polities(
             and obj.arm == arm
             and obj.x * side > 0
         ]
-        for polity in polities:
+        for polity in group:
             if len(candidates) < STARS_PER_POLITY:
                 raise RuntimeError(
                     f"Not enough neutral stars available for {polity.stem}"
@@ -440,7 +527,7 @@ def allocate_new_frontier_polities(
             for object_id in selected_ids:
                 available.pop(object_id)
 
-    for polity in NEW_FRONTIER_POLITIES:
+    for polity in targets:
         stars = sorted(
             selected_by_stem[polity.stem],
             key=lambda obj: (obj.ordinal, obj.id),
@@ -473,7 +560,22 @@ def allocate_new_frontier_polities(
                     (
                         obj
                         for obj in available.values()
-                        if obj.kind == kind and obj.arm == polity.arm
+                        if obj.kind == kind
+                        and obj.x * polity.side > 0
+                    ),
+                    key=lambda obj: (
+                        math.hypot(obj.x - anchor_x, obj.y - anchor_y),
+                        obj.ordinal,
+                        obj.id,
+                    ),
+                    default=None,
+                )
+            if selected is None:
+                selected = min(
+                    (
+                        obj
+                        for obj in available.values()
+                        if obj.kind == kind
                     ),
                     key=lambda obj: (
                         math.hypot(obj.x - anchor_x, obj.y - anchor_y),
@@ -491,7 +593,8 @@ def allocate_new_frontier_polities(
                 selected.y - anchor_y,
             )
             if (
-                selected.x * polity.side > 0
+                selected.arm == polity.arm
+                and selected.x * polity.side > 0
                 and distance <= max(0.08, cluster_radius * 1.2)
             ):
                 return selected
@@ -505,6 +608,7 @@ def allocate_new_frontier_polities(
             ) * 2.399963229728653
             relocated = replace(
                 selected,
+                arm=polity.arm,
                 x=round(anchor_x + math.cos(offset_angle) * 0.008, 6),
                 y=round(anchor_y + math.sin(offset_angle) * 0.008, 6),
             )
@@ -680,8 +784,28 @@ def map_canonical_frontier_catalog(
     catalog = json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
     mapped: dict[str, dict] = {}
 
+    from app.service.frontier_naming import (
+        generated_frontier_worlds,
+        natural_frontier_black_hole_name,
+        natural_frontier_junction_name,
+        natural_frontier_star_name,
+    )
+
+    star_type_names = {
+        "class_m": "Class M",
+        "class_k": "Class K",
+        "class_g": "Class G",
+        "class_f": "Class F",
+        "class_a": "Class A",
+        "class_b": "Class B",
+        "black_hole": "Black Hole",
+        "junction": "Empty hypercorridor node",
+    }
+
     for polity in FRONTIER_POLITIES:
-        cluster = clusters[polity.stem]
+        cluster = clusters.get(polity.stem)
+        if cluster is None:
+            continue
         entries = catalog.get(polity.stem) or []
         for kind in ("star", "black_hole", "junction"):
             objects_of_kind = sorted(
@@ -694,6 +818,35 @@ def map_canonical_frontier_catalog(
             )
             for obj, entry in zip(objects_of_kind, entries_of_kind):
                 mapped[obj.id] = entry
+            for obj in objects_of_kind[len(entries_of_kind) :]:
+                if obj.kind == "star":
+                    token, name_en, name_ru = natural_frontier_star_name(obj.id)
+                    worlds = generated_frontier_worlds(obj.id, token)
+                elif obj.kind == "black_hole":
+                    token, name_en, name_ru = (
+                        natural_frontier_black_hole_name(obj.id)
+                    )
+                    worlds = []
+                else:
+                    token, name_en, name_ru = (
+                        natural_frontier_junction_name(obj.id)
+                    )
+                    worlds = []
+                mapped[obj.id] = {
+                    "canonicalId": None,
+                    "token": token,
+                    "kind": obj.kind,
+                    "nameEn": name_en,
+                    "nameRu": name_ru,
+                    "starType": star_type_names[obj.star_type_key],
+                    "starTypeKey": obj.star_type_key,
+                    "sectorId": "",
+                    "sectorNameEn": "",
+                    "worlds": worlds,
+                    "uninhabited": [],
+                    "features": [],
+                    "territoryAnchor": True,
+                }
 
         mapped_stars = sum(
             obj.id in mapped for obj in cluster if obj.kind == "star"

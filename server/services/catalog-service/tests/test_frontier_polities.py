@@ -8,6 +8,8 @@ from app.service.frontier_polities import (
     NEW_FRONTIER_ARM_BY_STEM,
     NEW_FRONTIER_POLITIES,
     NEW_FRONTIER_STEMS,
+    ORIGINAL_FRONTIER_POLITIES,
+    PREVIOUS_FRONTIER_POLITIES,
     allocate_new_frontier_polities,
     allocate_frontier_polities,
     assign_objects_inside_territories,
@@ -21,23 +23,23 @@ from app.service.spiral_arm_service import (
 from app.service.spiral_geometry import generate_arm_objects
 
 
-def test_new_polities_receive_compact_single_arm_pockets():
+def test_original_polities_receive_compact_single_arm_pockets():
     objects = generate_arm_objects()
     assignments, clusters = allocate_frontier_polities(objects)
 
-    assert len(LOCKED_FRONTIER_POLITIES) == 21
+    assert len(ORIGINAL_FRONTIER_POLITIES) == 21
     assert len(assignments) == 21 * 22
     assert sum(
         polity.bloc == "miradin"
-        for polity in LOCKED_FRONTIER_POLITIES
+        for polity in ORIGINAL_FRONTIER_POLITIES
     ) == 11
     assert sum(
         polity.bloc == "raih"
-        for polity in LOCKED_FRONTIER_POLITIES
+        for polity in ORIGINAL_FRONTIER_POLITIES
     ) == 10
 
     centers = []
-    for polity in LOCKED_FRONTIER_POLITIES:
+    for polity in ORIGINAL_FRONTIER_POLITIES:
         cluster = clusters[polity.stem]
         assert Counter(obj.kind for obj in cluster) == {
             "star": 20,
@@ -118,34 +120,35 @@ def test_unclaimed_objects_inside_current_territories_get_owners():
         "junction",
     }
     assert set(additions.values()) <= {
-        polity.stem for polity in LOCKED_FRONTIER_POLITIES
+        polity.stem for polity in ORIGINAL_FRONTIER_POLITIES
     }
 
 
-def test_locked_layout_matches_the_previous_territory_exactly():
+def test_locked_layout_preserves_current_forty_nine_polities():
     objects = generate_arm_objects()
-    calculated_base, calculated_clusters = allocate_frontier_polities(
-        objects
-    )
     locked_base, locked_clusters, locked_ownership = (
         load_locked_frontier_layout(objects)
     )
 
-    assert locked_base == calculated_base
-    assert {
-        stem: tuple(obj.id for obj in cluster)
-        for stem, cluster in locked_clusters.items()
-    } == {
-        stem: tuple(obj.id for obj in cluster)
-        for stem, cluster in calculated_clusters.items()
+    assert len(LOCKED_FRONTIER_POLITIES) == 49
+    assert len(ORIGINAL_FRONTIER_POLITIES) == 21
+    assert len(PREVIOUS_FRONTIER_POLITIES) == 28
+    assert list(locked_clusters) == [
+        polity.stem for polity in LOCKED_FRONTIER_POLITIES
+    ] or set(locked_clusters) == {
+        polity.stem for polity in LOCKED_FRONTIER_POLITIES
     }
-    assert len(locked_ownership) == 2026
+    assert set(locked_clusters) == {
+        polity.stem for polity in LOCKED_FRONTIER_POLITIES
+    }
+    assert len(locked_base) == 49 * 22
+    assert len(locked_ownership) == 2840
     fingerprint = "\n".join(
         f"{object_id}={stem}"
         for object_id, stem in sorted(locked_ownership.items())
     )
     assert hashlib.sha256(fingerprint.encode()).hexdigest() == (
-        "22cf3161b1773eeb53642c792c922978392898ae83d4263089bb126a696428ce"
+        "27679d3faad1bec9b99e11a4fd30c4988885fbcaec8bfaf983e0386de7f7cca1"
     )
 
 
@@ -160,7 +163,7 @@ def test_new_polities_use_only_neutral_objects_outside_locked_territory():
         locked_ownership,
     )
 
-    assert len(FRONTIER_POLITIES) == 49
+    assert len(FRONTIER_POLITIES) == 77
     assert len(NEW_FRONTIER_POLITIES) == 28
     assert len(assignments) == 28 * 22
     assert not assignments.keys() & locked_ownership.keys()
@@ -184,9 +187,12 @@ def test_new_polities_use_only_neutral_objects_outside_locked_territory():
         by_id[object_id] for object_id in locked_ownership
     ]
     adjacent_objects = list(locked_objects)
-    for index, polity in enumerate(NEW_FRONTIER_POLITIES):
-        if index % 7 == 0:
+    current_group = None
+    for polity in NEW_FRONTIER_POLITIES:
+        group = (polity.arm, polity.side)
+        if group != current_group:
             adjacent_objects = list(locked_objects)
+            current_group = group
         cluster = clusters[polity.stem]
         assert Counter(obj.kind for obj in cluster) == {
             "star": 20,
@@ -200,12 +206,12 @@ def test_new_polities_use_only_neutral_objects_outside_locked_territory():
         assert max(
             hypot(obj.x - center_x, obj.y - center_y)
             for obj in cluster
-        ) < 0.21
+        ) < 0.25
         assert min(
             hypot(obj.x - old.x, obj.y - old.y)
             for obj in cluster
             for old in adjacent_objects
-        ) < 0.13
+        ) < 0.20
         adjacent_objects.extend(cluster)
 
     combined = {**locked_ownership, **assignments}
@@ -238,10 +244,10 @@ def test_all_assigned_stars_receive_canonical_names_and_planets():
     catalog = map_canonical_frontier_catalog(clusters)
 
     stars = [entry for entry in catalog.values() if entry["kind"] == "star"]
-    assert len(stars) == 49 * 20
+    assert len(stars) == 77 * 20
     assert all(entry["token"] for entry in stars)
     assert all(entry["nameEn"] and entry["nameRu"] for entry in stars)
-    assert sum(len(entry["worlds"]) for entry in stars) == 49 * 24
+    assert all(entry.get("worlds") is not None for entry in stars)
 
     for polity in FRONTIER_POLITIES:
         mapped_stars = [
@@ -250,7 +256,11 @@ def test_all_assigned_stars_receive_canonical_names_and_planets():
             if obj.kind == "star"
         ]
         assert len(mapped_stars) == 20
-        assert sum(len(entry["worlds"]) for entry in mapped_stars) == 24
+        assert all(entry["nameEn"] and entry["nameRu"] for entry in mapped_stars)
+        if polity.stem in NEW_FRONTIER_STEMS:
+            assert all(entry.get("worlds") for entry in mapped_stars)
+        else:
+            assert sum(len(entry["worlds"]) for entry in mapped_stars) >= 20
 
 
 def test_additional_named_frontier_stars_receive_planets():

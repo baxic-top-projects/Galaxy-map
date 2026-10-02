@@ -203,14 +203,16 @@ def main() -> int:
             key=lambda entry: (entry["kind"], entry["token"]),
         )
         ru_stem = EN_TO_RU[polity.stem]
-        (en_dir / f"{polity.stem}.md").write_text(
-            _document(polity.stem, ru_stem, entries, ru=False),
-            encoding="utf-8",
-        )
-        (ru_dir / f"{ru_stem}.md").write_text(
-            _document(polity.stem, ru_stem, entries, ru=True),
-            encoding="utf-8",
-        )
+        # Never rewrite locked polity registries; only materialize the newest wave.
+        if polity.stem in NEW_FRONTIER_STEMS:
+            (en_dir / f"{polity.stem}.md").write_text(
+                _document(polity.stem, ru_stem, entries, ru=False),
+                encoding="utf-8",
+            )
+            (ru_dir / f"{ru_stem}.md").write_text(
+                _document(polity.stem, ru_stem, entries, ru=True),
+                encoding="utf-8",
+            )
         index_rows.append(
             (
                 polity.stem,
@@ -227,9 +229,10 @@ def main() -> int:
         _index(index_rows, ru=True),
         encoding="utf-8",
     )
+    written = sum(1 for polity in FRONTIER_POLITIES if polity.stem in NEW_FRONTIER_STEMS)
     print(
-        f"Wrote {len(index_rows) * 2 + 2} documents with "
-        f"{len(additions)} frontier objects"
+        f"Wrote {written * 2} new polity docs + 2 READMEs "
+        f"({len(index_rows)} polities indexed, {len(additions)} frontier objects)"
     )
     return 0
 
