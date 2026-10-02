@@ -21,4 +21,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget -qO- http://localhost:3000/ > /dev/null || exit 1
 
-CMD ["serve", "-s", "dist", "-l", "3000", "--config", "dist/serve.json"]
+# serve resolves --config relative to the served directory (`dist/`),
+# so pass `serve.json` (copied from public/) rather than `dist/serve.json`.
+CMD ["serve", "-s", "dist", "-l", "3000", "-c", "serve.json"]
