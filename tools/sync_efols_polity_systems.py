@@ -473,6 +473,12 @@ def ensure_frontier_name(system: dict) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument(
+        "--stem",
+        action="append",
+        default=[],
+        help="Only update the selected polity stem (repeatable)",
+    )
     args = parser.parse_args()
 
     galaxy = requests.get(GALAXY_API, timeout=60).json()
@@ -486,15 +492,26 @@ def main() -> int:
         if not stem or kind not in ("star", "black_hole", "junction"):
             continue
         by_owner[stem][kind].append(system)
+    if args.stem:
+        selected = set(args.stem)
+        by_owner = defaultdict(
+            lambda: {"star": [], "black_hole": [], "junction": []},
+            {
+                stem: groups
+                for stem, groups in by_owner.items()
+                if stem in selected
+            },
+        )
 
-    # Preserve existing world totals from current star indexes when present.
+    # Derive world totals from canonical cards so newly materialized frontier
+    # planets are included without relying on a stale index summary.
     world_totals: dict[str, int] = {}
     for stem in by_owner:
-        idx = CANON / "UNIVERSE" / "GALAXY" / "STARS" / "EN" / stem / f"{stem}.md"
-        if idx.is_file():
-            m = re.search(r"Named worlds:\s*\*\*(\d+)\*\*", idx.read_text(encoding="utf-8"))
-            if m:
-                world_totals[stem] = int(m.group(1))
+        worlds_dir = CANON / "STATES" / "EN" / stem / "worlds"
+        if worlds_dir.is_dir():
+            world_totals[stem] = sum(
+                1 for _path in worlds_dir.glob("*.md")
+            )
 
     written = 0
     patched = 0
