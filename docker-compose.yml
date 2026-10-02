@@ -146,7 +146,6 @@ services:
 
   smtp-service-galaxy:
     image: maildev/maildev:3.0.0
-    container_name: smtp-service-galaxy
     restart: unless-stopped
     environment:
       - NODE_OPTIONS=--no-warnings=DeprecationWarning
