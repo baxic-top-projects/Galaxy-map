@@ -210,42 +210,6 @@ _RAIH_BATCH30 = (
 )
 
 
-def _miradin_polities(
-    rows: tuple[tuple[str, str, str, str], ...],
-    *,
-    first_arm_count: int,
-) -> tuple[FrontierPolity, ...]:
-    return tuple(
-        FrontierPolity(
-            row[0],
-            row[1],
-            row[2],
-            "miradin",
-            row[3],
-            arm=1 if index < first_arm_count else 4,
-        )
-        for index, row in enumerate(rows)
-    )
-
-
-def _raih_polities(
-    rows: tuple[tuple[str, str, str, str], ...],
-    *,
-    first_arm_count: int,
-) -> tuple[FrontierPolity, ...]:
-    return tuple(
-        FrontierPolity(
-            row[0],
-            row[1],
-            row[2],
-            "raih",
-            row[3],
-            arm=2 if index < first_arm_count else 3,
-        )
-        for index, row in enumerate(rows)
-    )
-
-
 _MIRADIN_BATCH31 = (
     ("Basaltpit_Mandate", "Basaltpit Mandate", "Базальтпитовый Мандат", "#704cad"),
     ("Cablearc_League", "Cablearc League", "Кейбларкская Лига", "#724cad"),
@@ -313,6 +277,42 @@ _RAIH_BATCH31 = (
 )
 
 
+def _miradin_polities(
+    rows: tuple[tuple[str, str, str, str], ...],
+    *,
+    first_arm_count: int,
+) -> tuple[FrontierPolity, ...]:
+    return tuple(
+        FrontierPolity(
+            row[0],
+            row[1],
+            row[2],
+            "miradin",
+            row[3],
+            arm=1 if index < first_arm_count else 4,
+        )
+        for index, row in enumerate(rows)
+    )
+
+
+def _raih_polities(
+    rows: tuple[tuple[str, str, str, str], ...],
+    *,
+    first_arm_count: int,
+) -> tuple[FrontierPolity, ...]:
+    return tuple(
+        FrontierPolity(
+            row[0],
+            row[1],
+            row[2],
+            "raih",
+            row[3],
+            arm=2 if index < first_arm_count else 3,
+        )
+        for index, row in enumerate(rows)
+    )
+
+
 ORIGINAL_FRONTIER_POLITIES = _miradin_polities(
     _MIRADIN,
     first_arm_count=6,
@@ -357,11 +357,10 @@ LOCKED_FRONTIER_POLITIES = (
 
 NEW_FRONTIER_POLITIES = _miradin_polities(
     _MIRADIN_BATCH31,
-    # Miradin stays on the right (+x): arms 1 then 4.
+    # Side-only allocation ignores arm; keep 12/13 split as a soft preference.
     first_arm_count=12,
 ) + _raih_polities(
     _RAIH_BATCH31,
-    # Raih stays on the left (-x): arms 2 then 3.
     first_arm_count=12,
 )
 
@@ -411,8 +410,6 @@ def load_locked_frontier_layout(
     for object_id, coordinates in layout["coordinates"].items():
         index = object_indexes.get(object_id)
         if index is None:
-            # Minted specials/stars from earlier waves are not in the base
-            # generator output; recreate them from the lock snapshot.
             kind = (
                 "black_hole"
                 if ":black_hole" in object_id
@@ -599,9 +596,6 @@ def allocate_new_frontier_polities(
         if boundary_ownership is not None
         else reserved
     )
-    # Locked ownership is already a frozen snapshot. Do not also reserve
-    # theoretical territory-fill candidates: that starves the next wave on the
-    # correct left/right sides. Adjacency still uses the boundary ownership set.
     object_indexes = {obj.id: index for index, obj in enumerate(objects)}
     available = {
         obj.id: obj
@@ -618,17 +612,14 @@ def allocate_new_frontier_polities(
         for object_id in boundary
         if object_id in object_indexes
     ]
-    # Group only by map side: Miradin right (+x), Raih left (-x). Do not
-    # starve a side by locking it to one spiral arm — free stars already sit
-    # further out in the arms on the correct half of the map.
+    # Group only by map side: Miradin right (+x), Raih left (-x).
     groups: list[tuple[int, list[FrontierPolity]]] = []
     for side in (1, -1):
         group = [polity for polity in targets if polity.side == side]
         if group:
             groups.append((side, group))
 
-    # Never mint stars. Use existing neutrals on the correct map half
-    # (Miradin +x, Raih -x), expanding the pocket until 20 fit.
+    # Never mint stars — only existing neutrals on the correct half.
     pocket_radii = (0.22, 0.30, 0.40, 0.55, 0.75, 1.10)
 
     for side, group in groups:
@@ -694,8 +685,6 @@ def allocate_new_frontier_polities(
                 if best is not None:
                     break
             if best is None:
-                # Last resort: nearest 20 natural stars on this side — still
-                # no minting / no synthetic arm growth.
                 seed = min(
                     candidates,
                     key=lambda obj: (
@@ -748,8 +737,6 @@ def allocate_new_frontier_polities(
         home_arm = Counter(obj.arm for obj in stars).most_common(1)[0][0]
 
         def take_special(kind: str, offset_index: int) -> ArmObject:
-            # Prefer same-side specials (any arm), then any free special
-            # relocated into the pocket. Mint only when none remain.
             def pocket_xy(angle: float) -> tuple[float, float]:
                 radius = 0.008
                 x = anchor_x + math.cos(angle) * radius
@@ -1097,7 +1084,7 @@ def map_canonical_frontier_catalog(
         mapped_stars = sum(
             obj.id in mapped for obj in cluster if obj.kind == "star"
         )
-        if mapped_stars < STARS_PER_POLITY:
+        if mapped_stars != STARS_PER_POLITY:
             raise RuntimeError(
                 f"{polity.stem}: mapped {mapped_stars}/{STARS_PER_POLITY} stars"
             )

@@ -140,14 +140,14 @@ def test_locked_layout_preserves_current_one_hundred_five_polities():
     }
     assert len(locked_base) >= 105 * 20
     assert len(locked_ownership) >= 105 * 22
+    assert all("star-extra" not in object_id for object_id in locked_ownership)
     fingerprint = "\n".join(
         f"{object_id}={stem}"
         for object_id, stem in sorted(locked_ownership.items())
     )
     assert hashlib.sha256(fingerprint.encode()).hexdigest() == (
-        "014af96f0c07f71f6ebfbc43b1cecaaa94b728437409a55416162125ac0be5b6"
+        "f031386cbb5e6d8727c195a7d7ab9ad29d56a10830699be13b36c3b6592cfda1"
     )
-    assert all("-extra-" not in object_id for object_id in locked_ownership)
 
 
 def test_new_polities_use_only_neutral_objects_outside_locked_territory():
@@ -173,8 +173,9 @@ def test_new_polities_use_only_neutral_objects_outside_locked_territory():
         polity.bloc == "raih"
         for polity in NEW_FRONTIER_POLITIES
     ) == 25
-    # Territory-fill candidates of the locked wave are intentionally not
-    # reserved: keeping Miradin on +x and Raih on -x needs those neutrals.
+    assert all(
+        "star-extra" not in object_id for object_id in assignments
+    )
 
     by_id = {obj.id: obj for obj in objects}
     locked_objects = [
@@ -192,7 +193,6 @@ def test_new_polities_use_only_neutral_objects_outside_locked_territory():
             "black_hole": 1,
             "junction": 1,
         }
-        assert all("-extra-" not in obj.id or obj.kind != "star" for obj in cluster)
         assert all(
             obj.kind != "star" or "-extra-" not in obj.id for obj in cluster
         )

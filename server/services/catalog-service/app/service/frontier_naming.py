@@ -126,25 +126,37 @@ def natural_frontier_star_name(system_id: str) -> tuple[str, str, str]:
 
 
 def natural_frontier_black_hole_name(system_id: str) -> tuple[str, str, str]:
-    index = _object_index(system_id, 43)
-    root_index = index % len(HOLE_ROOT_EN)
-    suffix_index = index // len(HOLE_ROOT_EN)
-    return (
-        f"{HOLE_ROOT_EN[root_index]}{HOLE_SUFFIX_EN[suffix_index]}",
-        f"{HOLE_ROOT_EN[root_index]} {HOLE_SUFFIX_EN[suffix_index]}",
-        f"{HOLE_SUFFIX_RU[suffix_index]} {HOLE_ROOT_RU[root_index]}",
-    )
+    index = max(0, _object_index(system_id, 43))
+    capacity = len(HOLE_ROOT_EN) * len(HOLE_SUFFIX_EN)
+    slot = index % capacity
+    wrap = index // capacity
+    root_index = slot % len(HOLE_ROOT_EN)
+    suffix_index = slot // len(HOLE_ROOT_EN)
+    token = f"{HOLE_ROOT_EN[root_index]}{HOLE_SUFFIX_EN[suffix_index]}"
+    name_en = f"{HOLE_ROOT_EN[root_index]} {HOLE_SUFFIX_EN[suffix_index]}"
+    name_ru = f"{HOLE_SUFFIX_RU[suffix_index]} {HOLE_ROOT_RU[root_index]}"
+    if wrap:
+        token = f"{token}{wrap}"
+        name_en = f"{name_en} {wrap}"
+        name_ru = f"{name_ru} {wrap}"
+    return token, name_en, name_ru
 
 
 def natural_frontier_junction_name(system_id: str) -> tuple[str, str, str]:
-    index = _object_index(system_id, 25)
-    root_index = index % len(JUNCTION_ROOT_EN)
-    suffix_index = index // len(JUNCTION_ROOT_EN)
-    return (
-        f"{JUNCTION_ROOT_EN[root_index]}{JUNCTION_SUFFIX_EN[suffix_index]}",
-        f"{JUNCTION_ROOT_EN[root_index]} {JUNCTION_SUFFIX_EN[suffix_index]}",
-        f"{JUNCTION_SUFFIX_RU[suffix_index]} {JUNCTION_ROOT_RU[root_index]}",
-    )
+    index = max(0, _object_index(system_id, 25))
+    capacity = len(JUNCTION_ROOT_EN) * len(JUNCTION_SUFFIX_EN)
+    slot = index % capacity
+    wrap = index // capacity
+    root_index = slot % len(JUNCTION_ROOT_EN)
+    suffix_index = slot // len(JUNCTION_ROOT_EN)
+    token = f"{JUNCTION_ROOT_EN[root_index]}{JUNCTION_SUFFIX_EN[suffix_index]}"
+    name_en = f"{JUNCTION_ROOT_EN[root_index]} {JUNCTION_SUFFIX_EN[suffix_index]}"
+    name_ru = f"{JUNCTION_SUFFIX_RU[suffix_index]} {JUNCTION_ROOT_RU[root_index]}"
+    if wrap:
+        token = f"{token}{wrap}"
+        name_en = f"{name_en} {wrap}"
+        name_ru = f"{name_ru} {wrap}"
+    return token, name_en, name_ru
 
 
 def generated_frontier_worlds(system_id: str, star_token: str) -> list[dict]:
