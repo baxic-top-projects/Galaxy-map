@@ -442,15 +442,8 @@ def sort_key(system: dict) -> tuple:
 
 
 def ensure_frontier_name(system: dict) -> dict:
-    """Fill names omitted by the API for already-owned generated arm objects."""
-    if (
-        not str(system.get("id") or "").startswith("frontier:")
-        or (
-            system.get("token")
-            and system.get("nameEn")
-            and system.get("nameRu")
-        )
-    ):
+    """Fill or replace missing / placeholder names for generated arm objects."""
+    if not str(system.get("id") or "").startswith("frontier:"):
         return system
 
     naming = {
@@ -461,12 +454,26 @@ def ensure_frontier_name(system: dict) -> dict:
     if naming is None:
         return system
 
+    needs_name = not (
+        system.get("token") and system.get("nameEn") and system.get("nameRu")
+    )
+    if system.get("kind") == "star":
+        from app.service.frontier_naming import is_placeholder_star_label
+
+        needs_name = needs_name or is_placeholder_star_label(
+            system.get("token"),
+            system.get("nameEn"),
+            system.get("nameRu"),
+        )
+    if not needs_name:
+        return system
+
     token, name_en, name_ru = naming(system["id"])
     return {
         **system,
-        "token": system.get("token") or token,
-        "nameEn": system.get("nameEn") or name_en,
-        "nameRu": system.get("nameRu") or name_ru,
+        "token": token,
+        "nameEn": name_en,
+        "nameRu": name_ru,
     }
 
 

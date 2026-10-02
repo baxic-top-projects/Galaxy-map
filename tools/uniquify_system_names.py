@@ -41,7 +41,7 @@ def _mint_en(system_id: str, used: set[str]) -> str:
         name = f"{EN_A[b[0] % len(EN_A)]}{EN_B[b[1] % len(EN_B)]}{EN_C[b[2] % len(EN_C)]}"
         if name not in used:
             return name
-    return f"Star{abs(int.from_bytes(raw[:4], 'big'))}"
+    return f"Ael{EN_B[raw[1] % len(EN_B)]}{EN_C[raw[2] % len(EN_C)]}yx"
 
 
 def _mint_ru(system_id: str, used: set[str]) -> str:
@@ -51,7 +51,7 @@ def _mint_ru(system_id: str, used: set[str]) -> str:
         name = f"{RU_A[b[0] % len(RU_A)]}{RU_B[b[1] % len(RU_B)]}{RU_C[b[2] % len(RU_C)]}"
         if name not in used:
             return name
-    return f"Звезда{abs(int.from_bytes(raw[:4], 'big'))}"
+    return f"Аэль{RU_B[raw[1] % len(RU_B)]}{RU_C[raw[2] % len(RU_C)]}"
 
 
 def uniquify() -> dict:

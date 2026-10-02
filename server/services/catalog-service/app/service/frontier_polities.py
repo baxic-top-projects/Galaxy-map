@@ -788,6 +788,7 @@ def map_canonical_frontier_catalog(
 
     from app.service.frontier_naming import (
         generated_frontier_worlds,
+        is_placeholder_star_label,
         natural_frontier_black_hole_name,
         natural_frontier_junction_name,
         natural_frontier_star_name,
@@ -819,7 +820,24 @@ def map_canonical_frontier_catalog(
                 key=lambda entry: entry.get("token") or "",
             )
             for obj, entry in zip(objects_of_kind, entries_of_kind):
-                mapped[obj.id] = entry
+                if obj.kind == "star" and is_placeholder_star_label(
+                    entry.get("token"),
+                    entry.get("nameEn"),
+                    entry.get("nameRu"),
+                ):
+                    token, name_en, name_ru = natural_frontier_star_name(obj.id)
+                    worlds = entry.get("worlds") or []
+                    if not worlds:
+                        worlds = generated_frontier_worlds(obj.id, token)
+                    mapped[obj.id] = {
+                        **entry,
+                        "token": token,
+                        "nameEn": name_en,
+                        "nameRu": name_ru,
+                        "worlds": worlds,
+                    }
+                else:
+                    mapped[obj.id] = entry
             for obj in objects_of_kind[len(entries_of_kind) :]:
                 if obj.kind == "star":
                     token, name_en, name_ru = natural_frontier_star_name(obj.id)

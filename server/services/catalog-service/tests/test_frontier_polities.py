@@ -1,4 +1,5 @@
 import hashlib
+import re
 from collections import Counter
 from math import hypot
 
@@ -248,6 +249,11 @@ def test_all_assigned_stars_receive_canonical_names_and_planets():
     assert all(entry["token"] for entry in stars)
     assert all(entry["nameEn"] and entry["nameRu"] for entry in stars)
     assert all(entry.get("worlds") is not None for entry in stars)
+    assert all(
+        not re.fullmatch(r"Star[0-9a-fA-F]{6,}", entry["token"] or "")
+        and not re.fullmatch(r"Star[0-9a-fA-F]{6,}", entry["nameEn"] or "")
+        for entry in stars
+    )
 
     for polity in FRONTIER_POLITIES:
         mapped_stars = [

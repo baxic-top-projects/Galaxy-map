@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import re
+
+PLACEHOLDER_STAR_RE = re.compile(r"^Star[0-9a-fA-F]{6,}$")
+PLACEHOLDER_STAR_RU_RE = re.compile(r"^Звезда-Star[0-9a-fA-F]{6,}$")
 
 STAR_STEM_EN = (
     "Aeth", "Arion", "Brae", "Cal", "Corv", "Dusk", "Ely", "Fae", "Glim",
@@ -85,6 +89,18 @@ def _object_index(system_id: str, per_arm: int) -> int:
     return (arm - 1) * per_arm + ordinal - 1
 
 
+def is_placeholder_star_label(*labels: str | None) -> bool:
+    """True when a token/name is the old Star{hex} / Звезда-Star{hex} fallback."""
+    for label in labels:
+        if not label:
+            continue
+        if PLACEHOLDER_STAR_RE.fullmatch(label) or PLACEHOLDER_STAR_RU_RE.fullmatch(
+            label
+        ):
+            return True
+    return False
+
+
 def natural_frontier_star_name(system_id: str) -> tuple[str, str, str]:
     index = _object_index(system_id, 1290)
     base_count = len(STAR_STEM_EN) * len(STAR_SUF_EN)
@@ -94,13 +110,19 @@ def natural_frontier_star_name(system_id: str) -> tuple[str, str, str]:
     suffix_index = base_index // len(STAR_STEM_EN)
     base_en = f"{STAR_STEM_EN[stem_index]}{STAR_SUF_EN[suffix_index]}"
     base_ru = f"{STAR_STEM_RU[stem_index]}{STAR_SUF_RU[suffix_index]}"
-    qualifier_en = STAR_QUALIFIER_EN[qualifier_index]
-    qualifier_ru = STAR_QUALIFIER_RU[qualifier_index]
-    return (
-        f"{base_en}{qualifier_en}",
-        f"{base_en} {qualifier_en}",
-        f"{base_ru} {qualifier_ru}",
-    )
+    qualifier_en = STAR_QUALIFIER_EN[qualifier_index % len(STAR_QUALIFIER_EN)]
+    qualifier_ru = STAR_QUALIFIER_RU[qualifier_index % len(STAR_QUALIFIER_RU)]
+    # Keep tokens unique when the same base+qualifier wraps after many arms.
+    wrap = qualifier_index // len(STAR_QUALIFIER_EN)
+    if wrap:
+        token = f"{base_en}{qualifier_en}{wrap}"
+        name_en = f"{base_en} {qualifier_en} {wrap}"
+        name_ru = f"{base_ru} {qualifier_ru} {wrap}"
+    else:
+        token = f"{base_en}{qualifier_en}"
+        name_en = f"{base_en} {qualifier_en}"
+        name_ru = f"{base_ru} {qualifier_ru}"
+    return token, name_en, name_ru
 
 
 def natural_frontier_black_hole_name(system_id: str) -> tuple[str, str, str]:
