@@ -277,6 +277,63 @@ _RAIH_BATCH31 = (
 )
 
 
+_MIRADIN_BATCH32 = (
+    ("Anviloak_League", "Anviloak League", "Наковальнедубовая Лига", "#704cad"),
+    ("Arcgrid_Array", "Arcgrid Array", "Аркгридовый Массив", "#724cad"),
+    ("Busbar_Array", "Busbar Array", "Шинный Массив", "#744cad"),
+    ("Cinderforge_League", "Cinderforge League", "Зольнокузнечная Лига", "#764cad"),
+    ("Daybook_Chamber", "Daybook Chamber", "Дейбукская Палата", "#784cad"),
+    ("Glacelock_Ward", "Glacelock Ward", "Глейслокский Дозор", "#7a4cad"),
+    ("Grove_Accord", "Grove Accord", "Рощевой Аккорд", "#7c4cad"),
+    ("Kelpweave_Communion", "Kelpweave Communion", "Келпвивная Коммуния", "#7e4cad"),
+    ("Leyfield_Accord", "Leyfield Accord", "Лейфилдовый Аккорд", "#804cad"),
+    ("Marblepit_Mandate", "Marblepit Mandate", "Мраморный Мандат", "#824cad"),
+    ("Mole_Protectorate", "Mole Protectorate", "Мольный Протекторат", "#844cad"),
+    ("Moss_Communion", "Moss Communion", "Моховая Коммуния", "#864cad"),
+    ("Palimpsest_Union", "Palimpsest Union", "Палимпсестный Союз", "#884cad"),
+    ("Parchment_Compact", "Parchment Compact", "Пергаментный Компакт", "#8a4cad"),
+    ("Pinpoint_Covenant", "Pinpoint Covenant", "Пинпойнтский Ковенант", "#8c4cad"),
+    ("Prismforge_Assembly", "Prismforge Assembly", "Призмфорджская Ассамблея", "#8e4cad"),
+    ("Quarto_Union", "Quarto Union", "Кварто Союз", "#904cad"),
+    ("Quaystep_Protectorate", "Quaystep Protectorate", "Кейстепский Протекторат", "#924cad"),
+    ("Rimevault_Ward", "Rimevault Ward", "Раймволтский Дозор", "#944cad"),
+    ("Shalequarry_Mandate", "Shalequarry Mandate", "Сланцекарьерный Мандат", "#964cad"),
+    ("Spanbridge_League", "Spanbridge League", "Спанбриджская Лига", "#984cad"),
+    ("Spireglass_Assembly", "Spireglass Assembly", "Шпилегассская Ассамблея", "#9a4cad"),
+    ("Stack_Directorate", "Stack Directorate", "Дымоходная Директория", "#9c4cad"),
+    ("Threadhall_Covenant", "Threadhall Covenant", "Тредхоллский Ковенант", "#9e4cad"),
+    ("Typeset_Compact", "Typeset Compact", "Наборный Компакт", "#a04cad"),
+)
+
+_RAIH_BATCH32 = (
+    ("Amber_Charter", "Amber Charter", "Янтарная Хартия", "#c29d4e"),
+    ("Antiphon_Synod", "Antiphon Synod", "Антифонный Синод", "#c29e4e"),
+    ("Basalt_March", "Basalt March", "Базальтовый Марш", "#c29f4e"),
+    ("Bloomstem_Concordat", "Bloomstem Concordat", "Блумстемский Конкордат", "#c2a04e"),
+    ("Cinderhill_Dominion", "Cinderhill Dominion", "Зольнохолмский Доминион", "#c2a14e"),
+    ("Cog_Guild_Republic", "Cog Guild Republic", "Шестерёночная Гильдейская Республика", "#c2a24e"),
+    ("Coulomb_Chamber", "Coulomb Chamber", "Кулоновая Палата", "#c2a34e"),
+    ("Dewfall_Protectorate", "Dewfall Protectorate", "Дьюфолльский Протекторат", "#c2a44e"),
+    ("Dunehaul_Caravanate", "Dunehaul Caravanate", "Дюнхоловый Караванат", "#c2a54e"),
+    ("Eddy_Protectorate", "Eddy Protectorate", "Эдди Протекторат", "#c2a64e"),
+    ("Glasswell_League", "Glasswell League", "Глассвеллская Лига", "#c2a74e"),
+    ("Glyphvault_Mandate", "Glyphvault Mandate", "Глифволтский Мандат", "#c2a84e"),
+    ("Jade_Compact", "Jade Compact", "Нефритовый Компакт", "#c2a94e"),
+    ("Loamhaul_Caravanate", "Loamhaul Caravanate", "Лоумхоловый Караванат", "#c2aa4e"),
+    ("Matins_Synod", "Matins Synod", "Заутренний Синод", "#c2ab4e"),
+    ("Nacre_Charter", "Nacre Charter", "Перламутровая Хартия", "#c2ac4e"),
+    ("Obsidian_Compact", "Obsidian Compact", "Обсидиановый Компакт", "#c2ad4e"),
+    ("Petalfold_Concordat", "Petalfold Concordat", "Петалфолдский Конкордат", "#c2ae4e"),
+    ("Ratchet_Guild_Republic", "Ratchet Guild Republic", "Трещоточная Гильдейская Республика", "#c2af4e"),
+    ("Ridge_March", "Ridge March", "Хребтовый Марш", "#c2b04e"),
+    ("Rimehelm_Crown", "Rimehelm Crown", "Раймхельмская Корона", "#c2b14e"),
+    ("Rimepeak_Crown", "Rimepeak Crown", "Раймпикская Корона", "#c2b24e"),
+    ("Saltern_Accord", "Saltern Accord", "Солеварный Аккорд", "#c2b34e"),
+    ("Scoriater_Dominion", "Scoriater Dominion", "Скориатеррасный Доминион", "#c2b44e"),
+    ("Switch_Chamber", "Switch Chamber", "Коммутаторная Палата", "#c2b54e"),
+)
+
+
 def _miradin_polities(
     rows: tuple[tuple[str, str, str, str], ...],
     *,
@@ -348,19 +405,27 @@ BATCH30_FRONTIER_POLITIES = _miradin_polities(
     first_arm_count=10,
 )
 
+BATCH31_FRONTIER_POLITIES = _miradin_polities(
+    _MIRADIN_BATCH31,
+    first_arm_count=12,
+) + _raih_polities(
+    _RAIH_BATCH31,
+    first_arm_count=12,
+)
+
 LOCKED_FRONTIER_POLITIES = (
     ORIGINAL_FRONTIER_POLITIES
     + PREVIOUS_FRONTIER_POLITIES
     + BATCH29_FRONTIER_POLITIES
     + BATCH30_FRONTIER_POLITIES
+    + BATCH31_FRONTIER_POLITIES
 )
 
 NEW_FRONTIER_POLITIES = _miradin_polities(
-    _MIRADIN_BATCH31,
-    # Side-only allocation ignores arm; keep 12/13 split as a soft preference.
+    _MIRADIN_BATCH32,
     first_arm_count=12,
 ) + _raih_polities(
-    _RAIH_BATCH31,
+    _RAIH_BATCH32,
     first_arm_count=12,
 )
 
@@ -372,6 +437,58 @@ NEW_FRONTIER_ARM_BY_STEM = {
 }
 NEW_FRONTIER_SIDE_BY_STEM = {
     polity.stem: polity.side for polity in NEW_FRONTIER_POLITIES
+}
+NEW_FRONTIER_STARS_BY_STEM = {
+    "Anviloak_League": 1,
+    "Arcgrid_Array": 2,
+    "Busbar_Array": 1,
+    "Cinderforge_League": 3,
+    "Daybook_Chamber": 2,
+    "Glacelock_Ward": 2,
+    "Grove_Accord": 2,
+    "Kelpweave_Communion": 2,
+    "Leyfield_Accord": 1,
+    "Marblepit_Mandate": 2,
+    "Mole_Protectorate": 3,
+    "Moss_Communion": 1,
+    "Palimpsest_Union": 1,
+    "Parchment_Compact": 1,
+    "Pinpoint_Covenant": 3,
+    "Prismforge_Assembly": 1,
+    "Quarto_Union": 3,
+    "Quaystep_Protectorate": 2,
+    "Rimevault_Ward": 1,
+    "Shalequarry_Mandate": 1,
+    "Spanbridge_League": 2,
+    "Spireglass_Assembly": 3,
+    "Stack_Directorate": 2,
+    "Threadhall_Covenant": 1,
+    "Typeset_Compact": 2,
+    "Amber_Charter": 1,
+    "Antiphon_Synod": 1,
+    "Basalt_March": 1,
+    "Bloomstem_Concordat": 1,
+    "Cinderhill_Dominion": 2,
+    "Cog_Guild_Republic": 1,
+    "Coulomb_Chamber": 1,
+    "Dewfall_Protectorate": 3,
+    "Dunehaul_Caravanate": 1,
+    "Eddy_Protectorate": 2,
+    "Glasswell_League": 2,
+    "Glyphvault_Mandate": 2,
+    "Jade_Compact": 1,
+    "Loamhaul_Caravanate": 2,
+    "Matins_Synod": 2,
+    "Nacre_Charter": 2,
+    "Obsidian_Compact": 3,
+    "Petalfold_Concordat": 3,
+    "Ratchet_Guild_Republic": 2,
+    "Ridge_March": 2,
+    "Rimehelm_Crown": 3,
+    "Rimepeak_Crown": 1,
+    "Saltern_Accord": 2,
+    "Scoriater_Dominion": 1,
+    "Switch_Chamber": 3,
 }
 FRONTIER_POLITIES = LOCKED_FRONTIER_POLITIES + NEW_FRONTIER_POLITIES
 
@@ -588,7 +705,12 @@ def allocate_new_frontier_polities(
     boundary_ownership: dict[str, str] | None = None,
     polities: tuple[FrontierPolity, ...] | None = None,
 ) -> tuple[dict[str, str], dict[str, tuple[ArmObject, ...]]]:
-    """Allocate new polities only on neutral objects outside the layout lock."""
+    """Allocate new polities on remaining neutrals.
+
+    Prefers the polity's map half (Miradin +x / Raih -x). If that half is
+    exhausted, borrows stars from the opposite half. Never mints stars.
+    Star counts come from NEW_FRONTIER_STARS_BY_STEM when present.
+    """
     targets = polities or NEW_FRONTIER_POLITIES
     reserved = set(reserved_ids)
     boundary = (
@@ -600,245 +722,136 @@ def allocate_new_frontier_polities(
     available = {
         obj.id: obj
         for obj in objects
-        if obj.id not in reserved
+        if obj.id not in reserved and "star-extra" not in obj.id
     }
     assignments: dict[str, str] = {}
     clusters: dict[str, tuple[ArmObject, ...]] = {}
-    selected_by_stem: dict[str, list[ArmObject]] = {
-        polity.stem: [] for polity in targets
-    }
     locked_objects = [
         objects[object_indexes[object_id]]
         for object_id in boundary
         if object_id in object_indexes
     ]
-    # Group only by map side: Miradin right (+x), Raih left (-x).
-    groups: list[tuple[int, list[FrontierPolity]]] = []
-    for side in (1, -1):
-        group = [polity for polity in targets if polity.side == side]
-        if group:
-            groups.append((side, group))
 
-    # Never mint stars — only existing neutrals on the correct half.
-    pocket_radii = (0.22, 0.30, 0.40, 0.55, 0.75, 1.10)
+    free_stars = [
+        obj
+        for obj in available.values()
+        if obj.kind == "star" and "star-extra" not in obj.id
+    ]
 
-    for side, group in groups:
-        adjacent_objects = list(locked_objects)
-        candidates = [
-            obj
-            for obj in available.values()
-            if obj.kind == "star"
-            and "-extra-" not in obj.id
-            and obj.x * side > 0
+    def need_for(polity: FrontierPolity) -> int:
+        return int(NEW_FRONTIER_STARS_BY_STEM.get(polity.stem, STARS_PER_POLITY))
+
+    # Place larger pockets first so compact leftovers remain for 1-star vassals.
+    ordered = sorted(targets, key=lambda p: (-need_for(p), p.stem))
+    adjacent = list(locked_objects)
+
+    for polity in ordered:
+        need = need_for(polity)
+        preferred = [
+            obj for obj in free_stars if obj.x * polity.side > 0
         ]
-        for polity in group:
-            if len(candidates) < STARS_PER_POLITY:
-                raise RuntimeError(
-                    f"Not enough natural neutral stars on side {side} "
-                    f"for {polity.stem} ({len(candidates)} left)"
-                )
-            best: tuple[
-                float,
-                int,
-                str,
-                list[ArmObject],
-            ] | None = None
-            for max_pocket_radius in pocket_radii:
-                for seed in candidates:
-                    nearest = sorted(
-                        candidates,
-                        key=lambda obj: (
-                            math.hypot(obj.x - seed.x, obj.y - seed.y),
-                            obj.ordinal,
-                            obj.id,
-                        ),
-                    )
-                    compact = [
-                        obj
-                        for obj in nearest
-                        if math.hypot(obj.x - seed.x, obj.y - seed.y)
-                        <= max_pocket_radius
-                    ][:STARS_PER_POLITY]
-                    if len(compact) < STARS_PER_POLITY:
-                        continue
-                    center_x = sum(obj.x for obj in compact) / len(compact)
-                    center_y = sum(obj.y for obj in compact) / len(compact)
-                    compact_radius = max(
-                        math.hypot(obj.x - center_x, obj.y - center_y)
-                        for obj in compact
-                    )
-                    boundary_gap = min(
+        other = [
+            obj for obj in free_stars if obj.x * polity.side <= 0
+        ]
+        pool = preferred + other
+        if len(pool) < need:
+            raise RuntimeError(
+                f"Not enough free stars for {polity.stem}: need {need}, have {len(pool)}"
+            )
+
+        # Seed near existing territory when possible.
+        if adjacent:
+            seed = min(
+                pool,
+                key=lambda obj: (
+                    0 if obj.x * polity.side > 0 else 1,
+                    min(
                         (
-                            math.hypot(seed.x - old.x, seed.y - old.y)
-                            for old in adjacent_objects
+                            math.hypot(obj.x - old.x, obj.y - old.y)
+                            for old in adjacent
                         ),
                         default=0.0,
-                    )
-                    candidate = (
-                        compact_radius + boundary_gap * 0.35,
-                        seed.ordinal,
-                        seed.id,
-                        compact,
-                    )
-                    if best is None or candidate[:3] < best[:3]:
-                        best = candidate
-                if best is not None:
-                    break
-            if best is None:
-                seed = min(
-                    candidates,
-                    key=lambda obj: (
-                        min(
-                            (
-                                math.hypot(obj.x - old.x, obj.y - old.y)
-                                for old in adjacent_objects
-                            ),
-                            default=0.0,
-                        ),
-                        obj.ordinal,
-                        obj.id,
                     ),
-                )
-                nearest = sorted(
-                    candidates,
-                    key=lambda obj: (
-                        math.hypot(obj.x - seed.x, obj.y - seed.y),
-                        obj.ordinal,
-                        obj.id,
-                    ),
-                )[:STARS_PER_POLITY]
-                best = (0.0, seed.ordinal, seed.id, nearest)
-            selected = list(best[3])
-            if len(selected) < STARS_PER_POLITY:
-                raise RuntimeError(
-                    f"Could not gather {STARS_PER_POLITY} natural stars "
-                    f"for {polity.stem}"
-                )
-            selected_by_stem[polity.stem] = selected
-            adjacent_objects.extend(selected)
-            selected_ids = {obj.id for obj in selected}
-            candidates = [
-                obj for obj in candidates if obj.id not in selected_ids
-            ]
-            for object_id in selected_ids:
-                available.pop(object_id, None)
+                    obj.ordinal,
+                    obj.id,
+                ),
+            )
+        else:
+            seed = pool[0]
+        selected = sorted(
+            pool,
+            key=lambda obj: (
+                0 if obj.x * polity.side > 0 else 1,
+                math.hypot(obj.x - seed.x, obj.y - seed.y),
+                obj.ordinal,
+                obj.id,
+            ),
+        )[:need]
+        selected_ids = {obj.id for obj in selected}
+        free_stars = [obj for obj in free_stars if obj.id not in selected_ids]
+        for object_id in selected_ids:
+            available.pop(object_id, None)
 
-    for polity in targets:
-        stars = sorted(
-            selected_by_stem[polity.stem],
-            key=lambda obj: (obj.ordinal, obj.id),
-        )
+        stars = sorted(selected, key=lambda obj: (obj.ordinal, obj.id))
         anchor_x = sum(obj.x for obj in stars) / len(stars)
         anchor_y = sum(obj.y for obj in stars) / len(stars)
-        cluster_radius = max(
-            math.hypot(obj.x - anchor_x, obj.y - anchor_y)
-            for obj in stars
-        )
         home_arm = Counter(obj.arm for obj in stars).most_common(1)[0][0]
+        cluster_objs: list[ArmObject] = list(stars)
 
-        def take_special(kind: str, offset_index: int) -> ArmObject:
-            def pocket_xy(angle: float) -> tuple[float, float]:
-                radius = 0.008
-                x = anchor_x + math.cos(angle) * radius
-                y = anchor_y + math.sin(angle) * radius
-                if x * polity.side <= 0:
-                    x = anchor_x + polity.side * radius
-                return round(x, 6), round(y, 6)
-
+        def take_special(kind: str, offset_index: int) -> ArmObject | None:
             same_side = [
                 obj
                 for obj in available.values()
-                if obj.kind == kind
-                and "-extra-" not in obj.id
-                and obj.x * polity.side > 0
+                if obj.kind == kind and obj.x * polity.side > 0
             ]
             any_free = [
-                obj
-                for obj in available.values()
-                if obj.kind == kind and "-extra-" not in obj.id
+                obj for obj in available.values() if obj.kind == kind
             ]
-            pool = same_side or any_free
-            selected = min(
-                pool,
+            pool_s = same_side or any_free
+            if not pool_s:
+                return None
+            chosen = min(
+                pool_s,
                 key=lambda obj: (
                     math.hypot(obj.x - anchor_x, obj.y - anchor_y),
                     obj.ordinal,
                     obj.id,
                 ),
-                default=None,
             )
-            if selected is None:
-                extra_index = sum(
-                    1
-                    for obj in objects
-                    if obj.kind == kind and "-extra-" in obj.id
-                )
-                minted_id = (
-                    f"frontier:arm-{home_arm}:{kind}-extra-{extra_index:03d}"
-                )
-                offset_angle = (
-                    (
-                        len(LOCKED_FRONTIER_POLITIES)
-                        + len(clusters)
-                    )
-                    * 2
-                    + offset_index
-                ) * 2.399963229728653
-                minted_x, minted_y = pocket_xy(offset_angle)
-                minted = ArmObject(
-                    id=minted_id,
-                    arm=home_arm,
-                    ordinal=stars[len(stars) // 2].ordinal,
-                    kind=kind,
-                    star_type_key=(
-                        "black_hole" if kind == "black_hole" else "junction"
-                    ),
-                    x=minted_x,
-                    y=minted_y,
-                    z=0.0,
-                )
-                objects.append(minted)
-                object_indexes[minted.id] = len(objects) - 1
-                available[minted.id] = minted
-                return minted
-            distance = math.hypot(
-                selected.x - anchor_x,
-                selected.y - anchor_y,
-            )
-            if (
-                selected.x * polity.side > 0
-                and distance <= max(0.08, cluster_radius * 1.2)
-            ):
-                return selected
-            offset_angle = (
-                (
-                    len(LOCKED_FRONTIER_POLITIES)
-                    + len(clusters)
-                )
-                * 2
+            distance = math.hypot(chosen.x - anchor_x, chosen.y - anchor_y)
+            if chosen.x * polity.side > 0 and distance <= 0.12:
+                available.pop(chosen.id, None)
+                return chosen
+            angle = (
+                (len(LOCKED_FRONTIER_POLITIES) + len(clusters)) * 2
                 + offset_index
             ) * 2.399963229728653
-            relocated_x, relocated_y = pocket_xy(offset_angle)
+            radius = 0.008
+            x = anchor_x + math.cos(angle) * radius
+            y = anchor_y + math.sin(angle) * radius
+            if x * polity.side <= 0:
+                x = anchor_x + polity.side * radius
             relocated = replace(
-                selected,
+                chosen,
                 arm=home_arm,
-                x=relocated_x,
-                y=relocated_y,
-                ordinal=stars[len(stars) // 2].ordinal,
+                x=round(x, 6),
+                y=round(y, 6),
+                ordinal=stars[0].ordinal,
             )
-            objects[object_indexes[selected.id]] = relocated
-            available[selected.id] = relocated
+            objects[object_indexes[chosen.id]] = relocated
+            available.pop(chosen.id, None)
             return relocated
 
-        cluster = (
-            *stars,
-            take_special("black_hole", 0),
-            take_special("junction", 1),
-        )
+        for kind, offset in (("black_hole", 0), ("junction", 1)):
+            special = take_special(kind, offset)
+            if special is not None:
+                cluster_objs.append(special)
+
+        cluster = tuple(cluster_objs)
         for obj in cluster:
             assignments[obj.id] = polity.stem
-            available.pop(obj.id, None)
         clusters[polity.stem] = cluster
+        adjacent.extend(cluster)
 
     return assignments, clusters
 
@@ -1084,9 +1097,20 @@ def map_canonical_frontier_catalog(
         mapped_stars = sum(
             obj.id in mapped for obj in cluster if obj.kind == "star"
         )
-        if mapped_stars != STARS_PER_POLITY:
+        expected_stars = NEW_FRONTIER_STARS_BY_STEM.get(
+            polity.stem, STARS_PER_POLITY
+        )
+        if mapped_stars != expected_stars and polity.stem in NEW_FRONTIER_STEMS:
             raise RuntimeError(
-                f"{polity.stem}: mapped {mapped_stars}/{STARS_PER_POLITY} stars"
+                f"{polity.stem}: mapped {mapped_stars}/{expected_stars} stars"
+            )
+        if (
+            polity.stem not in NEW_FRONTIER_STEMS
+            and mapped_stars != STARS_PER_POLITY
+            and mapped_stars < 1
+        ):
+            raise RuntimeError(
+                f"{polity.stem}: mapped {mapped_stars} stars"
             )
 
     return mapped

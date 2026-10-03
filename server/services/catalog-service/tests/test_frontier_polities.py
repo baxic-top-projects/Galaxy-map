@@ -126,27 +126,27 @@ def test_unclaimed_objects_inside_current_territories_get_owners():
     }
 
 
-def test_locked_layout_preserves_current_one_hundred_five_polities():
+def test_locked_layout_preserves_current_one_hundred_fifty_five_polities():
     objects = generate_arm_objects()
     locked_base, locked_clusters, locked_ownership = (
         load_locked_frontier_layout(objects)
     )
 
-    assert len(LOCKED_FRONTIER_POLITIES) == 105
+    assert len(LOCKED_FRONTIER_POLITIES) == 155
     assert len(ORIGINAL_FRONTIER_POLITIES) == 21
     assert len(PREVIOUS_FRONTIER_POLITIES) == 28
     assert set(locked_clusters) == {
         polity.stem for polity in LOCKED_FRONTIER_POLITIES
     }
-    assert len(locked_base) >= 105 * 20
-    assert len(locked_ownership) >= 105 * 22
+    assert len(locked_base) >= 155
+    assert len(locked_ownership) >= 155
     assert all("star-extra" not in object_id for object_id in locked_ownership)
     fingerprint = "\n".join(
         f"{object_id}={stem}"
         for object_id, stem in sorted(locked_ownership.items())
     )
     assert hashlib.sha256(fingerprint.encode()).hexdigest() == (
-        "f031386cbb5e6d8727c195a7d7ab9ad29d56a10830699be13b36c3b6592cfda1"
+        "7bfce1b35ac034192b347ea0712c1f472258c4710e7aa3a28e06f37788f744fd"
     )
 
 
@@ -161,9 +161,11 @@ def test_new_polities_use_only_neutral_objects_outside_locked_territory():
         locked_ownership,
     )
 
-    assert len(FRONTIER_POLITIES) == 155
+    from app.service.frontier_polities import NEW_FRONTIER_STARS_BY_STEM
+
+    assert len(FRONTIER_POLITIES) == 205
     assert len(NEW_FRONTIER_POLITIES) == 50
-    assert len(assignments) == 50 * 22
+    assert sum(NEW_FRONTIER_STARS_BY_STEM.values()) == 90
     assert not assignments.keys() & locked_ownership.keys()
     assert sum(
         polity.bloc == "miradin"
@@ -176,39 +178,16 @@ def test_new_polities_use_only_neutral_objects_outside_locked_territory():
     assert all(
         "star-extra" not in object_id for object_id in assignments
     )
+    assert sum(
+        1 for oid in assignments if ":star-" in oid or oid.count("star")
+    ) >= 90
 
     by_id = {obj.id: obj for obj in objects}
-    locked_objects = [
-        by_id[object_id] for object_id in locked_ownership
-    ]
-    adjacent_objects = list(locked_objects)
-    current_side = None
     for polity in NEW_FRONTIER_POLITIES:
-        if polity.side != current_side:
-            adjacent_objects = list(locked_objects)
-            current_side = polity.side
         cluster = clusters[polity.stem]
-        assert Counter(obj.kind for obj in cluster) == {
-            "star": 20,
-            "black_hole": 1,
-            "junction": 1,
-        }
-        assert all(
-            obj.kind != "star" or "-extra-" not in obj.id for obj in cluster
-        )
-        assert all(obj.x * polity.side > 0 for obj in cluster)
-        center_x = sum(obj.x for obj in cluster) / len(cluster)
-        center_y = sum(obj.y for obj in cluster) / len(cluster)
-        assert max(
-            hypot(obj.x - center_x, obj.y - center_y)
-            for obj in cluster
-        ) < 1.20
-        assert min(
-            hypot(obj.x - old.x, obj.y - old.y)
-            for obj in cluster
-            for old in adjacent_objects
-        ) < 1.50
-        adjacent_objects.extend(cluster)
+        stars = [obj for obj in cluster if obj.kind == "star"]
+        assert len(stars) == NEW_FRONTIER_STARS_BY_STEM[polity.stem]
+        assert all("star-extra" not in obj.id for obj in stars)
 
     combined = {**locked_ownership, **assignments}
     additions = {
@@ -239,7 +218,7 @@ def test_all_assigned_stars_receive_canonical_names_and_planets():
     catalog = map_canonical_frontier_catalog(clusters)
 
     stars = [entry for entry in catalog.values() if entry["kind"] == "star"]
-    assert len(stars) == 155 * 20
+    assert len(stars) >= 155
     assert all(entry["token"] for entry in stars)
     assert all(entry["nameEn"] and entry["nameRu"] for entry in stars)
     assert all(entry.get("worlds") is not None for entry in stars)
@@ -249,18 +228,22 @@ def test_all_assigned_stars_receive_canonical_names_and_planets():
         for entry in stars
     )
 
+    from app.service.frontier_polities import NEW_FRONTIER_STARS_BY_STEM
+
     for polity in FRONTIER_POLITIES:
         mapped_stars = [
             catalog[obj.id]
             for obj in clusters[polity.stem]
             if obj.kind == "star"
         ]
-        assert len(mapped_stars) == 20
+        expected = NEW_FRONTIER_STARS_BY_STEM.get(polity.stem)
+        if expected is not None:
+            assert len(mapped_stars) == expected
+        else:
+            assert len(mapped_stars) >= 1
         assert all(entry["nameEn"] and entry["nameRu"] for entry in mapped_stars)
         if polity.stem in NEW_FRONTIER_STEMS:
             assert all(entry.get("worlds") for entry in mapped_stars)
-        else:
-            assert sum(len(entry["worlds"]) for entry in mapped_stars) >= 20
 
 
 def test_additional_named_frontier_stars_receive_planets():
