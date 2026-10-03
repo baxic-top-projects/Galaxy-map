@@ -71,6 +71,11 @@
     }
   }
 
+  function openOverview() {
+    overviewDismissed = false
+    if (selected) onCloseSelected?.()
+  }
+
   function onPanelHeadPointerDown(event) {
     if (event.target.closest('button, a, input, select, textarea, label')) return
     panelDragging = true
@@ -132,6 +137,15 @@
     </button>
     <button type="button" class="ghost" onclick={() => onReset?.()}>
       {locale === 'en' ? 'Reset view' : 'Сброс'}
+    </button>
+    <button
+      type="button"
+      class="ghost"
+      class:active={!overviewDismissed && !selected}
+      aria-pressed={!overviewDismissed && !selected}
+      onclick={openOverview}
+    >
+      {locale === 'en' ? 'Galaxy overview' : 'Обзор галактики'}
     </button>
     {#if mode === 'galaxy'}
       <button
