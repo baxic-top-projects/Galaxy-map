@@ -20,9 +20,9 @@
   let canvas = $state(null)
   let api = $state(null)
   let appliedOwnershipRevision = $state(0)
-  let appliedSystemCount = $state(galaxy?.systems?.length ?? -1)
+  let appliedSystemCount = $state(untrack(() => galaxy?.systems?.length ?? -1))
   let plateHydrated = $state(
-    Boolean(galaxy?.meta?.systemsHydrated) || !galaxy?.tileGrid,
+    untrack(() => Boolean(galaxy?.meta?.systemsHydrated) || !galaxy?.tileGrid),
   )
 
   onMount(() => {
