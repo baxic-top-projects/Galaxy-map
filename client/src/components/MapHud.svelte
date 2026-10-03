@@ -34,6 +34,7 @@
 
   let query = $state('')
   let overviewDismissed = $state(false)
+  let detailDismissed = $state(false)
   let panelPos = $state(loadPanelPos(PANEL_POS_KEY))
   let panelDragging = $state(false)
   let panelPassThrough = $state(false)
@@ -51,7 +52,7 @@
   const canEditOwner = $derived(
     user?.role === 'ADMIN' && !!selected && selected.kind !== 'well',
   )
-  const panelVisible = $derived(!!selected || !overviewDismissed)
+  const panelVisible = $derived(selected ? !detailDismissed : !overviewDismissed)
 
   const panelDrag = createPanelDrag(
     () => panelPos,
@@ -62,7 +63,10 @@
   )
 
   $effect(() => {
-    if (selected) overviewDismissed = false
+    if (selected) {
+      overviewDismissed = false
+      detailDismissed = false
+    }
   })
 
   // After a fresh selection the centered mobile panel sits over the star and
@@ -81,15 +85,25 @@
   })
 
   function handleClosePanel() {
-    // Closing a system/polity card must not reopen the galaxy overview.
-    overviewDismissed = true
     if (selected) {
-      onCloseSelected?.()
+      // Hide the dossier only. Leaving the system is a separate action.
+      detailDismissed = true
+      if (mode === 'galaxy') {
+        overviewDismissed = true
+        onCloseSelected?.()
+      }
+      return
     }
+    overviewDismissed = true
   }
 
   function openOverview() {
+    if (mode === 'system' && selected) {
+      detailDismissed = false
+      return
+    }
     overviewDismissed = false
+    detailDismissed = false
     if (selected) onCloseSelected?.()
   }
 
@@ -163,11 +177,13 @@
     <button
       type="button"
       class="ghost"
-      class:active={!overviewDismissed && !selected}
-      aria-pressed={!overviewDismissed && !selected}
+      class:active={selected ? !detailDismissed : !overviewDismissed}
+      aria-pressed={selected ? !detailDismissed : !overviewDismissed}
       onclick={openOverview}
     >
-      {locale === 'en' ? 'Galaxy overview' : 'Обзор галактики'}
+      {mode === 'system' && selected
+        ? (locale === 'en' ? 'System info' : 'Описание системы')
+        : (locale === 'en' ? 'Galaxy overview' : 'Обзор галактики')}
     </button>
     {#if mode === 'galaxy'}
       <button

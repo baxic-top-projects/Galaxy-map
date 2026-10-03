@@ -396,7 +396,6 @@
       }}
       onCloseSelected={() => {
         selected = null
-        if (mode === 'system') mode = 'galaxy'
       }}
       onEnterSystem={handleEnterSystem}
       onBackToGalaxy={() => {

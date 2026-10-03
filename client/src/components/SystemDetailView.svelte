@@ -71,7 +71,8 @@
     <button
       type="button"
       class="close"
-      aria-label={locale === 'en' ? 'Close system view' : 'Закрыть карточку системы'}
+      aria-label={locale === 'en' ? 'Back to galaxy' : 'К галактике'}
+      title={locale === 'en' ? 'Back to galaxy' : 'К галактике'}
       onclick={() => onZoomOut?.()}
     >
       ×
