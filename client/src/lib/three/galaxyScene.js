@@ -207,47 +207,53 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     plate.visible = politicalMapVisible
     root.add(plate)
   }
-  void bootstrapPoliticalPlate()
+  const deferPoliticalPlate =
+    Array.isArray(galaxy?.systemChunks) &&
+    galaxy.systemChunks.length > 0 &&
+    !galaxy?.meta?.systemsHydrated
+  if (!deferPoliticalPlate) void bootstrapPoliticalPlate()
 
-  const positions = new Float32Array(galaxy.systems.length * 3)
-  const colors = new Float32Array(galaxy.systems.length * 3)
-  const sizes = new Float32Array(galaxy.systems.length)
-  const kinds = new Float32Array(galaxy.systems.length)
   const color = new THREE.Color()
-
-  galaxy.systems.forEach((system, index) => {
-    const i = index * 3
-    positions[i] = system.x * GALAXY_SCALE
-    positions[i + 1] = system.y * GALAXY_SCALE
-    positions[i + 2] = system.z * GALAXY_SCALE
-
-    const kind = markerKind(system)
-    kinds[index] = kind
-    sizes[index] = pointSizeFor(system)
-
-    if (kind === MARKER.junction) {
-      color.setHex(0xa8e2dd)
-    } else if (kind === MARKER.blackHole || kind === MARKER.well) {
-      // Core is dark; rim color carried in vertex color for the shader.
-      color.setHex(kind === MARKER.well ? 0xffbe6a : 0xff9a3c)
-    } else if (kind === MARKER.capital) {
-      // Efol gold / Miradin pink from the political map.
-      const stem = system.stem || ''
-      color.setHex(stem.includes('Miradin') ? 0xffd0dc : 0xffe566)
-    } else {
-      color.setHex(starColor(system.starTypeKey))
-    }
-
-    colors[i] = color.r
-    colors[i + 1] = color.g
-    colors[i + 2] = color.b
-  })
-
   const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-  geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
-  geometry.setAttribute('kind', new THREE.BufferAttribute(kinds, 1))
+
+  function writeSystemAttributes(systems) {
+    const positions = new Float32Array(systems.length * 3)
+    const colors = new Float32Array(systems.length * 3)
+    const sizes = new Float32Array(systems.length)
+    const kinds = new Float32Array(systems.length)
+    systems.forEach((system, index) => {
+      const i = index * 3
+      positions[i] = system.x * GALAXY_SCALE
+      positions[i + 1] = system.y * GALAXY_SCALE
+      positions[i + 2] = system.z * GALAXY_SCALE
+
+      const kind = markerKind(system)
+      kinds[index] = kind
+      sizes[index] = pointSizeFor(system)
+
+      if (kind === MARKER.junction) {
+        color.setHex(0xa8e2dd)
+      } else if (kind === MARKER.blackHole || kind === MARKER.well) {
+        color.setHex(kind === MARKER.well ? 0xffbe6a : 0xff9a3c)
+      } else if (kind === MARKER.capital) {
+        const stem = system.stem || ''
+        color.setHex(stem.includes('Miradin') ? 0xffd0dc : 0xffe566)
+      } else {
+        color.setHex(starColor(system.starTypeKey))
+      }
+
+      colors[i] = color.r
+      colors[i + 1] = color.g
+      colors[i + 2] = color.b
+    })
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+    geometry.setAttribute('kind', new THREE.BufferAttribute(kinds, 1))
+    geometry.computeBoundingSphere()
+  }
+
+  writeSystemAttributes(galaxy.systems)
 
   const material = new THREE.ShaderMaterial({
     transparent: true,
@@ -411,7 +417,16 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const pickHelper = new THREE.Raycaster()
   pickHelper.params.Points = { threshold: 0.9 }
   const pointer = new THREE.Vector2()
-  const spatial = buildSpatialIndex(galaxy.systems)
+  let spatial = buildSpatialIndex(galaxy.systems)
+
+  function setSystems(systems = []) {
+    const nextSystems = Array.isArray(systems) ? systems : []
+    galaxy.systems = nextSystems
+    galaxy.byId = new Map(nextSystems.map((system) => [system.id, system]))
+    writeSystemAttributes(nextSystems)
+    spatial = buildSpatialIndex(nextSystems)
+    emitLabels()
+  }
 
   let selectedId = null
   let hoveredId = null
@@ -1050,6 +1065,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     setPoliticalMap,
     setLocale,
     setSystemOwner,
+    setSystems,
     setEdges,
     rebuildPoliticalOwnership,
     resetView,

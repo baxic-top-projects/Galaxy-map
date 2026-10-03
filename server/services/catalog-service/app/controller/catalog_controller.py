@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Header, HTTPException
+from fastapi import APIRouter, Body, Header, HTTPException, Query
 
 from app.config.settings import settings
 
@@ -19,6 +19,13 @@ def get_galaxy():
 @router.get("/internal/v1/galaxy/map")
 def get_galaxy_map():
     return catalog_query.get_galaxy_map()
+
+
+@router.get("/internal/v1/galaxy/systems")
+def get_galaxy_systems(
+    stem: Annotated[str, Query(description="Polity stem or __unowned__")] = "",
+):
+    return catalog_query.get_galaxy_systems_chunk(stem)
 
 
 @router.get("/internal/v1/galaxy/edges")

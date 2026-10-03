@@ -19,6 +19,8 @@
   let canvas = $state(null)
   let api = $state(null)
   let appliedOwnershipRevision = $state(0)
+  let appliedSystemCount = $state(-1)
+  let plateHydrated = $state(false)
 
   onMount(() => {
     let cancelled = false
@@ -38,6 +40,8 @@
         return
       }
       appliedOwnershipRevision = ownershipRevision
+      appliedSystemCount = galaxy.systems?.length || 0
+      plateHydrated = Boolean(galaxy?.meta?.systemsHydrated) || !(galaxy?.systemChunks || []).length
       if (stormSnapshot) api.setStorms(stormSnapshot)
       api.setPoliticalMap(showPoliticalMap)
     })()
@@ -85,14 +89,25 @@
 
   $effect(() => {
     if (!api) return
+    const systems = galaxy?.systems || []
+    if (systems.length === appliedSystemCount) return
+    appliedSystemCount = systems.length
+    api.setSystems(systems)
+  })
+
+  $effect(() => {
+    if (!api) return
     api.setEdges(galaxy?.edgesDisplay || [])
   })
 
   $effect(() => {
     if (!api) return
     const revision = ownershipRevision
-    if (revision === appliedOwnershipRevision) return
+    const hydrated = Boolean(galaxy?.meta?.systemsHydrated) || !(galaxy?.systemChunks || []).length
+    if (revision === appliedOwnershipRevision && (plateHydrated || !hydrated)) return
     appliedOwnershipRevision = revision
+    plateHydrated = hydrated
+    if (!hydrated) return
     const currentGalaxy = untrack(() => galaxy)
     api.rebuildPoliticalOwnership(currentGalaxy)
   })

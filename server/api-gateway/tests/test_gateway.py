@@ -119,14 +119,33 @@ def catalog_backend():
     def galaxy_map():
         return {
             "meta": {"source": "EfolsMiradinsPact"},
-            "polities": [],
+            "polities": [{"stem": "Miradin_Empire", "nameEn": "Miradin Empire"}],
             "systems": [
                 {
                     "id": "Miradin_Empire:MiradinSirius",
                     "token": "MiradinSirius",
+                    "stem": "Miradin_Empire",
+                    "capital": True,
                     "shard": "systems/Miradin_Empire__MiradinSirius.json",
                 }
             ],
+            "systemChunks": ["Miradin_Empire", "__unowned__"],
+        }
+
+    @backend.get("/internal/v1/galaxy/systems")
+    def galaxy_systems(stem: str = ""):
+        return {
+            "stem": stem or "__unowned__",
+            "systems": [
+                {
+                    "id": "Miradin_Empire:MiradinSirius",
+                    "token": "MiradinSirius",
+                    "stem": "Miradin_Empire",
+                    "capital": True,
+                }
+            ]
+            if stem == "Miradin_Empire"
+            else [],
         }
 
     @backend.get("/internal/v1/galaxy/edges")
@@ -217,7 +236,13 @@ def test_gateway_proxies_storm_asset_and_catalog(monkeypatch, storm_backend, ass
     galaxy_map = client.get("/api/v1/galaxy/map")
     assert galaxy_map.status_code == 200
     assert galaxy_map.json()["systems"][0]["id"] == "Miradin_Empire:MiradinSirius"
+    assert galaxy_map.json()["systemChunks"][0] == "Miradin_Empire"
     assert "edgesDisplay" not in galaxy_map.json()
+
+    galaxy_systems = client.get("/api/v1/galaxy/systems", params={"stem": "Miradin_Empire"})
+    assert galaxy_systems.status_code == 200
+    assert galaxy_systems.json()["stem"] == "Miradin_Empire"
+    assert galaxy_systems.json()["systems"][0]["token"] == "MiradinSirius"
 
     galaxy_edges = client.get("/api/v1/galaxy/edges")
     assert galaxy_edges.status_code == 200

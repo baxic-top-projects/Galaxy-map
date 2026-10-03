@@ -89,7 +89,17 @@ def test_catalog_map_edges_search_use_slice_caches(monkeypatch):
     cache = CatalogCacheService(client=FakeRedis())
     cache.set_json(
         "galaxy:map",
-        {"meta": {}, "polities": [], "systems": [{"id": "map-sys"}]},
+        {
+            "meta": {},
+            "polities": [],
+            "systems": [{"id": "map-sys", "kind": "well"}],
+            "systemChunks": ["__unowned__"],
+        },
+        60,
+    )
+    cache.set_json(
+        "galaxy:systems:A_Polity",
+        {"stem": "A_Polity", "systems": [{"id": "A:One", "stem": "A_Polity"}]},
         60,
     )
     cache.set_json(
@@ -126,5 +136,6 @@ def test_catalog_map_edges_search_use_slice_caches(monkeypatch):
     )
 
     assert catalog.get_galaxy_map()["systems"][0]["id"] == "map-sys"
+    assert catalog.get_galaxy_systems_chunk("A_Polity")["systems"][0]["id"] == "A:One"
     assert catalog.get_galaxy_edges()["edgesDisplay"][0]["b"] == "other"
     assert catalog.get_galaxy_search()["search"][0]["id"] == "map-sys"

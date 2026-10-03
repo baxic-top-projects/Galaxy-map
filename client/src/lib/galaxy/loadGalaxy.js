@@ -104,6 +104,8 @@ async function fetchGalaxyJson(path, baseUrl = DEFAULT_API_BASE, { timeoutMs = 2
   return response.json()
 }
 
+export const UNOWNED_SYSTEM_CHUNK = '__unowned__'
+
 function assembleGalaxy(data) {
   const systems = data.systems || []
   const byId = new Map(systems.map((system) => [system.id, system]))
@@ -112,6 +114,7 @@ function assembleGalaxy(data) {
   return {
     ...data,
     systems,
+    systemChunks: data.systemChunks || [],
     edgesCanon: data.edgesCanon || [],
     edgesDisplay: data.edgesDisplay || [],
     search,
@@ -121,11 +124,12 @@ function assembleGalaxy(data) {
 }
 
 /**
- * Map bootstrap: meta + polities + systems (no edges/search yet).
+ * Map bootstrap: meta + polities + seed systems + chunk ids (no edges/search yet).
  * @returns {Promise<{
  *   meta: object,
  *   polities: Polity[],
  *   systems: GalaxySystem[],
+ *   systemChunks: string[],
  *   edgesCanon: Edge[],
  *   edgesDisplay: Edge[],
  *   search: SearchEntry[],
@@ -141,6 +145,38 @@ export async function loadGalaxyMap(baseUrl = DEFAULT_API_BASE, options = {}) {
     edgesDisplay: [],
     search: [],
   })
+}
+
+/** @returns {Promise<{ stem: string, systems: GalaxySystem[] }>} */
+export async function loadGalaxySystemsChunk(
+  stem = UNOWNED_SYSTEM_CHUNK,
+  baseUrl = DEFAULT_API_BASE,
+  options = {},
+) {
+  const query = new URLSearchParams({ stem: stem || UNOWNED_SYSTEM_CHUNK })
+  const data = await fetchGalaxyJson(`/api/v1/galaxy/systems?${query}`, baseUrl, options)
+  return {
+    stem: data.stem || stem || UNOWNED_SYSTEM_CHUNK,
+    systems: data.systems || [],
+  }
+}
+
+/** Run async workers over items with a fixed concurrency limit. */
+export async function mapPool(items, concurrency, worker) {
+  const list = Array.isArray(items) ? items : []
+  if (!list.length) return []
+  const limit = Math.max(1, Math.min(concurrency || 1, list.length))
+  const results = new Array(list.length)
+  let nextIndex = 0
+  async function run() {
+    while (nextIndex < list.length) {
+      const index = nextIndex
+      nextIndex += 1
+      results[index] = await worker(list[index], index)
+    }
+  }
+  await Promise.all(Array.from({ length: limit }, () => run()))
+  return results
 }
 
 /** @returns {Promise<{ edgesCanon: Edge[], edgesDisplay: Edge[] }>} */

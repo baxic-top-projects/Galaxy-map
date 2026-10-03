@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Annotated
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Body, Depends, Response
 from pydantic import BaseModel, Field
@@ -28,6 +29,19 @@ async def galaxy_index():
 @router.get("/api/v1/galaxy/map")
 async def galaxy_map():
     response = await catalog_client.request("GET", "/internal/v1/galaxy/map")
+    return Response(
+        content=response.content,
+        status_code=response.status_code,
+        media_type="application/json",
+    )
+
+
+@router.get("/api/v1/galaxy/systems")
+async def galaxy_systems(stem: str = ""):
+    path = "/internal/v1/galaxy/systems"
+    if stem:
+        path = f"{path}?{urlencode({'stem': stem})}"
+    response = await catalog_client.request("GET", path)
     return Response(
         content=response.content,
         status_code=response.status_code,

@@ -110,6 +110,28 @@ def _system_index_row(row: SystemRow) -> dict:
     }
 
 
+UNOWNED_SYSTEM_CHUNK = "__unowned__"
+
+
+def _system_chunk_key(system: dict) -> str:
+    stem = system.get("stem")
+    return stem if stem else UNOWNED_SYSTEM_CHUNK
+
+
+def _is_seed_system(system: dict) -> bool:
+    """Structural markers shown before polity chunks finish hydrating."""
+    kind = system.get("kind")
+    return kind in {"well", "junction"} or bool(system.get("capital"))
+
+
+def _group_systems_by_chunk(systems: list[dict]) -> dict[str, list[dict]]:
+    grouped: dict[str, list[dict]] = {}
+    for system in systems:
+        key = _system_chunk_key(system)
+        grouped.setdefault(key, []).append(system)
+    return grouped
+
+
 class CatalogQueryService:
     """Read galaxy catalog from Postgres."""
 
@@ -137,15 +159,54 @@ class CatalogQueryService:
                 "error": str(exc),
             }
 
+    def _cache_system_chunks(
+        self,
+        systems: list[dict],
+        *,
+        cache_generation: int,
+    ) -> list[str]:
+        ttl = settings.redis_galaxy_ttl_seconds
+        grouped = _group_systems_by_chunk(systems)
+        chunk_keys = sorted(grouped)
+        for stem, chunk_systems in grouped.items():
+            self.cache.set_json(
+                f"galaxy:systems:{stem}",
+                {"stem": stem, "systems": chunk_systems},
+                ttl,
+                expected_generation=cache_generation,
+            )
+        self.cache.set_json(
+            "galaxy:systemChunks",
+            {"chunks": chunk_keys},
+            ttl,
+            expected_generation=cache_generation,
+        )
+        return chunk_keys
+
     def _cache_galaxy_slices(self, result: dict, *, cache_generation: int) -> None:
         ttl = settings.redis_galaxy_ttl_seconds
+        systems = result.get("systems") or []
+        seed_systems = [system for system in systems if _is_seed_system(system)]
+        chunk_keys = self._cache_system_chunks(systems, cache_generation=cache_generation)
         self.cache.set_json("galaxy", result, ttl, expected_generation=cache_generation)
         self.cache.set_json(
             "galaxy:map",
             {
                 "meta": result.get("meta") or {},
                 "polities": result.get("polities") or [],
-                "systems": result.get("systems") or [],
+                "systems": seed_systems,
+                "systemChunks": chunk_keys,
+            },
+            ttl,
+            expected_generation=cache_generation,
+        )
+        # Keep a full systems list for callers that still want one map payload.
+        self.cache.set_json(
+            "galaxy:map:full",
+            {
+                "meta": result.get("meta") or {},
+                "polities": result.get("polities") or [],
+                "systems": systems,
             },
             ttl,
             expected_generation=cache_generation,
@@ -210,7 +271,7 @@ class CatalogQueryService:
             return _apply_galaxy_ownership(result, manual=manual)
 
     def get_galaxy_map(self) -> dict:
-        """Lean map bootstrap: meta, polities, systems (no edges/search)."""
+        """Bootstrap: meta, polities, seed systems, and polity chunk ids."""
         with SessionLocal() as session:
             cache_generation = self.cache.generation
             manual = _manual_overrides(session)
@@ -218,13 +279,55 @@ class CatalogQueryService:
             if cached is None:
                 full = self.cache.get_json("galaxy")
                 if full is not None:
+                    owned = _apply_galaxy_ownership(
+                        {
+                            "meta": full.get("meta") or {},
+                            "polities": full.get("polities") or [],
+                            "systems": full.get("systems") or [],
+                        },
+                        manual=manual,
+                    )
+                    systems = owned.get("systems") or []
+                    chunk_keys = self._cache_system_chunks(
+                        systems,
+                        cache_generation=cache_generation,
+                    )
                     cached = {
-                        "meta": full.get("meta") or {},
-                        "polities": full.get("polities") or [],
-                        "systems": full.get("systems") or [],
+                        "meta": owned.get("meta") or {},
+                        "polities": owned.get("polities") or [],
+                        "systems": [system for system in systems if _is_seed_system(system)],
+                        "systemChunks": chunk_keys,
                     }
+                    self.cache.set_json(
+                        "galaxy:map",
+                        cached,
+                        settings.redis_galaxy_ttl_seconds,
+                        expected_generation=cache_generation,
+                    )
+                    return cached
             if cached is not None:
-                return _apply_galaxy_ownership(cached, manual=manual)
+                # Seed/chunk payloads are cached after ownership is applied.
+                if "systemChunks" in cached:
+                    return cached
+                owned = _apply_galaxy_ownership(cached, manual=manual)
+                systems = owned.get("systems") or []
+                chunk_keys = self._cache_system_chunks(
+                    systems,
+                    cache_generation=cache_generation,
+                )
+                result = {
+                    "meta": owned.get("meta") or {},
+                    "polities": owned.get("polities") or [],
+                    "systems": [system for system in systems if _is_seed_system(system)],
+                    "systemChunks": chunk_keys,
+                }
+                self.cache.set_json(
+                    "galaxy:map",
+                    result,
+                    settings.redis_galaxy_ttl_seconds,
+                    expected_generation=cache_generation,
+                )
+                return result
 
             meta = session.get(GalaxyMetaRow, 1)
             polities = [
@@ -235,10 +338,24 @@ class CatalogQueryService:
                 _system_index_row(row)
                 for row in session.scalars(select(SystemRow).order_by(SystemRow.id))
             ]
+            owned = _apply_galaxy_ownership(
+                {
+                    "meta": meta.payload if meta else {},
+                    "polities": polities,
+                    "systems": systems,
+                },
+                manual=manual,
+            )
+            owned_systems = owned.get("systems") or []
+            chunk_keys = self._cache_system_chunks(
+                owned_systems,
+                cache_generation=cache_generation,
+            )
             result = {
-                "meta": meta.payload if meta else {},
-                "polities": polities,
-                "systems": systems,
+                "meta": owned.get("meta") or {},
+                "polities": owned.get("polities") or [],
+                "systems": [system for system in owned_systems if _is_seed_system(system)],
+                "systemChunks": chunk_keys,
             }
             self.cache.set_json(
                 "galaxy:map",
@@ -246,7 +363,41 @@ class CatalogQueryService:
                 settings.redis_galaxy_ttl_seconds,
                 expected_generation=cache_generation,
             )
-            return _apply_galaxy_ownership(result, manual=manual)
+            return result
+
+    def get_galaxy_systems_chunk(self, stem: str) -> dict:
+        """Systems for one polity stem (or __unowned__)."""
+        key = stem.strip() if stem and stem.strip() else UNOWNED_SYSTEM_CHUNK
+        if key == "unowned":
+            key = UNOWNED_SYSTEM_CHUNK
+        with SessionLocal() as session:
+            cache_generation = self.cache.generation
+            manual = _manual_overrides(session)
+            cached = self.cache.get_json(f"galaxy:systems:{key}")
+            if cached is not None:
+                return cached
+
+            full = self.cache.get_json("galaxy") or self.cache.get_json("galaxy:map:full")
+            if full is not None:
+                owned = _apply_galaxy_ownership(full, manual=manual)
+                systems = owned.get("systems") or []
+                self._cache_system_chunks(systems, cache_generation=cache_generation)
+                cached = self.cache.get_json(f"galaxy:systems:{key}")
+                if cached is not None:
+                    return cached
+                return {"stem": key, "systems": []}
+
+            systems = [
+                _system_index_row(row)
+                for row in session.scalars(select(SystemRow).order_by(SystemRow.id))
+            ]
+            owned = _apply_galaxy_ownership({"systems": systems}, manual=manual)
+            owned_systems = owned.get("systems") or []
+            self._cache_system_chunks(owned_systems, cache_generation=cache_generation)
+            cached = self.cache.get_json(f"galaxy:systems:{key}")
+            if cached is not None:
+                return cached
+            return {"stem": key, "systems": []}
 
     def get_galaxy_edges(self) -> dict:
         with SessionLocal() as session:

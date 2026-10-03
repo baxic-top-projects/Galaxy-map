@@ -12,7 +12,9 @@
     loadGalaxyEdges,
     loadGalaxyMap,
     loadGalaxySearch,
+    loadGalaxySystemsChunk,
     loadSystemDetail,
+    mapPool,
     systemLabel,
   } from './lib/galaxy/loadGalaxy.js'
   import { updateSystemOwner } from './lib/galaxy/ownershipApi.js'
@@ -101,10 +103,33 @@
     throw lastError
   }
 
+  function mergeSystemChunk(chunkSystems) {
+    if (!galaxy || !chunkSystems?.length) return
+    const byId = new Map(galaxy.byId)
+    for (const system of chunkSystems) byId.set(system.id, system)
+    const systems = Array.from(byId.values())
+    galaxy = {
+      ...galaxy,
+      systems,
+      byId,
+    }
+  }
+
   async function hydrateGalaxySlices() {
-    const [edgesResult, searchResult] = await Promise.allSettled([
-      loadWithRetry(() => loadGalaxyEdges()),
-      loadWithRetry(() => loadGalaxySearch()),
+    const chunks = galaxy?.systemChunks || []
+    const edgesPromise = loadWithRetry(() => loadGalaxyEdges())
+    const searchPromise = loadWithRetry(() => loadGalaxySearch())
+    // Example: Miradin_Empire, Efol_Raih, Amber_Charter, … load in parallel pools.
+    const systemsPromise = mapPool(chunks, 8, async (stem) => {
+      const chunk = await loadWithRetry(() => loadGalaxySystemsChunk(stem))
+      mergeSystemChunk(chunk.systems)
+      return chunk
+    })
+
+    const [edgesResult, searchResult, systemsResult] = await Promise.allSettled([
+      edgesPromise,
+      searchPromise,
+      systemsPromise,
     ])
     if (!galaxy) return
     let next = galaxy
@@ -125,6 +150,13 @@
         ...next,
         search: searchResult.value,
       }
+    }
+    next = {
+      ...next,
+      meta: {
+        ...next.meta,
+        systemsHydrated: systemsResult.status === 'fulfilled',
+      },
     }
     galaxy = next
   }

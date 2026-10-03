@@ -4,7 +4,9 @@ import {
   loadGalaxyEdges,
   loadGalaxyMap,
   loadGalaxySearch,
+  loadGalaxySystemsChunk,
   loadSystemDetail,
+  mapPool,
   polityLabel,
   systemLabel,
 } from './loadGalaxy.js'
@@ -172,7 +174,8 @@ describe('loadGalaxy API client', () => {
           json: async () => ({
             meta: { systemCount: 2 },
             polities: [{ stem: 'A', nameEn: 'A', nameRu: 'А' }],
-            systems: [{ id: 'A:One', stem: 'A', token: 'One', x: 0, y: 0, z: 0 }],
+            systems: [{ id: 'A:One', stem: 'A', token: 'One', capital: true, x: 0, y: 0, z: 0 }],
+            systemChunks: ['A', '__unowned__'],
           }),
         }
       }),
@@ -180,9 +183,42 @@ describe('loadGalaxy API client', () => {
 
     const galaxy = await loadGalaxyMap('http://gateway.test')
     expect(galaxy.systems).toHaveLength(1)
+    expect(galaxy.systemChunks).toEqual(['A', '__unowned__'])
     expect(galaxy.edgesDisplay).toEqual([])
     expect(galaxy.search).toEqual([])
     expect(galaxy.byId.get('A:One').token).toBe('One')
+  })
+
+  test('loads polity system chunks and mapPool concurrency', async () => {
+    const seen = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        const href = String(url)
+        if (href.includes('/api/v1/galaxy/systems?')) {
+          const stem = new URL(href).searchParams.get('stem')
+          seen.push(stem)
+          return {
+            ok: true,
+            json: async () => ({
+              stem,
+              systems: [{ id: `${stem}:Star`, stem, token: 'Star', x: 0, y: 0, z: 0 }],
+            }),
+          }
+        }
+        throw new Error(`unexpected url ${href}`)
+      }),
+    )
+
+    const chunk = await loadGalaxySystemsChunk('Amber_Charter', 'http://gateway.test')
+    expect(chunk.stem).toBe('Amber_Charter')
+    expect(chunk.systems[0].id).toBe('Amber_Charter:Star')
+
+    const stems = ['A', 'B', 'C', 'D']
+    const results = await mapPool(stems, 2, async (stem) => loadGalaxySystemsChunk(stem, 'http://gateway.test'))
+    expect(results).toHaveLength(4)
+    expect(seen).toContain('Amber_Charter')
+    expect(seen).toContain('D')
   })
 
   test('loads edges and search slices', async () => {
