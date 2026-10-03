@@ -15,10 +15,16 @@ class GalaxyGraphService:
             data = json.loads(payload.read_text(encoding="utf-8"))
         else:
             data = payload
-        self.systems = {row["id"]: row for row in data.get("systems", []) if row.get("id")}
-        self.edges = data.get("edgesDisplay") or data.get("edgesCanon") or []
+        # Keep only the fields the storm simulation needs; the catalog payload carries
+        # names/coords/shards for every system and would otherwise stay resident.
+        self.systems: dict[str, dict[str, Any]] = {
+            row["id"]: {"id": row["id"], "kind": row.get("kind")}
+            for row in data.get("systems", [])
+            if row.get("id")
+        }
+        edges = data.get("edgesDisplay") or data.get("edgesCanon") or []
         self.adjacency: dict[str, set[str]] = defaultdict(set)
-        for edge in self.edges:
+        for edge in edges:
             a = edge.get("a")
             b = edge.get("b")
             if not a or not b or a == b:

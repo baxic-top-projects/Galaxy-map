@@ -46,6 +46,8 @@ async def lifespan(_app: FastAPI):
     global simulator, _tick_task
     payload = await asyncio.to_thread(fetch_galaxy_index, settings)
     graph = GalaxyGraphService(payload)
+    # Release the raw catalog payload before the simulator starts allocating.
+    del payload
     simulator = StormSimulationService(graph, settings)
     await storm_kafka.start()
     await asyncio.to_thread(simulator.step)
