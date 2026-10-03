@@ -241,6 +241,9 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   root.add(basePlate)
   root.add(plate)
 
+  const color = new THREE.Color()
+  const geometry = new THREE.BufferGeometry()
+
   function writeSystemAttributes(systems) {
     const positions = new Float32Array(systems.length * 3)
     const colors = new Float32Array(systems.length * 3)
