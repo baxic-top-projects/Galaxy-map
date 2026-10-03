@@ -67,8 +67,20 @@ export function createPanelDrag(getPos, setPos, storageKey, options = {}) {
     if (pointerId != null && event.pointerId !== pointerId) return
     const dx = event.clientX - startX
     const dy = event.clientY - startY
-    if (!moved && Math.hypot(dx, dy) < 4) return
-    moved = true
+    if (!moved) {
+      if (Math.hypot(dx, dy) < 8) return
+      // Prefer native scrolling when the gesture is mostly vertical inside an
+      // overflow card (system dossier on mobile).
+      if (
+        Math.abs(dy) > Math.abs(dx) * 1.15 &&
+        handleEl instanceof Element &&
+        handleEl.scrollHeight > handleEl.clientHeight + 1
+      ) {
+        cleanup()
+        return
+      }
+      moved = true
+    }
     if (event.cancelable) event.preventDefault()
     setPos({ x: originX + dx, y: originY + dy })
   }

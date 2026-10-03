@@ -57,9 +57,7 @@
   )
   const panelVisible = $derived(selected ? !detailDismissed : !overviewDismissed)
   const panelTransform = $derived(
-    narrowViewport
-      ? `translate3d(${panelPos.x}px, calc(-50% + ${panelPos.y}px), 0)`
-      : `translate3d(${panelPos.x}px, ${panelPos.y}px, 0)`,
+    `translate3d(${panelPos.x}px, ${panelPos.y}px, 0)`,
   )
 
   const panelDrag = createPanelDrag(
@@ -105,6 +103,28 @@
     sync()
     mq.addEventListener('change', sync)
     return () => mq.removeEventListener('change', sync)
+  })
+
+  let hudInset = $state(0)
+  $effect(() => {
+    if (!narrowViewport) {
+      hudInset = 0
+      return
+    }
+    const hud = document.querySelector('.hud-top')
+    if (!hud) return
+    const sync = () => {
+      const rect = hud.getBoundingClientRect()
+      hudInset = Math.ceil(rect.bottom + 10)
+    }
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(hud)
+    window.addEventListener('resize', sync)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', sync)
+    }
   })
 
   function handleClosePanel() {
@@ -235,43 +255,36 @@
   class="panel"
   class:dragging={panelDragging}
   class:pass-through={panelPassThrough}
-  style="transform: {panelTransform}"
+  style="transform: {panelTransform};{narrowViewport && hudInset ? ` top:${hudInset}px;` : ''}"
+  title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
+  onpointerdown={onPanelDragDown}
 >
-  <div
-    class="panel-drag"
-    role="presentation"
-    title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
-    onpointerdown={onPanelDragDown}
-  >
-    <div class="panel-head">
-      <h2>
-        {#if selected}
-          {systemLabel(selected, locale)}
-        {:else}
-          {locale === 'en' ? 'Galaxy overview' : 'Обзор галактики'}
-        {/if}
-      </h2>
-      <button
-        type="button"
-        class="close"
-        aria-label={locale === 'en' ? 'Close panel' : 'Закрыть панель'}
-        onclick={handleClosePanel}
-      >
-        ×
-      </button>
-    </div>
-    {#if selected}
-      <p class="meta drag-meta">
-        {#if selected.kind !== 'junction' && selected.token}
-          {selected.token}
-        {/if}
-        {#if selectedPolity}
-          {selected.kind !== 'junction' && selected.token ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
-        {/if}
-      </p>
-    {/if}
+  <div class="panel-head">
+    <h2>
+      {#if selected}
+        {systemLabel(selected, locale)}
+      {:else}
+        {locale === 'en' ? 'Galaxy overview' : 'Обзор галактики'}
+      {/if}
+    </h2>
+    <button
+      type="button"
+      class="close"
+      aria-label={locale === 'en' ? 'Close panel' : 'Закрыть панель'}
+      onclick={handleClosePanel}
+    >
+      ×
+    </button>
   </div>
   {#if selected}
+    <p class="meta">
+      {#if selected.kind !== 'junction' && selected.token}
+        {selected.token}
+      {/if}
+      {#if selectedPolity}
+        {selected.kind !== 'junction' && selected.token ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
+      {/if}
+    </p>
     {#if mode === 'galaxy'}
       <button type="button" class="primary enter-system" onclick={enterSelectedSystem}>
         {locale === 'en' ? 'Enter system' : 'Войти в систему'}
@@ -563,11 +576,8 @@
     border: 1px solid rgba(170, 200, 255, 0.18);
     backdrop-filter: blur(10px);
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-  }
-
-  .panel-drag {
     cursor: grab;
-    touch-action: none;
+    touch-action: pan-y;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -585,18 +595,10 @@
     background: linear-gradient(180deg, rgba(10, 16, 32, 0.98), rgba(10, 16, 32, 0.88));
   }
 
-  .drag-meta {
-    margin-top: 0;
-    padding-bottom: 0.25rem;
-  }
-
-  .panel.dragging,
-  .panel.dragging .panel-drag {
-    cursor: grabbing;
-  }
-
   .panel.dragging {
+    cursor: grabbing;
     z-index: 40;
+    touch-action: none;
   }
 
   .panel.pass-through,
@@ -723,13 +725,13 @@
     }
 
     .panel {
-      /* Compact card in the middle: clear of HUD/profile and realm chips. */
-      top: 50%;
-      bottom: auto;
+      /* Top is set from measured HUD height so the card stays below the menu. */
+      top: calc(10.5rem + env(safe-area-inset-top, 0px));
+      bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
       right: 0.9rem;
       left: 0.9rem;
       width: auto;
-      max-height: min(46vh, calc(100dvh - 11rem - env(safe-area-inset-bottom, 0px)));
+      max-height: none;
       overflow: auto;
       padding-top: 0.85rem;
       z-index: 8;
