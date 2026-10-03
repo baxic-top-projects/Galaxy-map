@@ -145,7 +145,7 @@
 
   function openOverview() {
     if (mode === 'system' && selected) {
-      detailDismissed = false
+      detailDismissed = !detailDismissed
       return
     }
     overviewDismissed = false
