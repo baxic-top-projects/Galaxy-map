@@ -21,6 +21,7 @@
     onReset = undefined,
     onBackToGalaxy = undefined,
     onCloseSelected = undefined,
+    onEnterSystem = undefined,
     onPoliticalMap = undefined,
     showPoliticalMap = true,
     user = null,
@@ -35,6 +36,7 @@
   let overviewDismissed = $state(false)
   let panelPos = $state(loadPanelPos(PANEL_POS_KEY))
   let panelDragging = $state(false)
+  let panelPassThrough = $state(false)
   let results = $derived(
     filterSearch(galaxy?.search || [], query, {
       locale,
@@ -63,6 +65,21 @@
     if (selected) overviewDismissed = false
   })
 
+  // After a fresh selection the centered mobile panel sits over the star and
+  // steals the second tap of a double-tap. Let taps pass through briefly.
+  $effect(() => {
+    const id = selected?.id || null
+    if (!id || mode !== 'galaxy') {
+      panelPassThrough = false
+      return
+    }
+    panelPassThrough = true
+    const timer = setTimeout(() => {
+      panelPassThrough = false
+    }, 500)
+    return () => clearTimeout(timer)
+  })
+
   function handleClosePanel() {
     // Closing a system/polity card must not reopen the galaxy overview.
     overviewDismissed = true
@@ -74,6 +91,11 @@
   function openOverview() {
     overviewDismissed = false
     if (selected) onCloseSelected?.()
+  }
+
+  function enterSelectedSystem() {
+    if (!selected || mode !== 'galaxy') return
+    onEnterSystem?.(selected)
   }
 
   function onPanelHeadPointerDown(event) {
@@ -173,6 +195,7 @@
 <aside
   class="panel"
   class:dragging={panelDragging}
+  class:pass-through={panelPassThrough}
   style="--drag-x: {panelPos.x}px; --drag-y: {panelPos.y}px"
 >
   <div
@@ -209,6 +232,11 @@
         {selected.kind !== 'junction' && selected.token ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
       {/if}
     </p>
+    {#if mode === 'galaxy'}
+      <button type="button" class="primary enter-system" onclick={enterSelectedSystem}>
+        {locale === 'en' ? 'Enter system' : 'Войти в систему'}
+      </button>
+    {/if}
     {#if canEditOwner}
       <label class="owner">
         <span>{locale === 'en' ? 'Owner polity' : 'Держава-владелец'}</span>
@@ -342,8 +370,8 @@
     {/if}
     <p class="hint">
       {locale === 'en'
-        ? 'Double-click a star, black hole, or junction to enter its system.'
-        : 'Двойной клик по звезде, чёрной дыре или стыку открывает систему.'}
+        ? 'Double-tap a star, black hole, or junction to enter its system — or use Enter system.'
+        : 'Двойной тап по звезде, чёрной дыре или стыку открывает систему — или нажмите «Войти в систему».'}
     </p>
   {:else}
     <p class="meta">
@@ -521,6 +549,16 @@
 
   .panel.dragging {
     z-index: 40;
+  }
+
+  .panel.pass-through,
+  .panel.pass-through * {
+    pointer-events: none !important;
+  }
+
+  .enter-system {
+    width: 100%;
+    margin: 0.55rem 0 0.15rem;
   }
 
   .panel-head h2 {

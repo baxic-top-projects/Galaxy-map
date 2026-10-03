@@ -761,7 +761,8 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     if (event.button !== 0 || !pointerDown) return
     const dx = event.clientX - pointerDown.x
     const dy = event.clientY - pointerDown.y
-    const dragged = Math.hypot(dx, dy) > 6
+    const dragThreshold = event.pointerType === 'touch' ? 14 : 6
+    const dragged = Math.hypot(dx, dy) > dragThreshold
     pointerDown = null
     if (dragged) return
 
@@ -769,7 +770,8 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     if (!system) return
 
     const now = performance.now()
-    const isDouble = lastClickId === system.id && now - lastClickAt < 350
+    const doubleWindow = event.pointerType === 'touch' ? 520 : 350
+    const isDouble = lastClickId === system.id && now - lastClickAt < doubleWindow
     lastClickAt = now
     lastClickId = system.id
     focusSystem(system, { enterSystem: isDouble })
