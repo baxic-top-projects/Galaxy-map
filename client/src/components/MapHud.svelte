@@ -587,6 +587,8 @@
     border: 1px solid rgba(170, 200, 255, 0.18);
     backdrop-filter: blur(10px);
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    /* Above HUD controls so card title/drag wins over overlapping menu buttons. */
+    z-index: 40;
   }
 
   .panel-head {
@@ -735,7 +737,7 @@
 
   @media (max-width: 820px) {
     .hud-top {
-      z-index: 30;
+      z-index: 20;
     }
 
     .panel {
@@ -743,7 +745,7 @@
       left: 0.9rem;
       width: auto;
       padding-top: 0.85rem;
-      z-index: 8;
+      z-index: 40;
     }
 
     /* Overview stays a compact centered card. */
