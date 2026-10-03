@@ -57,7 +57,9 @@
   )
   const panelVisible = $derived(selected ? !detailDismissed : !overviewDismissed)
   const panelTransform = $derived(
-    `translate3d(${panelPos.x}px, ${panelPos.y}px, 0)`,
+    narrowViewport && !selected
+      ? `translate3d(${panelPos.x}px, calc(-50% + ${panelPos.y}px), 0)`
+      : `translate3d(${panelPos.x}px, ${panelPos.y}px, 0)`,
   )
 
   const panelDrag = createPanelDrag(
@@ -107,7 +109,8 @@
 
   let hudInset = $state(0)
   $effect(() => {
-    if (!narrowViewport) {
+    // Keep the system dossier below the top HUD so the title stays tappable.
+    if (!narrowViewport || !selected) {
       hudInset = 0
       return
     }
@@ -155,7 +158,7 @@
     onEnterSystem?.(selected)
   }
 
-  function onPanelDragDown(event) {
+  function onTitleDragDown(event) {
     panelDrag.onPointerDown(event)
   }
 </script>
@@ -254,12 +257,16 @@
 <aside
   class="panel"
   class:dragging={panelDragging}
+  class:has-selection={!!selected}
   class:pass-through={panelPassThrough}
-  style="transform: {panelTransform};{narrowViewport && hudInset ? ` top:${hudInset}px;` : ''}"
-  title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
-  onpointerdown={onPanelDragDown}
+  style="transform: {panelTransform};{narrowViewport && selected && hudInset ? ` top:${hudInset}px;` : ''}"
 >
-  <div class="panel-head">
+  <div
+    class="panel-head"
+    role="presentation"
+    title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
+    onpointerdown={onTitleDragDown}
+  >
     <h2>
       {#if selected}
         {systemLabel(selected, locale)}
@@ -576,10 +583,6 @@
     border: 1px solid rgba(170, 200, 255, 0.18);
     backdrop-filter: blur(10px);
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-    cursor: grab;
-    touch-action: pan-y;
-    user-select: none;
-    -webkit-user-select: none;
   }
 
   .panel-head {
@@ -593,12 +596,19 @@
     margin: -0.15rem -0.15rem 0.35rem;
     padding: 0.35rem 0.15rem 0.45rem;
     background: linear-gradient(180deg, rgba(10, 16, 32, 0.98), rgba(10, 16, 32, 0.88));
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .panel.dragging,
+  .panel.dragging .panel-head {
+    cursor: grabbing;
   }
 
   .panel.dragging {
-    cursor: grabbing;
     z-index: 40;
-    touch-action: none;
   }
 
   .panel.pass-through,
@@ -725,16 +735,27 @@
     }
 
     .panel {
-      /* Top is set from measured HUD height so the card stays below the menu. */
-      top: calc(10.5rem + env(safe-area-inset-top, 0px));
-      bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
       right: 0.9rem;
       left: 0.9rem;
       width: auto;
-      max-height: none;
-      overflow: auto;
       padding-top: 0.85rem;
       z-index: 8;
+    }
+
+    /* Overview stays a compact centered card. */
+    .panel:not(.has-selection) {
+      top: 50%;
+      bottom: auto;
+      max-height: min(46vh, calc(100dvh - 11rem - env(safe-area-inset-bottom, 0px)));
+      overflow: auto;
+    }
+
+    /* System dossier sits below the measured top HUD. */
+    .panel.has-selection {
+      top: calc(10.5rem + env(safe-area-inset-top, 0px));
+      bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+      max-height: none;
+      overflow: auto;
     }
 
     .panel-head {
