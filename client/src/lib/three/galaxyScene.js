@@ -1021,20 +1021,31 @@ async function createPoliticalPlate(galaxy, initialLocale = 'ru') {
   const group = new THREE.Group()
   const territories = await createProceduralPoliticalPlate(galaxy)
   territories.renderOrder = -90
+  const presentStems = new Set(
+    (galaxy.systems || []).map((system) => system.stem).filter(Boolean),
+  )
+  const labelPolities = (galaxy.polities || []).filter((polity) =>
+    presentStems.has(polity.stem),
+  )
+  // Full-map seed anchors place every polity name across the disk. On a zoomed
+  // polity filter those distant glyphs become huge blurred streaks — only use
+  // seeds for the complete catalog view.
+  const seedAnchors = galaxy?.meta?.polityFiltered ? {} : polityLabelAnchors
   const anchors = resolvePolityLabelAnchors(
     territories.userData.labelAnchors || {},
     centroidsFromSystems(galaxy, mapLim),
-    polityLabelAnchors,
-    galaxy.polities || [],
+    seedAnchors,
+    labelPolities,
   )
   const labels = createPolityLabelMesh(
-    galaxy,
+    { ...galaxy, polities: labelPolities },
     initialLocale,
     anchors,
     mapLim,
     territories.userData.territoryAreas || {},
     territories.userData.labelMetrics || {},
     territories.userData.rasterSize || 1,
+    Boolean(galaxy?.meta?.polityFiltered),
   )
   group.add(territories, labels)
   group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
@@ -1073,6 +1084,7 @@ function createPolityLabelMesh(
   territoryAreas = {},
   labelMetrics = {},
   territoryRasterSize = 1,
+  polityFiltered = false,
 ) {
   const size = 2048
   const canvas = document.createElement('canvas')
@@ -1099,10 +1111,22 @@ function createPolityLabelMesh(
       )
       if (!variants.length) continue
       const suzerain = polity.kind === 'suzerain'
-      const preferredFontSize = polityLabelFontSize(
-        territoryAreas[polity.stem] || 0,
-        largestTerritoryArea,
-      )
+      // Filtered views zoom in; bump the glyph so one polity name stays sharp
+      // instead of a few texture pixels smeared across the viewport.
+      const preferredFontSize = polityFiltered
+        ? Math.max(
+            28,
+            polityLabelFontSize(
+              territoryAreas[polity.stem] || largestTerritoryArea || 1,
+              Math.max(largestTerritoryArea, territoryAreas[polity.stem] || 1),
+              28,
+              48,
+            ),
+          )
+        : polityLabelFontSize(
+            territoryAreas[polity.stem] || 0,
+            largestTerritoryArea,
+          )
       const weight = suzerain ? 700 : 600
       const fontFamily = '"Arial Narrow", "Roboto Condensed", "Segoe UI", Arial, sans-serif'
       context.font = `${weight} 100px ${fontFamily}`

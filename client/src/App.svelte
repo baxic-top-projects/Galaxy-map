@@ -187,8 +187,8 @@
       byId: new Map(systems.map((system) => [system.id, system])),
       edgesDisplay,
       edgesCanon,
-      // Keep meta.systemCount as the full catalog size so the scene can detect
-      // polity subsets. HUD counts use the filtered arrays directly.
+      // Keep meta.systemCount / polities as the full catalog so the HUD filter
+      // list and subset detection stay intact. Scene labels use present stems.
       meta: {
         ...galaxy.meta,
         edgeCountDisplay: edgesDisplay.length,
