@@ -26,6 +26,29 @@ function mapLimitFor(galaxy) {
   return Number.isFinite(value) && value >= DEFAULT_MAP_LIM ? value : DEFAULT_MAP_LIM
 }
 
+function systemsFrame(systems) {
+  if (!systems?.length) return null
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const system of systems) {
+    minX = Math.min(minX, system.x)
+    minY = Math.min(minY, system.y)
+    maxX = Math.max(maxX, system.x)
+    maxY = Math.max(maxY, system.y)
+  }
+  const cx = ((minX + maxX) / 2) * GALAXY_SCALE
+  const cy = ((minY + maxY) / 2) * GALAXY_SCALE
+  const span = Math.max(maxX - minX, maxY - minY, 0.12) * GALAXY_SCALE
+  const dist = THREE.MathUtils.clamp(span * 2.6, 16, 120)
+  return {
+    target: new THREE.Vector3(cx, cy, 0),
+    position: new THREE.Vector3(cx, cy - dist * 0.22, dist),
+    span,
+  }
+}
+
 function loadTexture(url, { crisp = false } = {}) {
   return new Promise((resolve, reject) => {
     textureLoader.load(
@@ -122,6 +145,20 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   }
   const overviewPosition = new THREE.Vector3(0, -12 * overviewScale, 66 * overviewScale)
   const overviewTarget = new THREE.Vector3(0, 0, 0)
+  const fullSystemCount = Number(galaxy?.meta?.systemCount) || galaxy.systems.length
+  const isPolitySubset =
+    galaxy.systems.length > 0 && galaxy.systems.length < fullSystemCount * 0.9
+  if (isPolitySubset) {
+    const frame = systemsFrame(galaxy.systems)
+    if (frame) {
+      overviewTarget.copy(frame.target)
+      overviewPosition.copy(frame.position)
+      camera.position.copy(frame.position)
+      controls.target.copy(frame.target)
+      controls.minDistance = Math.min(controls.minDistance, Math.max(3, frame.span * 0.35))
+      controls.maxDistance = Math.max(controls.maxDistance, frame.span * 6)
+    }
+  }
 
   const root = new THREE.Group()
   scene.add(root)
@@ -273,7 +310,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const starLayers = [{ points, geometry, material }]
 
   const edgePositions = []
-  for (const edge of galaxy.edgesDisplay) {
+  for (const edge of galaxy.edgesDisplay || []) {
     const a = galaxy.byId.get(edge.a)
     const b = galaxy.byId.get(edge.b)
     if (!a || !b) continue
@@ -287,7 +324,11 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     )
   }
   const edgeGeom = new THREE.BufferGeometry()
-  edgeGeom.setAttribute('position', new THREE.Float32BufferAttribute(edgePositions, 3))
+  if (edgePositions.length) {
+    edgeGeom.setAttribute('position', new THREE.Float32BufferAttribute(edgePositions, 3))
+  } else {
+    edgeGeom.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(0), 3))
+  }
   const edgeMat = new THREE.LineBasicMaterial({
     color: 0x8aa4bc,
     transparent: true,
@@ -297,7 +338,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   })
   const lanes = new THREE.LineSegments(edgeGeom, edgeMat)
   lanes.renderOrder = 1
-  root.add(lanes)
+  if (edgePositions.length) root.add(lanes)
 
   const stormGroup = new THREE.Group()
   stormGroup.renderOrder = 3
