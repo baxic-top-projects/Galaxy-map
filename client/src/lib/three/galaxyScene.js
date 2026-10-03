@@ -18,6 +18,7 @@ import {
 } from '../galaxy/mapTiles.js'
 import {
   getCachedPoliticalPlate,
+  PLATE_BITMAP_OPTIONS,
   setCachedPoliticalPlate,
 } from '../galaxy/tileCache.js'
 
@@ -182,12 +183,9 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   // Base plate + systems first so the map is interactive before the heavy
   // political raster finishes (and before edges/search finish hydrating).
   let disposed = false
-  const basePlate = await createBasePlate(mapLim)
-  root.add(basePlate)
   let politicalMapVisible = true
   let plate = new THREE.Group()
   plate.visible = politicalMapVisible
-  root.add(plate)
   let politicalBuildVersion = 0
 
   function disposePoliticalPlate(target) {
@@ -203,26 +201,45 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   }
 
   let politicalPlateBuilt = false
-  const bootstrapPoliticalPlate = async ({ allowCache = true } = {}) => {
-    const buildVersion = ++politicalBuildVersion
-    const locale = callbacks.locale || 'ru'
-    const nextPlate = await createPoliticalPlate(galaxy, locale, { allowCache })
+  const attachPoliticalPlate = (nextPlate, buildVersion) => {
     if (disposed || buildVersion !== politicalBuildVersion) {
       disposePoliticalPlate(nextPlate)
-      return
+      return false
     }
+    if (plate === nextPlate) return true
     root.remove(plate)
     disposePoliticalPlate(plate)
     plate = nextPlate
     plate.visible = politicalMapVisible
     root.add(plate)
     politicalPlateBuilt = true
+    return true
   }
-  const deferPoliticalPlate = Boolean(galaxy?.tileGrid) && !galaxy?.meta?.systemsHydrated
+  const bootstrapPoliticalPlate = async ({ allowCache = true } = {}) => {
+    const buildVersion = ++politicalBuildVersion
+    const locale = callbacks.locale || 'ru'
+    const nextPlate = await createPoliticalPlate(galaxy, locale, {
+      allowCache,
+      // Paint borders as soon as the raster is ready; labels follow.
+      onTerritoriesReady: (partial) => {
+        attachPoliticalPlate(partial, buildVersion)
+      },
+    })
+    attachPoliticalPlate(nextPlate, buildVersion)
+  }
+  // Cached plate can paint before systems finish hydrating — no need to wait.
+  const hasCachedPlate =
+    Boolean(galaxy?._cachedPoliticalPlate?.blob) ||
+    Boolean(galaxy?.meta?.hasPoliticalPlate)
+  const deferPoliticalPlate =
+    Boolean(galaxy?.tileGrid) &&
+    !galaxy?.meta?.systemsHydrated &&
+    !hasCachedPlate
+  // Kick off plate decode/build before awaiting the base plate texture.
   if (!deferPoliticalPlate) void bootstrapPoliticalPlate({ allowCache: true })
-
-  const color = new THREE.Color()
-  const geometry = new THREE.BufferGeometry()
+  const basePlate = await createBasePlate(mapLim)
+  root.add(basePlate)
+  root.add(plate)
 
   function writeSystemAttributes(systems) {
     const positions = new Float32Array(systems.length * 3)
@@ -1137,31 +1154,39 @@ function canvasToBlob(canvas) {
   })
 }
 
-async function plateMeshFromCachedBlob(cached, mapLim) {
-  // Decode into a 2D canvas and use CanvasTexture — same path as the live
-  // procedural plate. THREE.Texture.flipY is ignored for ImageBitmap, so
-  // uploading the bitmap directly drew territories upside-down / misaligned.
-  const canvas = document.createElement('canvas')
-  if (typeof createImageBitmap === 'function') {
-    const bitmap = await createImageBitmap(cached.blob, {
-      premultiplyAlpha: 'none',
-      colorSpaceConversion: 'none',
-    })
-    canvas.width = bitmap.width
-    canvas.height = bitmap.height
-    canvas.getContext('2d').drawImage(bitmap, 0, 0)
-    bitmap.close?.()
-  } else {
-    const image = await new Promise((resolve, reject) => {
-      const img = new Image()
-      img.onload = () => resolve(img)
-      img.onerror = reject
-      img.src = URL.createObjectURL(cached.blob)
-    })
-    canvas.width = image.width
-    canvas.height = image.height
-    canvas.getContext('2d').drawImage(image, 0, 0)
+async function plateMeshFromCachedBlob(cached, mapLim, predecodedBitmap = null) {
+  // ImageBitmap must be created with imageOrientation:'flipY' — Texture.flipY
+  // is ignored for bitmaps. Prefer a warm-start predecoded bitmap when present.
+  let bitmap = predecodedBitmap
+  if (!bitmap && typeof createImageBitmap === 'function') {
+    bitmap = await createImageBitmap(cached.blob, PLATE_BITMAP_OPTIONS)
   }
+  if (bitmap) {
+    const texture = new THREE.Texture(bitmap)
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.needsUpdate = true
+    texture.generateMipmaps = false
+    texture.minFilter = THREE.LinearFilter
+    texture.magFilter = THREE.LinearFilter
+    const mesh = makePlateMeshFromTexture(texture, mapLim)
+    mesh.userData.labelAnchors = cached.labelAnchors || {}
+    mesh.userData.territoryAreas = cached.territoryAreas || {}
+    mesh.userData.labelMetrics = cached.labelMetrics || {}
+    mesh.userData.rasterSize =
+      cached.rasterSize || bitmap.width || 1
+    mesh.userData.fromCache = true
+    return mesh
+  }
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = URL.createObjectURL(cached.blob)
+  })
+  const canvas = document.createElement('canvas')
+  canvas.width = image.width
+  canvas.height = image.height
+  canvas.getContext('2d').drawImage(image, 0, 0)
   const mesh = makePlateMeshFromCanvas(canvas, mapLim)
   mesh.userData.labelAnchors = cached.labelAnchors || {}
   mesh.userData.territoryAreas = cached.territoryAreas || {}
@@ -1175,7 +1200,7 @@ async function plateMeshFromCachedBlob(cached, mapLim) {
 async function createPoliticalPlate(
   galaxy,
   initialLocale = 'ru',
-  { allowCache = true } = {},
+  { allowCache = true, onTerritoriesReady = null } = {},
 ) {
   const mapLim = mapLimitFor(galaxy)
   const group = new THREE.Group()
@@ -1185,10 +1210,20 @@ async function createPoliticalPlate(
 
   let territories = null
   if (canUsePlateCache) {
-    const cached = await getCachedPoliticalPlate(revision)
+    const cached =
+      galaxy?._cachedPoliticalPlate?.blob
+        ? galaxy._cachedPoliticalPlate
+        : await getCachedPoliticalPlate(revision)
     if (cached?.blob) {
       try {
-        territories = await plateMeshFromCachedBlob(cached, mapLim)
+        const predecoded = galaxy?._plateBitmapPromise
+          ? await galaxy._plateBitmapPromise
+          : null
+        if (galaxy) {
+          galaxy._plateBitmapPromise = null
+          galaxy._cachedPoliticalPlate = cached
+        }
+        territories = await plateMeshFromCachedBlob(cached, mapLim, predecoded)
       } catch {
         territories = null
       }
@@ -1213,6 +1248,12 @@ async function createPoliticalPlate(
     }
   }
   territories.renderOrder = -90
+  group.add(territories)
+  group.userData.fromCache = Boolean(territories.userData.fromCache)
+  // Let the scene show borders before the heavy label atlas is built.
+  onTerritoriesReady?.(group)
+  await yieldToBrowser()
+
   const presentStems = new Set(
     (galaxy.systems || []).map((system) => system.stem).filter(Boolean),
   )
@@ -1239,10 +1280,9 @@ async function createPoliticalPlate(
     territories.userData.rasterSize || 1,
     Boolean(galaxy?.meta?.polityFiltered),
   )
-  group.add(territories, labels)
+  group.add(labels)
   group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
   group.userData.labelAnchors = anchors
-  group.userData.fromCache = Boolean(territories.userData.fromCache)
   return group
 }
 

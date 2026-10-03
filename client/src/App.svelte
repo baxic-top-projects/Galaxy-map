@@ -206,27 +206,33 @@
 
   onMount(async () => {
     window.addEventListener('popstate', handleRouteChange)
-    try {
-      if (authPage === 'callback') {
-        const code = new URLSearchParams(window.location.search).get('code')
-        if (code) user = await exchangeGoogleCode(code)
-        navigatePath('/')
-      } else {
-        user = await bootstrapSession()
-      }
-    } catch {
-      user = null
-    } finally {
-      authLoading = false
-    }
+    // Warm cache + scene module decode in parallel with auth — don't block
+    // the political plate behind session bootstrap.
+    void import('./lib/three/galaxyScene.js')
     fetchAssetManifest()
       .then((manifest) => applyAssetManifest(manifest))
       .catch(() => {
         // Keep local /models fallbacks when asset-service is unavailable.
       })
+    const authPromise = (async () => {
+      try {
+        if (authPage === 'callback') {
+          const code = new URLSearchParams(window.location.search).get('code')
+          if (code) user = await exchangeGoogleCode(code)
+          navigatePath('/')
+        } else {
+          user = await bootstrapSession()
+        }
+      } catch {
+        user = null
+      } finally {
+        authLoading = false
+      }
+    })()
+    const warmPromise = loadGalaxyFromCache()
+
     try {
-      // Google Maps-style warm start: paint from local tile cache immediately.
-      const warm = await loadGalaxyFromCache()
+      const warm = await warmPromise
       if (warm?.galaxy) {
         cacheRevision = warm.revision
         for (const key of warm.tileKeys || []) loadedTiles.add(key)
@@ -253,9 +259,12 @@
           edgesCanon: galaxy.edgesCanon,
           edgesDisplay: galaxy.edgesDisplay,
           search: galaxy.search,
+          _cachedPoliticalPlate: galaxy._cachedPoliticalPlate,
+          _plateBitmapPromise: galaxy._plateBitmapPromise,
           meta: {
             ...nextMap.meta,
             systemsHydrated: galaxy.meta?.systemsHydrated,
+            hasPoliticalPlate: galaxy.meta?.hasPoliticalPlate,
           },
         }
       } else {
@@ -267,6 +276,8 @@
       if (!galaxy) error = err instanceof Error ? err.message : String(err)
       loading = false
     }
+
+    await authPromise
 
     stormSocket = connectStormSocket({
       onSnapshot(snapshot) {

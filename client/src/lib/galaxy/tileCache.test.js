@@ -122,5 +122,6 @@ describe('tileCache', () => {
     expect(cached.labelAnchors.A.x).toBe(1)
     const warm = await loadGalaxyWarmCache()
     expect(warm.hasPoliticalPlate).toBe(true)
+    expect(warm.politicalPlate?.blob).toBeTruthy()
   })
 })

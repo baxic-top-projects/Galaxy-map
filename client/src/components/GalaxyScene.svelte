@@ -22,21 +22,29 @@
   let appliedOwnershipRevision = $state(0)
   let appliedSystemCount = $state(untrack(() => galaxy?.systems?.length ?? -1))
   let plateHydrated = $state(
-    untrack(() => Boolean(galaxy?.meta?.systemsHydrated) || !galaxy?.tileGrid),
+    untrack(
+      () =>
+        Boolean(galaxy?.meta?.systemsHydrated) ||
+        Boolean(galaxy?.meta?.hasPoliticalPlate) ||
+        !galaxy?.tileGrid,
+    ),
   )
 
   onMount(() => {
     let cancelled = false
+    // Capture warm-start plate prefetch before network merge replaces the prop.
+    const bootGalaxy = untrack(() => galaxy)
+    const bootLocale = untrack(() => locale)
     ;(async () => {
       const { createGalaxyScene } = await import('../lib/three/galaxyScene.js')
-      if (cancelled || !galaxy || !canvas) return
-      api = await createGalaxyScene(canvas, galaxy, {
+      if (cancelled || !bootGalaxy || !canvas) return
+      api = await createGalaxyScene(canvas, bootGalaxy, {
         onSelect,
         onHover,
         onEnterSystem,
         onLabels,
         onViewportTiles,
-        locale,
+        locale: bootLocale,
       })
       if (cancelled) {
         api?.dispose()
@@ -44,8 +52,11 @@
         return
       }
       appliedOwnershipRevision = ownershipRevision
-      appliedSystemCount = galaxy.systems?.length || 0
-      plateHydrated = Boolean(galaxy?.meta?.systemsHydrated) || !galaxy?.tileGrid
+      appliedSystemCount = bootGalaxy.systems?.length || 0
+      plateHydrated =
+        Boolean(bootGalaxy?.meta?.systemsHydrated) ||
+        Boolean(bootGalaxy?.meta?.hasPoliticalPlate) ||
+        !bootGalaxy?.tileGrid
       if (stormSnapshot) api.setStorms(stormSnapshot)
       api.setPoliticalMap(showPoliticalMap)
     })()

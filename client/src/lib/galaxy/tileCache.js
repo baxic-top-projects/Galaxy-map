@@ -7,6 +7,13 @@ const DB_NAME = 'galaxy-map-cache'
 const DB_VERSION = 1
 const STORE = 'entries'
 
+/** createImageBitmap options matching THREE.Texture defaults (flipY + straight alpha). */
+export const PLATE_BITMAP_OPTIONS = {
+  imageOrientation: 'flipY',
+  premultiplyAlpha: 'none',
+  colorSpaceConversion: 'none',
+}
+
 /** @type {IDBDatabase | null} */
 let dbPromise = null
 /** In-memory fallback when IndexedDB is unavailable (SSR/tests). */
@@ -308,7 +315,7 @@ export async function loadGalaxyWarmCache() {
   }
   const gridSize = Number(entry.map.tileGrid?.size) || 0
   const expectedTiles = gridSize > 0 ? gridSize * gridSize : 0
-  const hasPlate = Boolean(await getCachedPoliticalPlate(revision))
+  const politicalPlate = await getCachedPoliticalPlate(revision)
   return {
     revision,
     tileKeys,
@@ -320,7 +327,8 @@ export async function loadGalaxyWarmCache() {
     systemsHydrated:
       Boolean(snapshot?.length) ||
       (expectedTiles > 0 && tileKeys.length >= expectedTiles),
-    hasPoliticalPlate: hasPlate,
+    hasPoliticalPlate: Boolean(politicalPlate?.blob),
+    politicalPlate,
   }
 }
 

@@ -10,6 +10,7 @@ import {
   clearTileCache,
   getCachedTile,
   loadGalaxyWarmCache,
+  PLATE_BITMAP_OPTIONS,
   setCachedEdges,
   setCachedMap,
   setCachedSearch,
@@ -151,13 +152,25 @@ export async function loadGalaxyFromCache() {
     meta: {
       ...(warm.map.meta || {}),
       systemsHydrated: warm.systemsHydrated,
+      hasPoliticalPlate: warm.hasPoliticalPlate,
     },
   })
+  // Prefetch the plate blob + decode while auth/scene boot so borders paint ASAP.
+  if (warm.politicalPlate?.blob) {
+    galaxy._cachedPoliticalPlate = warm.politicalPlate
+    if (typeof createImageBitmap === 'function') {
+      galaxy._plateBitmapPromise = createImageBitmap(
+        warm.politicalPlate.blob,
+        PLATE_BITMAP_OPTIONS,
+      ).catch(() => null)
+    }
+  }
   return {
     galaxy,
     revision: warm.revision,
     tileKeys: warm.tileKeys,
     systemsHydrated: warm.systemsHydrated,
+    hasPoliticalPlate: warm.hasPoliticalPlate,
   }
 }
 
