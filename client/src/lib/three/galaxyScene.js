@@ -147,7 +147,8 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const overviewTarget = new THREE.Vector3(0, 0, 0)
   const fullSystemCount = Number(galaxy?.meta?.systemCount) || galaxy.systems.length
   const isPolitySubset =
-    galaxy.systems.length > 0 && galaxy.systems.length < fullSystemCount * 0.9
+    Boolean(galaxy?.meta?.polityFiltered) ||
+    (galaxy.systems.length > 0 && galaxy.systems.length < fullSystemCount * 0.9)
   if (isPolitySubset) {
     const frame = systemsFrame(galaxy.systems)
     if (frame) {
@@ -1413,10 +1414,14 @@ async function createProceduralPoliticalPlate(galaxy) {
   for (const system of neutralOwned) {
     if (Math.hypot(system.x, system.y) <= centralInfluenceR) centralSeed.push(system)
   }
-  // Sparse polity filters (1–few stars) must not run full-disk nearest-neighbor
-  // fill: even one in-disk seed forces every central pixel to expand the search
-  // and freezes the tab. Bounded claim paint is enough for those views.
-  const sparsePolitical = politicalOwned.length > 0 && politicalOwned.length < 80
+  // Polity filters (and any other catalog subset) must not run full-disk
+  // nearest-neighbor fill: sparse in-disk seeds make every central pixel expand
+  // the search and freeze the tab. Bounded claim paint is enough for those views.
+  const catalogSystemCount = Number(galaxy?.meta?.systemCount) || owned.length
+  const sparsePolitical =
+    Boolean(galaxy?.meta?.polityFiltered) ||
+    (owned.length > 0 && owned.length < catalogSystemCount * 0.9) ||
+    (!wellSystem && politicalOwned.length > 0 && politicalOwned.length < 500)
   const centralSpatial =
     !sparsePolitical && centralSeed.length
       ? buildSpatialIndex([

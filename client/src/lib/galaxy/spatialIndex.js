@@ -40,6 +40,19 @@ export function buildSpatialIndex(systems) {
     },
     /** Nearest system with expanding search — for continuous territory fill. */
     queryNearestAny(x, y) {
+      // Small indexes are cheaper to scan linearly than expanding empty rings.
+      if (systems.length > 0 && systems.length <= 128) {
+        let best = null
+        let bestDist = Infinity
+        for (const system of systems) {
+          const dist = Math.hypot(system.x - x, system.y - y)
+          if (dist < bestDist) {
+            bestDist = dist
+            best = system
+          }
+        }
+        return best
+      }
       const maxR = 48
       for (let radius = 1; radius <= maxR; radius += 1) {
         let best = null
