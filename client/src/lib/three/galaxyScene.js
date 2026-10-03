@@ -16,6 +16,10 @@ import {
   tileKey,
   tilesForBounds,
 } from '../galaxy/mapTiles.js'
+import {
+  getCachedPoliticalPlate,
+  setCachedPoliticalPlate,
+} from '../galaxy/tileCache.js'
 
 const GALAXY_SCALE = 42
 const DEFAULT_MAP_LIM = 1.06
@@ -198,10 +202,11 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     })
   }
 
-  const bootstrapPoliticalPlate = async () => {
+  let politicalPlateBuilt = false
+  const bootstrapPoliticalPlate = async ({ allowCache = true } = {}) => {
     const buildVersion = ++politicalBuildVersion
     const locale = callbacks.locale || 'ru'
-    const nextPlate = await createPoliticalPlate(galaxy, locale)
+    const nextPlate = await createPoliticalPlate(galaxy, locale, { allowCache })
     if (disposed || buildVersion !== politicalBuildVersion) {
       disposePoliticalPlate(nextPlate)
       return
@@ -211,9 +216,10 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     plate = nextPlate
     plate.visible = politicalMapVisible
     root.add(plate)
+    politicalPlateBuilt = true
   }
   const deferPoliticalPlate = Boolean(galaxy?.tileGrid) && !galaxy?.meta?.systemsHydrated
-  if (!deferPoliticalPlate) void bootstrapPoliticalPlate()
+  if (!deferPoliticalPlate) void bootstrapPoliticalPlate({ allowCache: true })
 
   const color = new THREE.Color()
   const geometry = new THREE.BufferGeometry()
@@ -421,8 +427,13 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const pointer = new THREE.Vector2()
   let spatial = buildSpatialIndex(galaxy.systems)
 
+  let systemsFingerprint = `${galaxy.systems.length}:${galaxy.systems[0]?.id || ''}:${galaxy.systems[galaxy.systems.length - 1]?.id || ''}`
+
   function setSystems(systems = []) {
     const nextSystems = Array.isArray(systems) ? systems : []
+    const fingerprint = `${nextSystems.length}:${nextSystems[0]?.id || ''}:${nextSystems[nextSystems.length - 1]?.id || ''}`
+    if (fingerprint === systemsFingerprint) return
+    systemsFingerprint = fingerprint
     galaxy.systems = nextSystems
     galaxy.byId = new Map(nextSystems.map((system) => [system.id, system]))
     writeSystemAttributes(nextSystems)
@@ -772,7 +783,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     plate.userData.setLocale?.(locale)
   }
 
-  async function rebuildPoliticalOwnership(nextGalaxy) {
+  async function rebuildPoliticalOwnership(nextGalaxy, { allowCache = false } = {}) {
     if (nextGalaxy) {
       galaxy.systems = nextGalaxy.systems
       galaxy.byId = nextGalaxy.byId
@@ -782,19 +793,15 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
       if (nextGalaxy.edgesDisplay) galaxy.edgesDisplay = nextGalaxy.edgesDisplay
       if (nextGalaxy.edgesCanon) galaxy.edgesCanon = nextGalaxy.edgesCanon
       if (nextGalaxy.meta) galaxy.meta = nextGalaxy.meta
+      if (nextGalaxy.cacheRevision) galaxy.cacheRevision = nextGalaxy.cacheRevision
     }
-    const buildVersion = ++politicalBuildVersion
-    const locale = callbacks.locale || 'ru'
-    const nextPlate = await createPoliticalPlate(galaxy, locale)
-    if (disposed || buildVersion !== politicalBuildVersion) {
-      disposePoliticalPlate(nextPlate)
+    // First hydrate after warm/partial load may reuse a cached plate; ownership
+    // edits must always regenerate and overwrite the cache.
+    if (politicalPlateBuilt && allowCache) {
+      emitLabels()
       return
     }
-    root.remove(plate)
-    disposePoliticalPlate(plate)
-    plate = nextPlate
-    plate.visible = politicalMapVisible
-    root.add(plate)
+    await bootstrapPoliticalPlate({ allowCache })
     emitLabels()
   }
 
@@ -1109,10 +1116,92 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   }
 }
 
-async function createPoliticalPlate(galaxy, initialLocale = 'ru') {
+function canvasToBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    if (typeof canvas.toBlob === 'function') {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error('Failed to encode political plate canvas'))
+      }, 'image/png')
+      return
+    }
+    try {
+      const dataUrl = canvas.toDataURL('image/png')
+      const bytes = atob(dataUrl.split(',')[1] || '')
+      const arr = new Uint8Array(bytes.length)
+      for (let i = 0; i < bytes.length; i += 1) arr[i] = bytes.charCodeAt(i)
+      resolve(new Blob([arr], { type: 'image/png' }))
+    } catch (err) {
+      reject(err)
+    }
+  })
+}
+
+async function plateMeshFromCachedBlob(cached, mapLim) {
+  const bitmap =
+    typeof createImageBitmap === 'function'
+      ? await createImageBitmap(cached.blob)
+      : await new Promise((resolve, reject) => {
+          const image = new Image()
+          image.onload = () => resolve(image)
+          image.onerror = reject
+          image.src = URL.createObjectURL(cached.blob)
+        })
+  const texture = new THREE.Texture(bitmap)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.needsUpdate = true
+  texture.generateMipmaps = false
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  const mesh = makePlateMeshFromTexture(texture, mapLim)
+  mesh.userData.labelAnchors = cached.labelAnchors || {}
+  mesh.userData.territoryAreas = cached.territoryAreas || {}
+  mesh.userData.labelMetrics = cached.labelMetrics || {}
+  mesh.userData.rasterSize = cached.rasterSize || 1
+  mesh.userData.fromCache = true
+  return mesh
+}
+
+async function createPoliticalPlate(
+  galaxy,
+  initialLocale = 'ru',
+  { allowCache = true } = {},
+) {
   const mapLim = mapLimitFor(galaxy)
   const group = new THREE.Group()
-  const territories = await createProceduralPoliticalPlate(galaxy)
+  const revision = galaxy?.cacheRevision || null
+  const canUsePlateCache =
+    allowCache && Boolean(revision) && !galaxy?.meta?.polityFiltered
+
+  let territories = null
+  if (canUsePlateCache) {
+    const cached = await getCachedPoliticalPlate(revision)
+    if (cached?.blob) {
+      try {
+        territories = await plateMeshFromCachedBlob(cached, mapLim)
+      } catch {
+        territories = null
+      }
+    }
+  }
+  if (!territories) {
+    territories = await createProceduralPoliticalPlate(galaxy)
+    if (Boolean(revision) && !galaxy?.meta?.polityFiltered && territories.userData.sourceCanvas) {
+      try {
+        const blob = await canvasToBlob(territories.userData.sourceCanvas)
+        void setCachedPoliticalPlate(revision, {
+          blob,
+          labelAnchors: territories.userData.labelAnchors,
+          territoryAreas: territories.userData.territoryAreas,
+          labelMetrics: territories.userData.labelMetrics,
+          rasterSize: territories.userData.rasterSize,
+          mapLim,
+        })
+      } catch {
+        // Keep the live plate even if persistence fails.
+      }
+    }
+  }
   territories.renderOrder = -90
   const presentStems = new Set(
     (galaxy.systems || []).map((system) => system.stem).filter(Boolean),
@@ -1143,6 +1232,7 @@ async function createPoliticalPlate(galaxy, initialLocale = 'ru') {
   group.add(territories, labels)
   group.userData.setLocale = (locale) => labels.userData.setLocale(locale)
   group.userData.labelAnchors = anchors
+  group.userData.fromCache = Boolean(territories.userData.fromCache)
   return group
 }
 
@@ -1819,6 +1909,7 @@ async function createProceduralPoliticalPlate(galaxy) {
   mesh.userData.territoryAreas = territoryAreas
   mesh.userData.labelMetrics = labelMetrics
   mesh.userData.rasterSize = size
+  mesh.userData.sourceCanvas = canvas2d
   return mesh
 }
 

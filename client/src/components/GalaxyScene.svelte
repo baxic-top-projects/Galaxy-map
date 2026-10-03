@@ -20,8 +20,10 @@
   let canvas = $state(null)
   let api = $state(null)
   let appliedOwnershipRevision = $state(0)
-  let appliedSystemCount = $state(-1)
-  let plateHydrated = $state(false)
+  let appliedSystemCount = $state(galaxy?.systems?.length ?? -1)
+  let plateHydrated = $state(
+    Boolean(galaxy?.meta?.systemsHydrated) || !galaxy?.tileGrid,
+  )
 
   onMount(() => {
     let cancelled = false
@@ -106,12 +108,17 @@
     if (!api) return
     const revision = ownershipRevision
     const hydrated = Boolean(galaxy?.meta?.systemsHydrated) || !galaxy?.tileGrid
-    if (revision === appliedOwnershipRevision && (plateHydrated || !hydrated)) return
+    const ownershipChanged = revision !== appliedOwnershipRevision
+    if (!ownershipChanged && (plateHydrated || !hydrated)) return
+    const wasHydrated = plateHydrated
     appliedOwnershipRevision = revision
     plateHydrated = hydrated
     if (!hydrated) return
     const currentGalaxy = untrack(() => galaxy)
-    api.rebuildPoliticalOwnership(currentGalaxy)
+    // Ownership edits force a fresh plate; first hydrate may use IndexedDB cache.
+    api.rebuildPoliticalOwnership(currentGalaxy, {
+      allowCache: !ownershipChanged || !wasHydrated,
+    })
   })
 </script>
 

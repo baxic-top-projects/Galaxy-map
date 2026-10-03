@@ -13,6 +13,7 @@ import {
   setCachedEdges,
   setCachedMap,
   setCachedSearch,
+  setCachedSystemsSnapshot,
   setCachedTile,
 } from './tileCache.js'
 
@@ -217,6 +218,11 @@ export async function persistGalaxyEdges(revision, edges) {
 export async function persistGalaxySearch(revision, search) {
   if (!revision || !search) return
   await setCachedSearch(revision, search)
+}
+
+export async function persistGalaxySystemsSnapshot(revision, systems) {
+  if (!revision || !systems?.length) return
+  await setCachedSystemsSnapshot(revision, systems)
 }
 
 /** Run async workers over items with a fixed concurrency limit. */

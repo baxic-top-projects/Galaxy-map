@@ -131,6 +131,14 @@ function searchKey(revision) {
   return `search:${revision}`
 }
 
+function systemsSnapshotKey(revision) {
+  return `systems:${revision}`
+}
+
+function politicalPlateKey(revision) {
+  return `politicalPlate:${revision}`
+}
+
 function revisionPointerKey() {
   return 'revision:current'
 }
@@ -231,6 +239,51 @@ export async function getCachedSearch(revision) {
   return entry.search || []
 }
 
+export async function setCachedSystemsSnapshot(revision, systems) {
+  await idbSet(systemsSnapshotKey(revision), {
+    revision,
+    systems: systems || [],
+    savedAt: Date.now(),
+  })
+}
+
+export async function getCachedSystemsSnapshot(revision) {
+  const entry = await idbGet(systemsSnapshotKey(revision))
+  if (!entry) return null
+  return entry.systems || null
+}
+
+export async function setCachedPoliticalPlate(revision, payload) {
+  await idbSet(politicalPlateKey(revision), {
+    revision,
+    blob: payload.blob,
+    labelAnchors: payload.labelAnchors || {},
+    territoryAreas: payload.territoryAreas || {},
+    labelMetrics: payload.labelMetrics || {},
+    rasterSize: payload.rasterSize || 1,
+    mapLim: payload.mapLim,
+    savedAt: Date.now(),
+  })
+}
+
+export async function getCachedPoliticalPlate(revision) {
+  const entry = await idbGet(politicalPlateKey(revision))
+  if (!entry?.blob) return null
+  return entry
+}
+
+export async function listCachedTileKeys(revision) {
+  const prefix = `tile:${revision}:`
+  const keys = await idbKeys()
+  return keys
+    .map((key) => String(key))
+    .filter((key) => key.startsWith(prefix))
+    .map((key) => {
+      const parts = key.split(':')
+      return `${parts[parts.length - 2]}:${parts[parts.length - 1]}`
+    })
+}
+
 /**
  * Warm-start payload assembled from IndexedDB for an instant first paint.
  */
@@ -238,25 +291,35 @@ export async function loadGalaxyWarmCache() {
   const entry = await getCachedMap()
   if (!entry?.map) return null
   const revision = entry.revision
-  const tiles = await listCachedTiles(revision)
+  const snapshot = await getCachedSystemsSnapshot(revision)
+  const tileKeys = await listCachedTileKeys(revision)
   const edges = await getCachedEdges(revision)
   const search = await getCachedSearch(revision)
-  const byId = new Map()
-  for (const system of entry.map.systems || []) byId.set(system.id, system)
-  for (const tile of tiles) {
-    for (const system of tile.systems || []) byId.set(system.id, system)
+  let systems = snapshot
+  if (!systems) {
+    const tiles = await listCachedTiles(revision)
+    const byId = new Map()
+    for (const system of entry.map.systems || []) byId.set(system.id, system)
+    for (const tile of tiles) {
+      for (const system of tile.systems || []) byId.set(system.id, system)
+    }
+    systems = Array.from(byId.values())
   }
   const gridSize = Number(entry.map.tileGrid?.size) || 0
   const expectedTiles = gridSize > 0 ? gridSize * gridSize : 0
+  const hasPlate = Boolean(await getCachedPoliticalPlate(revision))
   return {
     revision,
-    tileKeys: tiles.map((tile) => `${tile.tx}:${tile.ty}`),
+    tileKeys,
     map: entry.map,
-    systems: Array.from(byId.values()),
+    systems,
     edgesCanon: edges?.edgesCanon || [],
     edgesDisplay: edges?.edgesDisplay || [],
     search: search || [],
-    systemsHydrated: expectedTiles > 0 && tiles.length >= expectedTiles,
+    systemsHydrated:
+      Boolean(snapshot?.length) ||
+      (expectedTiles > 0 && tileKeys.length >= expectedTiles),
+    hasPoliticalPlate: hasPlate,
   }
 }
 

@@ -18,6 +18,7 @@
     mapPool,
     persistGalaxyEdges,
     persistGalaxySearch,
+    persistGalaxySystemsSnapshot,
     systemLabel,
   } from './lib/galaxy/loadGalaxy.js'
   import { allTiles, expandTiles, tileKey } from './lib/galaxy/mapTiles.js'
@@ -198,6 +199,9 @@
       },
     }
     galaxy = next
+    if (systemsResult.status === 'fulfilled' && revision) {
+      void persistGalaxySystemsSnapshot(revision, next.systems)
+    }
   }
 
   onMount(async () => {

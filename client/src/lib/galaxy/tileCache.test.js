@@ -3,12 +3,15 @@ import {
   __resetTileCacheMemoryForTests,
   catalogRevisionFromMap,
   clearTileCache,
+  getCachedPoliticalPlate,
   getCachedTile,
   listCachedTiles,
   loadGalaxyWarmCache,
   setCachedEdges,
   setCachedMap,
+  setCachedPoliticalPlate,
   setCachedSearch,
+  setCachedSystemsSnapshot,
   setCachedTile,
 } from './tileCache.js'
 
@@ -76,5 +79,48 @@ describe('tileCache', () => {
     await setCachedTile(revision, 1, 1, [])
     const warm = await loadGalaxyWarmCache()
     expect(warm.systemsHydrated).toBe(true)
+  })
+
+  test('systems snapshot marks warm hydrated without all tiles', async () => {
+    const revision = 'rev-snap'
+    await setCachedMap(revision, {
+      meta: {},
+      polities: [],
+      systems: [{ id: 'seed' }],
+      tileGrid: { size: 4, mapLim: 1.06 },
+    })
+    await setCachedSystemsSnapshot(revision, [
+      { id: 'seed' },
+      { id: 'a' },
+      { id: 'b' },
+    ])
+    const warm = await loadGalaxyWarmCache()
+    expect(warm.systemsHydrated).toBe(true)
+    expect(warm.systems.map((system) => system.id).sort()).toEqual(['a', 'b', 'seed'])
+    expect(warm.hasPoliticalPlate).toBe(false)
+  })
+
+  test('political plate blob round-trips in warm cache', async () => {
+    const revision = 'rev-plate'
+    await setCachedMap(revision, {
+      meta: {},
+      polities: [],
+      systems: [],
+      tileGrid: { size: 1, mapLim: 1.06 },
+    })
+    const blob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'image/png' })
+    await setCachedPoliticalPlate(revision, {
+      blob,
+      labelAnchors: { A: { x: 1, y: 2 } },
+      territoryAreas: { A: 10 },
+      labelMetrics: { A: { w: 1 } },
+      rasterSize: 64,
+      mapLim: 1.06,
+    })
+    const cached = await getCachedPoliticalPlate(revision)
+    expect(cached.blob).toBeTruthy()
+    expect(cached.labelAnchors.A.x).toBe(1)
+    const warm = await loadGalaxyWarmCache()
+    expect(warm.hasPoliticalPlate).toBe(true)
   })
 })
