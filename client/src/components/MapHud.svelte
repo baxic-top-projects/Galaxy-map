@@ -566,15 +566,16 @@
 
   @media (max-width: 820px) {
     .panel {
-      top: auto;
-      /* Sit above the fixed realm nav + Android/home safe area. */
-      bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
-      right: 0.75rem;
-      left: 0.75rem;
+      /* Center on mobile so it sits clearly above the realm nav chips. */
+      top: 50%;
+      bottom: auto;
+      right: 0.9rem;
+      left: 0.9rem;
       width: auto;
-      max-height: min(42vh, calc(100dvh - 9.5rem - env(safe-area-inset-bottom, 0px)));
+      max-height: min(46vh, calc(100dvh - 11rem - env(safe-area-inset-bottom, 0px)));
       overflow: auto;
       padding-top: 0.85rem;
+      transform: translateY(-50%);
     }
 
     .panel-head {
