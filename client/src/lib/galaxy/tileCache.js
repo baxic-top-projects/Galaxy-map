@@ -135,8 +135,9 @@ function systemsSnapshotKey(revision) {
   return `systems:${revision}`
 }
 
+// v2: plate PNG must be restored via CanvasTexture (ImageBitmap skip flipY).
 function politicalPlateKey(revision) {
-  return `politicalPlate:${revision}`
+  return `politicalPlate:v2:${revision}`
 }
 
 function revisionPointerKey() {

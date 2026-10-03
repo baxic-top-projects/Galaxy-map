@@ -1138,26 +1138,36 @@ function canvasToBlob(canvas) {
 }
 
 async function plateMeshFromCachedBlob(cached, mapLim) {
-  const bitmap =
-    typeof createImageBitmap === 'function'
-      ? await createImageBitmap(cached.blob)
-      : await new Promise((resolve, reject) => {
-          const image = new Image()
-          image.onload = () => resolve(image)
-          image.onerror = reject
-          image.src = URL.createObjectURL(cached.blob)
-        })
-  const texture = new THREE.Texture(bitmap)
-  texture.colorSpace = THREE.SRGBColorSpace
-  texture.needsUpdate = true
-  texture.generateMipmaps = false
-  texture.minFilter = THREE.LinearFilter
-  texture.magFilter = THREE.LinearFilter
-  const mesh = makePlateMeshFromTexture(texture, mapLim)
+  // Decode into a 2D canvas and use CanvasTexture — same path as the live
+  // procedural plate. THREE.Texture.flipY is ignored for ImageBitmap, so
+  // uploading the bitmap directly drew territories upside-down / misaligned.
+  const canvas = document.createElement('canvas')
+  if (typeof createImageBitmap === 'function') {
+    const bitmap = await createImageBitmap(cached.blob, {
+      premultiplyAlpha: 'none',
+      colorSpaceConversion: 'none',
+    })
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    canvas.getContext('2d').drawImage(bitmap, 0, 0)
+    bitmap.close?.()
+  } else {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve(img)
+      img.onerror = reject
+      img.src = URL.createObjectURL(cached.blob)
+    })
+    canvas.width = image.width
+    canvas.height = image.height
+    canvas.getContext('2d').drawImage(image, 0, 0)
+  }
+  const mesh = makePlateMeshFromCanvas(canvas, mapLim)
   mesh.userData.labelAnchors = cached.labelAnchors || {}
   mesh.userData.territoryAreas = cached.territoryAreas || {}
   mesh.userData.labelMetrics = cached.labelMetrics || {}
-  mesh.userData.rasterSize = cached.rasterSize || 1
+  mesh.userData.rasterSize = cached.rasterSize || canvas.width || 1
+  mesh.userData.sourceCanvas = canvas
   mesh.userData.fromCache = true
   return mesh
 }
