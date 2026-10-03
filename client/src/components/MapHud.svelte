@@ -148,9 +148,13 @@
       detailDismissed = !detailDismissed
       return
     }
+    if (!selected) {
+      overviewDismissed = !overviewDismissed
+      return
+    }
     overviewDismissed = false
     detailDismissed = false
-    if (selected) onCloseSelected?.()
+    onCloseSelected?.()
   }
 
   function enterSelectedSystem() {
