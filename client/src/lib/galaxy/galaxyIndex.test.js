@@ -4,7 +4,7 @@ import {
   loadGalaxyEdges,
   loadGalaxyMap,
   loadGalaxySearch,
-  loadGalaxySystemsChunk,
+  loadGalaxySystemsTile,
   loadSystemDetail,
   mapPool,
   polityLabel,
@@ -175,7 +175,7 @@ describe('loadGalaxy API client', () => {
             meta: { systemCount: 2 },
             polities: [{ stem: 'A', nameEn: 'A', nameRu: 'А' }],
             systems: [{ id: 'A:One', stem: 'A', token: 'One', capital: true, x: 0, y: 0, z: 0 }],
-            systemChunks: ['A', '__unowned__'],
+            tileGrid: { size: 16, mapLim: 1.06 },
           }),
         }
       }),
@@ -183,26 +183,29 @@ describe('loadGalaxy API client', () => {
 
     const galaxy = await loadGalaxyMap('http://gateway.test')
     expect(galaxy.systems).toHaveLength(1)
-    expect(galaxy.systemChunks).toEqual(['A', '__unowned__'])
+    expect(galaxy.tileGrid).toEqual({ size: 16, mapLim: 1.06 })
     expect(galaxy.edgesDisplay).toEqual([])
     expect(galaxy.search).toEqual([])
     expect(galaxy.byId.get('A:One').token).toBe('One')
   })
 
-  test('loads polity system chunks and mapPool concurrency', async () => {
+  test('loads spatial system tiles and mapPool concurrency', async () => {
     const seen = []
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url) => {
         const href = String(url)
         if (href.includes('/api/v1/galaxy/systems?')) {
-          const stem = new URL(href).searchParams.get('stem')
-          seen.push(stem)
+          const params = new URL(href).searchParams
+          const tx = Number(params.get('tx'))
+          const ty = Number(params.get('ty'))
+          seen.push(`${tx}:${ty}`)
           return {
             ok: true,
             json: async () => ({
-              stem,
-              systems: [{ id: `${stem}:Star`, stem, token: 'Star', x: 0, y: 0, z: 0 }],
+              tx,
+              ty,
+              systems: [{ id: `T${tx}_${ty}`, token: 'Star', x: 0, y: 0, z: 0 }],
             }),
           }
         }
@@ -210,15 +213,23 @@ describe('loadGalaxy API client', () => {
       }),
     )
 
-    const chunk = await loadGalaxySystemsChunk('Amber_Charter', 'http://gateway.test')
-    expect(chunk.stem).toBe('Amber_Charter')
-    expect(chunk.systems[0].id).toBe('Amber_Charter:Star')
+    const tile = await loadGalaxySystemsTile(3, 7, 'http://gateway.test')
+    expect(tile.tx).toBe(3)
+    expect(tile.ty).toBe(7)
+    expect(tile.systems[0].id).toBe('T3_7')
 
-    const stems = ['A', 'B', 'C', 'D']
-    const results = await mapPool(stems, 2, async (stem) => loadGalaxySystemsChunk(stem, 'http://gateway.test'))
+    const coords = [
+      { tx: 0, ty: 0 },
+      { tx: 1, ty: 0 },
+      { tx: 2, ty: 0 },
+      { tx: 3, ty: 0 },
+    ]
+    const results = await mapPool(coords, 2, async ({ tx, ty }) =>
+      loadGalaxySystemsTile(tx, ty, 'http://gateway.test'),
+    )
     expect(results).toHaveLength(4)
-    expect(seen).toContain('Amber_Charter')
-    expect(seen).toContain('D')
+    expect(seen).toContain('3:7')
+    expect(seen).toContain('3:0')
   })
 
   test('loads edges and search slices', async () => {

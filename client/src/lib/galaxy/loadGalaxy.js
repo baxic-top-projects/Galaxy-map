@@ -104,8 +104,6 @@ async function fetchGalaxyJson(path, baseUrl = DEFAULT_API_BASE, { timeoutMs = 2
   return response.json()
 }
 
-export const UNOWNED_SYSTEM_CHUNK = '__unowned__'
-
 function assembleGalaxy(data) {
   const systems = data.systems || []
   const byId = new Map(systems.map((system) => [system.id, system]))
@@ -114,7 +112,7 @@ function assembleGalaxy(data) {
   return {
     ...data,
     systems,
-    systemChunks: data.systemChunks || [],
+    tileGrid: data.tileGrid || null,
     edgesCanon: data.edgesCanon || [],
     edgesDisplay: data.edgesDisplay || [],
     search,
@@ -124,12 +122,12 @@ function assembleGalaxy(data) {
 }
 
 /**
- * Map bootstrap: meta + polities + seed systems + chunk ids (no edges/search yet).
+ * Map bootstrap: meta + polities + seed systems + tileGrid (no edges/search yet).
  * @returns {Promise<{
  *   meta: object,
  *   polities: Polity[],
  *   systems: GalaxySystem[],
- *   systemChunks: string[],
+ *   tileGrid: { size: number, mapLim: number } | null,
  *   edgesCanon: Edge[],
  *   edgesDisplay: Edge[],
  *   search: SearchEntry[],
@@ -147,16 +145,16 @@ export async function loadGalaxyMap(baseUrl = DEFAULT_API_BASE, options = {}) {
   })
 }
 
-/** @returns {Promise<{ stem: string, systems: GalaxySystem[] }>} */
-export async function loadGalaxySystemsChunk(
-  stem = UNOWNED_SYSTEM_CHUNK,
-  baseUrl = DEFAULT_API_BASE,
-  options = {},
-) {
-  const query = new URLSearchParams({ stem: stem || UNOWNED_SYSTEM_CHUNK })
+/** @returns {Promise<{ tx: number, ty: number, systems: GalaxySystem[] }>} */
+export async function loadGalaxySystemsTile(tx, ty, baseUrl = DEFAULT_API_BASE, options = {}) {
+  const query = new URLSearchParams({
+    tx: String(tx),
+    ty: String(ty),
+  })
   const data = await fetchGalaxyJson(`/api/v1/galaxy/systems?${query}`, baseUrl, options)
   return {
-    stem: data.stem || stem || UNOWNED_SYSTEM_CHUNK,
+    tx: Number(data.tx ?? tx),
+    ty: Number(data.ty ?? ty),
     systems: data.systems || [],
   }
 }

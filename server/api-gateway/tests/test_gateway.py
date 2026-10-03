@@ -129,13 +129,14 @@ def catalog_backend():
                     "shard": "systems/Miradin_Empire__MiradinSirius.json",
                 }
             ],
-            "systemChunks": ["Miradin_Empire", "__unowned__"],
+            "tileGrid": {"size": 16, "mapLim": 1.06},
         }
 
     @backend.get("/internal/v1/galaxy/systems")
-    def galaxy_systems(stem: str = ""):
+    def galaxy_systems(tx: int = 0, ty: int = 0):
         return {
-            "stem": stem or "__unowned__",
+            "tx": tx,
+            "ty": ty,
             "systems": [
                 {
                     "id": "Miradin_Empire:MiradinSirius",
@@ -144,7 +145,7 @@ def catalog_backend():
                     "capital": True,
                 }
             ]
-            if stem == "Miradin_Empire"
+            if tx == 8 and ty == 8
             else [],
         }
 
@@ -236,12 +237,12 @@ def test_gateway_proxies_storm_asset_and_catalog(monkeypatch, storm_backend, ass
     galaxy_map = client.get("/api/v1/galaxy/map")
     assert galaxy_map.status_code == 200
     assert galaxy_map.json()["systems"][0]["id"] == "Miradin_Empire:MiradinSirius"
-    assert galaxy_map.json()["systemChunks"][0] == "Miradin_Empire"
+    assert galaxy_map.json()["tileGrid"]["size"] == 16
     assert "edgesDisplay" not in galaxy_map.json()
 
-    galaxy_systems = client.get("/api/v1/galaxy/systems", params={"stem": "Miradin_Empire"})
+    galaxy_systems = client.get("/api/v1/galaxy/systems", params={"tx": 8, "ty": 8})
     assert galaxy_systems.status_code == 200
-    assert galaxy_systems.json()["stem"] == "Miradin_Empire"
+    assert galaxy_systems.json()["tx"] == 8
     assert galaxy_systems.json()["systems"][0]["token"] == "MiradinSirius"
 
     galaxy_edges = client.get("/api/v1/galaxy/edges")

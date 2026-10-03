@@ -12,11 +12,12 @@
     loadGalaxyEdges,
     loadGalaxyMap,
     loadGalaxySearch,
-    loadGalaxySystemsChunk,
+    loadGalaxySystemsTile,
     loadSystemDetail,
     mapPool,
     systemLabel,
   } from './lib/galaxy/loadGalaxy.js'
+  import { allTiles, expandTiles, tileKey } from './lib/galaxy/mapTiles.js'
   import { updateSystemOwner } from './lib/galaxy/ownershipApi.js'
   import { estimateZoom } from './lib/galaxy/labelLod.js'
   import { connectStormSocket, stormForSystem } from './lib/galaxy/stormsApi.js'
@@ -103,28 +104,56 @@
     throw lastError
   }
 
-  function mergeSystemChunk(chunkSystems) {
+  const loadedTiles = new Set()
+  const inFlightTiles = new Set()
+
+  function mergeSystems(chunkSystems) {
     if (!galaxy || !chunkSystems?.length) return
     const byId = new Map(galaxy.byId)
     for (const system of chunkSystems) byId.set(system.id, system)
-    const systems = Array.from(byId.values())
     galaxy = {
       ...galaxy,
-      systems,
+      systems: Array.from(byId.values()),
       byId,
     }
   }
 
+  async function ensureTiles(tiles) {
+    const missing = []
+    for (const tile of tiles || []) {
+      const key = tileKey(tile.tx, tile.ty)
+      if (loadedTiles.has(key) || inFlightTiles.has(key)) continue
+      inFlightTiles.add(key)
+      missing.push(tile)
+    }
+    if (!missing.length) return
+    await mapPool(missing, 8, async (tile) => {
+      const key = tileKey(tile.tx, tile.ty)
+      try {
+        const data = await loadWithRetry(() => loadGalaxySystemsTile(tile.tx, tile.ty))
+        loadedTiles.add(key)
+        mergeSystems(data.systems)
+      } finally {
+        inFlightTiles.delete(key)
+      }
+    })
+  }
+
+  function handleViewportTiles(tiles) {
+    const grid = galaxy?.tileGrid
+    if (!grid) return
+    const expanded = expandTiles(tiles, 1, grid.size)
+    void ensureTiles(expanded)
+  }
+
   async function hydrateGalaxySlices() {
-    const chunks = galaxy?.systemChunks || []
+    const grid = galaxy?.tileGrid
     const edgesPromise = loadWithRetry(() => loadGalaxyEdges())
     const searchPromise = loadWithRetry(() => loadGalaxySearch())
-    // Example: Miradin_Empire, Efol_Raih, Amber_Charter, … load in parallel pools.
-    const systemsPromise = mapPool(chunks, 8, async (stem) => {
-      const chunk = await loadWithRetry(() => loadGalaxySystemsChunk(stem))
-      mergeSystemChunk(chunk.systems)
-      return chunk
-    })
+    // Background fill of the whole tile grid (viewport requests race ahead of this).
+    const systemsPromise = grid
+      ? ensureTiles(allTiles(grid.size))
+      : Promise.resolve()
 
     const [edgesResult, searchResult, systemsResult] = await Promise.allSettled([
       edgesPromise,
@@ -412,6 +441,7 @@
           onSelect={handleSelect}
           onEnterSystem={handleEnterSystem}
           onLabels={handleLabels}
+          onViewportTiles={handleViewportTiles}
         />
       {/key}
 

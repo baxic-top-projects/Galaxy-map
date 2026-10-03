@@ -9,6 +9,7 @@
     onHover = undefined,
     onEnterSystem = undefined,
     onLabels = undefined,
+    onViewportTiles = undefined,
     showPoliticalMap = true,
     locale = 'ru',
     focusRequest = null,
@@ -32,6 +33,7 @@
         onHover,
         onEnterSystem,
         onLabels,
+        onViewportTiles,
         locale,
       })
       if (cancelled) {
@@ -41,7 +43,7 @@
       }
       appliedOwnershipRevision = ownershipRevision
       appliedSystemCount = galaxy.systems?.length || 0
-      plateHydrated = Boolean(galaxy?.meta?.systemsHydrated) || !(galaxy?.systemChunks || []).length
+      plateHydrated = Boolean(galaxy?.meta?.systemsHydrated) || !galaxy?.tileGrid
       if (stormSnapshot) api.setStorms(stormSnapshot)
       api.setPoliticalMap(showPoliticalMap)
     })()
@@ -103,7 +105,7 @@
   $effect(() => {
     if (!api) return
     const revision = ownershipRevision
-    const hydrated = Boolean(galaxy?.meta?.systemsHydrated) || !(galaxy?.systemChunks || []).length
+    const hydrated = Boolean(galaxy?.meta?.systemsHydrated) || !galaxy?.tileGrid
     if (revision === appliedOwnershipRevision && (plateHydrated || !hydrated)) return
     appliedOwnershipRevision = revision
     plateHydrated = hydrated

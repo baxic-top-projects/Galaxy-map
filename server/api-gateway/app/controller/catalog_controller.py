@@ -37,10 +37,8 @@ async def galaxy_map():
 
 
 @router.get("/api/v1/galaxy/systems")
-async def galaxy_systems(stem: str = ""):
-    path = "/internal/v1/galaxy/systems"
-    if stem:
-        path = f"{path}?{urlencode({'stem': stem})}"
+async def galaxy_systems(tx: int, ty: int):
+    path = f"/internal/v1/galaxy/systems?{urlencode({'tx': tx, 'ty': ty})}"
     response = await catalog_client.request("GET", path)
     return Response(
         content=response.content,

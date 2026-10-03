@@ -23,9 +23,10 @@ def get_galaxy_map():
 
 @router.get("/internal/v1/galaxy/systems")
 def get_galaxy_systems(
-    stem: Annotated[str, Query(description="Polity stem or __unowned__")] = "",
+    tx: Annotated[int, Query(description="Tile X index")],
+    ty: Annotated[int, Query(description="Tile Y index")],
 ):
-    return catalog_query.get_galaxy_systems_chunk(stem)
+    return catalog_query.get_galaxy_systems_tile(tx, ty)
 
 
 @router.get("/internal/v1/galaxy/edges")

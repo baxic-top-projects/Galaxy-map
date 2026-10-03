@@ -11,6 +11,11 @@ import {
 } from '../galaxy/polityTerritoryAnchors.js'
 import { buildSpatialIndex } from '../galaxy/spatialIndex.js'
 import { estimateZoom, pickLabels } from '../galaxy/labelLod.js'
+import {
+  boundsFromCameraView,
+  tileKey,
+  tilesForBounds,
+} from '../galaxy/mapTiles.js'
 
 const GALAXY_SCALE = 42
 const DEFAULT_MAP_LIM = 1.06
@@ -207,10 +212,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     plate.visible = politicalMapVisible
     root.add(plate)
   }
-  const deferPoliticalPlate =
-    Array.isArray(galaxy?.systemChunks) &&
-    galaxy.systemChunks.length > 0 &&
-    !galaxy?.meta?.systemsHydrated
+  const deferPoliticalPlate = Boolean(galaxy?.tileGrid) && !galaxy?.meta?.systemsHydrated
   if (!deferPoliticalPlate) void bootstrapPoliticalPlate()
 
   const color = new THREE.Color()
@@ -941,6 +943,38 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     controls.target.add(panOffset)
   }
 
+  let lastTileEmitAt = 0
+  let lastTileSignature = ''
+
+  function emitViewportTiles(force = false) {
+    const grid = galaxy?.tileGrid
+    if (!grid || typeof callbacks.onViewportTiles !== 'function') return
+    const now = performance.now()
+    if (!force && now - lastTileEmitAt < 120) return
+    lastTileEmitAt = now
+    const distanceGalaxy = cameraDistance() / GALAXY_SCALE
+    const bounds = boundsFromCameraView(
+      {
+        x: controls.target.x / GALAXY_SCALE,
+        y: controls.target.y / GALAXY_SCALE,
+      },
+      distanceGalaxy,
+      grid.mapLim,
+    )
+    const tiles = tilesForBounds(
+      bounds.minX,
+      bounds.maxX,
+      bounds.minY,
+      bounds.maxY,
+      grid.mapLim,
+      grid.size,
+    )
+    const signature = tiles.map((tile) => tileKey(tile.tx, tile.ty)).join('|')
+    if (!force && signature === lastTileSignature) return
+    lastTileSignature = signature
+    callbacks.onViewportTiles(tiles)
+  }
+
   function frame() {
     if (disposed) return
     raf = requestAnimationFrame(frame)
@@ -951,6 +985,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     if (focusTween) focusTween()
     applyKeyboardPan()
     controls.update()
+    emitViewportTiles()
     const scale = THREE.MathUtils.clamp(Math.sqrt(18 / Math.max(cameraDistance(), 1)), 0.75, 1.25)
     for (const layer of starLayers) {
       layer.material.uniforms.uScale.value = scale
@@ -1056,6 +1091,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   canvas.addEventListener('dblclick', onDblClick)
   canvas.addEventListener('wheel', onWheel, { passive: true })
   resize()
+  emitViewportTiles(true)
   raf = requestAnimationFrame(frame)
 
   return {

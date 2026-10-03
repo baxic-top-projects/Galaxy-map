@@ -93,13 +93,13 @@ def test_catalog_map_edges_search_use_slice_caches(monkeypatch):
             "meta": {},
             "polities": [],
             "systems": [{"id": "map-sys", "kind": "well"}],
-            "systemChunks": ["__unowned__"],
+            "tileGrid": {"size": 16, "mapLim": 1.06},
         },
         60,
     )
     cache.set_json(
-        "galaxy:systems:A_Polity",
-        {"stem": "A_Polity", "systems": [{"id": "A:One", "stem": "A_Polity"}]},
+        "galaxy:tile:3:7",
+        {"tx": 3, "ty": 7, "systems": [{"id": "A:One", "stem": "A_Polity", "x": 0, "y": 0}]},
         60,
     )
     cache.set_json(
@@ -136,6 +136,6 @@ def test_catalog_map_edges_search_use_slice_caches(monkeypatch):
     )
 
     assert catalog.get_galaxy_map()["systems"][0]["id"] == "map-sys"
-    assert catalog.get_galaxy_systems_chunk("A_Polity")["systems"][0]["id"] == "A:One"
+    assert catalog.get_galaxy_systems_tile(3, 7)["systems"][0]["id"] == "A:One"
     assert catalog.get_galaxy_edges()["edgesDisplay"][0]["b"] == "other"
     assert catalog.get_galaxy_search()["search"][0]["id"] == "map-sys"
