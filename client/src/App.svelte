@@ -142,10 +142,9 @@
 
   /**
    * @param {Array<{tx:number,ty:number}>} tiles
-   * @param {{ mode?: 'viewport' | 'hydrate' | 'silent' }} [options]
+   * @param {{ mode?: 'viewport' | 'silent' }} [options]
    * - viewport: one scene update when this batch finishes (pan/zoom)
-   * - hydrate: few milestone paints core→rim (cold start, not 256 redraws)
-   * - silent: absorb only; caller flushes (warm revalidate)
+   * - silent: absorb only; caller flushes (cold hydrate / warm revalidate)
    */
   async function ensureTiles(tiles, { mode = 'viewport' } = {}) {
     const revision = cacheRevision || galaxy?.cacheRevision || null
@@ -157,16 +156,6 @@
       missing.push(tile)
     }
     if (!missing.length) return
-    const total = missing.length
-    const flushAt =
-      mode === 'hydrate'
-        ? new Set(
-            [0.15, 0.4, 0.7, 1].map((fraction) =>
-              Math.max(1, Math.min(total, Math.ceil(total * fraction))),
-            ),
-          )
-        : null
-    let completed = 0
     await mapPool(missing, 16, async (tile) => {
       const key = tileKey(tile.tx, tile.ty)
       try {
@@ -175,8 +164,6 @@
         )
         loadedTiles.add(key)
         absorbSystems(data.systems)
-        completed += 1
-        if (flushAt?.has(completed)) flushSystems()
       } finally {
         inFlightTiles.delete(key)
       }
@@ -187,13 +174,10 @@
   function handleViewportTiles(tiles) {
     const grid = galaxy?.tileGrid
     if (!grid) return
-    // Warm full catalog: viewport prefetch stays on disk/network, no star flicker.
-    if (galaxy?.meta?.systemsHydrated) {
-      void ensureTiles(expandTiles(tiles, 1, grid.size), { mode: 'silent' })
-      return
-    }
-    const expanded = expandTiles(tiles, 1, grid.size)
-    void ensureTiles(expanded, { mode: 'viewport' })
+    // Until the full catalog is ready, ignore viewport dribbles — cold start
+    // paints all stars once when hydrate finishes (no portion flicker).
+    if (!galaxy?.meta?.systemsHydrated) return
+    void ensureTiles(expandTiles(tiles, 1, grid.size), { mode: 'silent' })
   }
 
   async function hydrateGalaxySlices() {
@@ -201,13 +185,10 @@
     const revision = cacheRevision || galaxy?.cacheRevision || null
     const edgesPromise = loadWithRetry(() => loadGalaxyEdges())
     const searchPromise = loadWithRetry(() => loadGalaxySearch())
-    const alreadyHydrated = Boolean(galaxy?.meta?.systemsHydrated)
-    // Background fill: milestone paints when cold; silent absorb when warm.
+    // Fetch every tile into a buffer, then one flush → one star redraw.
     const systemsPromise = grid
-      ? ensureTiles(allTilesCenterOut(grid.size), {
-          mode: alreadyHydrated ? 'silent' : 'hydrate',
-        }).then(() => {
-          if (alreadyHydrated) flushSystems()
+      ? ensureTiles(allTilesCenterOut(grid.size), { mode: 'silent' }).then(() => {
+          flushSystems()
         })
       : Promise.resolve()
 
