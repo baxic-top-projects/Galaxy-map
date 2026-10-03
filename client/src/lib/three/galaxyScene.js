@@ -1399,7 +1399,25 @@ async function createProceduralPoliticalPlate(galaxy) {
 
   const neutralOwned = owned.filter(isUnnamedNeutralStar)
   const politicalOwned = owned.filter((system) => !isUnnamedNeutralStar(system))
-  const centralSpatial = politicalOwned.length ? buildSpatialIndex(politicalOwned) : null
+  // Only systems that can paint the legacy disk belong in the central spatial
+  // index. A polity filter with a few rim stars otherwise forces every central
+  // pixel to expand the NN search across the whole map and freezes the scene.
+  const wellSystem = owned.find((system) => system.kind === 'well') || null
+  const centralInfluenceR =
+    centralDiskR + Math.max(claimR, frontierClaimMax, neutralClaimR)
+  const centralSeed = []
+  if (wellSystem) centralSeed.push(wellSystem)
+  for (const system of politicalOwned) {
+    if (Math.hypot(system.x, system.y) <= centralInfluenceR) centralSeed.push(system)
+  }
+  for (const system of neutralOwned) {
+    if (Math.hypot(system.x, system.y) <= centralInfluenceR) centralSeed.push(system)
+  }
+  const centralSpatial = centralSeed.length
+    ? buildSpatialIndex([
+        ...new Map(centralSeed.map((system) => [system.id, system])).values(),
+      ])
+    : null
   const frontierOwned = politicalOwned.filter((system) =>
     system.id.startsWith('frontier:'),
   )
@@ -1431,7 +1449,6 @@ async function createProceduralPoliticalPlate(galaxy) {
       ),
     )
   }
-  const wellSystem = owned.find((system) => system.kind === 'well') || null
   const wellX = wellSystem?.x || 0
   const wellY = wellSystem?.y || 0
 
@@ -1472,77 +1489,79 @@ async function createProceduralPoliticalPlate(galaxy) {
     return Math.hypot(system.x - wellX, system.y - wellY) <= wellRingR
   })
 
-  for (let py = 0; py < size; py += 1) {
-    if (py > 0 && py % 12 === 0) await yieldToBrowser()
-    for (let px = 0; px < size; px += 1) {
-      const gx = ((px + 0.5) / size) * 2 * lim - lim
-      const gy = -(((py + 0.5) / size) * 2 * lim - lim)
-      const insideCentralDisk = Math.hypot(gx, gy) <= centralDiskR
-      if (!insideCentralDisk) continue
-      // The expanded map is mostly empty. Searching every increasingly large
-      // grid ring for each void pixel blocks the browser for minutes. Central
-      // territory remains continuous. Bounded arm claims are rasterized
-      // directly after this pass instead of querying every empty outer pixel.
-      let nearest = centralSpatial?.queryNearestAny(gx, gy)
-      let dist = nearest ? Math.hypot(nearest.x - gx, nearest.y - gy) : Infinity
-      let idx = nearest ? systemIndex.get(nearest.id) : null
-      let nearestIsWell = nearest?.kind === 'well'
-      let useVoronoi = idx != null && (nearestIsWell || fullVoronoi[idx])
-      let effectiveClaimR = idx != null ? systemMeta[idx].claimRadius : 0
-      // At an arm root, the nearest legacy-disk system can be just outside its
-      // small claim while a slightly farther frontier system still legitimately
-      // covers the pixel. Fall back to that frontier claim to stitch the arm to
-      // the old disk without globally inflating legacy territories.
-      if (
-        insideCentralDisk &&
-        !useVoronoi &&
-        dist > effectiveClaimR &&
-        frontierSpatial
-      ) {
-        const frontierNearest = frontierSpatial.queryNearest(
-          gx,
-          gy,
-          frontierClaimMax,
-        )
-        if (frontierNearest) {
-          const frontierIdx = systemIndex.get(frontierNearest.id)
-          const frontierDist = Math.hypot(
-            frontierNearest.x - gx,
-            frontierNearest.y - gy,
+  if (centralSpatial) {
+    for (let py = 0; py < size; py += 1) {
+      if (py > 0 && py % 12 === 0) await yieldToBrowser()
+      for (let px = 0; px < size; px += 1) {
+        const gx = ((px + 0.5) / size) * 2 * lim - lim
+        const gy = -(((py + 0.5) / size) * 2 * lim - lim)
+        const insideCentralDisk = Math.hypot(gx, gy) <= centralDiskR
+        if (!insideCentralDisk) continue
+        // The expanded map is mostly empty. Searching every increasingly large
+        // grid ring for each void pixel blocks the browser for minutes. Central
+        // territory remains continuous. Bounded arm claims are rasterized
+        // directly after this pass instead of querying every empty outer pixel.
+        let nearest = centralSpatial.queryNearestAny(gx, gy)
+        let dist = nearest ? Math.hypot(nearest.x - gx, nearest.y - gy) : Infinity
+        let idx = nearest ? systemIndex.get(nearest.id) : null
+        let nearestIsWell = nearest?.kind === 'well'
+        let useVoronoi = idx != null && (nearestIsWell || fullVoronoi[idx])
+        let effectiveClaimR = idx != null ? systemMeta[idx].claimRadius : 0
+        // At an arm root, the nearest legacy-disk system can be just outside its
+        // small claim while a slightly farther frontier system still legitimately
+        // covers the pixel. Fall back to that frontier claim to stitch the arm to
+        // the old disk without globally inflating legacy territories.
+        if (
+          insideCentralDisk &&
+          !useVoronoi &&
+          dist > effectiveClaimR &&
+          frontierSpatial
+        ) {
+          const frontierNearest = frontierSpatial.queryNearest(
+            gx,
+            gy,
+            frontierClaimMax,
           )
-          const frontierClaimR = systemMeta[frontierIdx]?.claimRadius || 0
-          if (frontierIdx != null && frontierDist <= frontierClaimR) {
-            nearest = frontierNearest
-            idx = frontierIdx
-            dist = frontierDist
-            nearestIsWell = false
-            useVoronoi = fullVoronoi[idx]
-            effectiveClaimR = frontierClaimR
+          if (frontierNearest) {
+            const frontierIdx = systemIndex.get(frontierNearest.id)
+            const frontierDist = Math.hypot(
+              frontierNearest.x - gx,
+              frontierNearest.y - gy,
+            )
+            const frontierClaimR = systemMeta[frontierIdx]?.claimRadius || 0
+            if (frontierIdx != null && frontierDist <= frontierClaimR) {
+              nearest = frontierNearest
+              idx = frontierIdx
+              dist = frontierDist
+              nearestIsWell = false
+              useVoronoi = fullVoronoi[idx]
+              effectiveClaimR = frontierClaimR
+            }
           }
         }
-      }
 
-      if (!nearest || idx == null) continue
-      if (!useVoronoi && dist > effectiveClaimR) continue
+        if (!nearest || idx == null) continue
+        if (!useVoronoi && dist > effectiveClaimR) continue
 
-      const i = py * size + px
-      owner[i] = idx
-      const meta = systemMeta[idx]
-      let fade = 1
-      if (!useVoronoi) {
-        const fadeWidth = effectiveClaimR * 0.22
-        fade = Math.max(
-          0.4,
-          Math.min(1, (effectiveClaimR - dist) / fadeWidth + 0.4),
+        const i = py * size + px
+        owner[i] = idx
+        const meta = systemMeta[idx]
+        let fade = 1
+        if (!useVoronoi) {
+          const fadeWidth = effectiveClaimR * 0.22
+          fade = Math.max(
+            0.4,
+            Math.min(1, (effectiveClaimR - dist) / fadeWidth + 0.4),
+          )
+        }
+        const o = i * 4
+        data[o] = meta.r
+        data[o + 1] = meta.g
+        data[o + 2] = meta.b
+        data[o + 3] = Math.round(
+          (meta.isUnnamedNeutral ? 120 : meta.isNeutral ? 100 : 120) * fade,
         )
       }
-      const o = i * 4
-      data[o] = meta.r
-      data[o + 1] = meta.g
-      data[o + 2] = meta.b
-      data[o + 3] = Math.round(
-        (meta.isUnnamedNeutral ? 120 : meta.isNeutral ? 100 : 120) * fade,
-      )
     }
   }
 

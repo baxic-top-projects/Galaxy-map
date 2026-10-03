@@ -439,9 +439,9 @@
     </p>
   {:else}
     <p class="meta">
-      {galaxy?.systems?.length || galaxy?.meta?.systemCount || 0}
+      {galaxy?.systems?.length ?? galaxy?.meta?.systemCount ?? 0}
       {locale === 'en' ? 'systems' : 'систем'} ·
-      {galaxy?.edgesDisplay?.length || galaxy?.meta?.edgeCountDisplay || 0}
+      {galaxy?.edgesDisplay?.length ?? galaxy?.meta?.edgeCountDisplay ?? 0}
       {locale === 'en' ? 'lanes' : 'коридоров'}
     </p>
     <p class="hint">
