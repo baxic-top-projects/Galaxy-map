@@ -94,17 +94,14 @@
   <section
     class="profile"
     class:dragging={panelDragging}
-    style="translate: {panelPos.x}px {panelPos.y}px"
+    style="--drag-x: {panelPos.x}px; --drag-y: {panelPos.y}px"
+    title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
+    onpointerdown={onHeadPointerDown}
+    onpointermove={onHeadPointerMove}
+    onpointerup={onHeadPointerUp}
+    onpointercancel={onHeadPointerUp}
   >
-    <div
-      class="profile-head"
-      role="presentation"
-      title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
-      onpointerdown={onHeadPointerDown}
-      onpointermove={onHeadPointerMove}
-      onpointerup={onHeadPointerUp}
-      onpointercancel={onHeadPointerUp}
-    >
+    <div class="profile-head">
       <button class="back" type="button" onclick={() => onBack?.()}>
         ← {locale === 'en' ? 'Back to map' : 'Назад к карте'}
       </button>
@@ -150,16 +147,16 @@
     border-radius: 16px;
     border: 1px solid rgba(150,190,255,.2);
     background: #09111f;
+    transform: translate3d(var(--drag-x, 0px), var(--drag-y, 0px), 0);
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
   }
   .profile-head {
-    cursor: grab;
-    touch-action: none;
-    user-select: none;
     margin: -0.35rem -0.35rem 0.35rem;
     padding: 0.35rem;
   }
-  .profile.dragging,
-  .profile.dragging .profile-head {
+  .profile.dragging {
     cursor: grabbing;
   }
   .back { border: 0; background: transparent; color: #aac9f2; cursor: pointer; }

@@ -64,11 +64,11 @@
   })
 
   function handleClosePanel() {
+    // Closing a system/polity card must not reopen the galaxy overview.
+    overviewDismissed = true
     if (selected) {
       onCloseSelected?.()
-      return
     }
-    overviewDismissed = true
   }
 
   function onPanelHeadPointerDown(event) {
@@ -159,7 +159,7 @@
 <aside
   class="panel"
   class:dragging={panelDragging}
-  style="translate: {panelPos.x}px {panelPos.y}px"
+  style="--drag-x: {panelPos.x}px; --drag-y: {panelPos.y}px"
 >
   <div
     class="panel-head"
@@ -481,6 +481,7 @@
     border: 1px solid rgba(170, 200, 255, 0.18);
     backdrop-filter: blur(10px);
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    transform: translate3d(var(--drag-x, 0px), var(--drag-y, 0px), 0);
   }
 
   .panel-head {
@@ -631,7 +632,7 @@
       max-height: min(46vh, calc(100dvh - 11rem - env(safe-area-inset-bottom, 0px)));
       overflow: auto;
       padding-top: 0.85rem;
-      transform: translateY(-50%);
+      transform: translate3d(var(--drag-x, 0px), calc(-50% + var(--drag-y, 0px)), 0);
       z-index: 8;
     }
 
