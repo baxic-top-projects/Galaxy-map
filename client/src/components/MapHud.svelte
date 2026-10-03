@@ -40,6 +40,7 @@
   let panelPos = $state(loadPanelPos(PANEL_POS_KEY))
   let panelDragging = $state(false)
   let panelPassThrough = $state(false)
+  let narrowViewport = $state(false)
   let results = $derived(
     filterSearch(galaxy?.search || [], query, {
       locale,
@@ -55,6 +56,11 @@
     user?.role === 'ADMIN' && !!selected && selected.kind !== 'well',
   )
   const panelVisible = $derived(selected ? !detailDismissed : !overviewDismissed)
+  const panelTransform = $derived(
+    narrowViewport
+      ? `translate3d(${panelPos.x}px, calc(-50% + ${panelPos.y}px), 0)`
+      : `translate3d(${panelPos.x}px, ${panelPos.y}px, 0)`,
+  )
 
   const panelDrag = createPanelDrag(
     () => panelPos,
@@ -62,6 +68,11 @@
       panelPos = pos
     },
     PANEL_POS_KEY,
+    {
+      onActive(active) {
+        panelDragging = active
+      },
+    },
   )
 
   $effect(() => {
@@ -84,6 +95,16 @@
       panelPassThrough = false
     }, 500)
     return () => clearTimeout(timer)
+  })
+
+  $effect(() => {
+    const mq = window.matchMedia('(max-width: 820px)')
+    const sync = () => {
+      narrowViewport = mq.matches
+    }
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
   })
 
   function handleClosePanel() {
@@ -114,19 +135,8 @@
     onEnterSystem?.(selected)
   }
 
-  function onPanelHeadPointerDown(event) {
-    if (event.target.closest('button, a, input, select, textarea, label')) return
-    panelDragging = true
+  function onPanelDragDown(event) {
     panelDrag.onPointerDown(event)
-  }
-
-  function onPanelHeadPointerMove(event) {
-    panelDrag.onPointerMove(event)
-  }
-
-  function onPanelHeadPointerUp(event) {
-    panelDragging = false
-    panelDrag.onPointerUp(event)
   }
 </script>
 
@@ -225,42 +235,43 @@
   class="panel"
   class:dragging={panelDragging}
   class:pass-through={panelPassThrough}
-  style="--drag-x: {panelPos.x}px; --drag-y: {panelPos.y}px"
+  style="transform: {panelTransform}"
 >
   <div
-    class="panel-head"
+    class="panel-drag"
     role="presentation"
     title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
-    onpointerdown={onPanelHeadPointerDown}
-    onpointermove={onPanelHeadPointerMove}
-    onpointerup={onPanelHeadPointerUp}
-    onpointercancel={onPanelHeadPointerUp}
+    onpointerdown={onPanelDragDown}
   >
-    <h2>
-      {#if selected}
-        {systemLabel(selected, locale)}
-      {:else}
-        {locale === 'en' ? 'Galaxy overview' : 'Обзор галактики'}
-      {/if}
-    </h2>
-    <button
-      type="button"
-      class="close"
-      aria-label={locale === 'en' ? 'Close panel' : 'Закрыть панель'}
-      onclick={handleClosePanel}
-    >
-      ×
-    </button>
+    <div class="panel-head">
+      <h2>
+        {#if selected}
+          {systemLabel(selected, locale)}
+        {:else}
+          {locale === 'en' ? 'Galaxy overview' : 'Обзор галактики'}
+        {/if}
+      </h2>
+      <button
+        type="button"
+        class="close"
+        aria-label={locale === 'en' ? 'Close panel' : 'Закрыть панель'}
+        onclick={handleClosePanel}
+      >
+        ×
+      </button>
+    </div>
+    {#if selected}
+      <p class="meta drag-meta">
+        {#if selected.kind !== 'junction' && selected.token}
+          {selected.token}
+        {/if}
+        {#if selectedPolity}
+          {selected.kind !== 'junction' && selected.token ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
+        {/if}
+      </p>
+    {/if}
   </div>
   {#if selected}
-    <p class="meta">
-      {#if selected.kind !== 'junction' && selected.token}
-        {selected.token}
-      {/if}
-      {#if selectedPolity}
-        {selected.kind !== 'junction' && selected.token ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
-      {/if}
-    </p>
     {#if mode === 'galaxy'}
       <button type="button" class="primary enter-system" onclick={enterSelectedSystem}>
         {locale === 'en' ? 'Enter system' : 'Войти в систему'}
@@ -552,7 +563,13 @@
     border: 1px solid rgba(170, 200, 255, 0.18);
     backdrop-filter: blur(10px);
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-    transform: translate3d(var(--drag-x, 0px), var(--drag-y, 0px), 0);
+  }
+
+  .panel-drag {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .panel-head {
@@ -564,15 +581,17 @@
     top: 0;
     z-index: 1;
     margin: -0.15rem -0.15rem 0.35rem;
-    padding: 0.15rem 0.15rem 0.45rem;
+    padding: 0.35rem 0.15rem 0.45rem;
     background: linear-gradient(180deg, rgba(10, 16, 32, 0.98), rgba(10, 16, 32, 0.88));
-    cursor: grab;
-    touch-action: none;
-    user-select: none;
+  }
+
+  .drag-meta {
+    margin-top: 0;
+    padding-bottom: 0.25rem;
   }
 
   .panel.dragging,
-  .panel.dragging .panel-head {
+  .panel.dragging .panel-drag {
     cursor: grabbing;
   }
 
@@ -713,13 +732,12 @@
       max-height: min(46vh, calc(100dvh - 11rem - env(safe-area-inset-bottom, 0px)));
       overflow: auto;
       padding-top: 0.85rem;
-      transform: translate3d(var(--drag-x, 0px), calc(-50% + var(--drag-y, 0px)), 0);
       z-index: 8;
     }
 
     .panel-head {
       margin-top: 0;
-      padding-top: 0;
+      padding-top: 0.2rem;
     }
 
     .panel-head h2 {

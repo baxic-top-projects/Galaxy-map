@@ -26,51 +26,89 @@ export function savePanelPos(key, pos) {
 }
 
 /**
- * Pointer drag for floating panels. Ignores clicks on interactive controls.
+ * Pointer/touch drag for floating panels.
+ * Uses window-level move/up listeners so iOS/Android keep tracking
+ * even when the finger leaves the handle.
+ *
  * @param {() => {x:number,y:number}} getPos
  * @param {(pos:{x:number,y:number}) => void} setPos
  * @param {string} storageKey
+ * @param {{ onActive?: (active: boolean) => void }} [options]
  */
-export function createPanelDrag(getPos, setPos, storageKey) {
+export function createPanelDrag(getPos, setPos, storageKey, options = {}) {
   let dragging = false
+  let pointerId = null
+  let handleEl = null
   let startX = 0
   let startY = 0
   let originX = 0
   let originY = 0
   let moved = false
 
+  function cleanup() {
+    const id = pointerId
+    const handle = handleEl
+    dragging = false
+    pointerId = null
+    handleEl = null
+    options.onActive?.(false)
+    window.removeEventListener('pointermove', onWindowMove)
+    window.removeEventListener('pointerup', onWindowUp)
+    window.removeEventListener('pointercancel', onWindowUp)
+    try {
+      if (handle && id != null) handle.releasePointerCapture?.(id)
+    } catch {
+      /* already released */
+    }
+  }
+
+  function onWindowMove(event) {
+    if (!dragging) return
+    if (pointerId != null && event.pointerId !== pointerId) return
+    const dx = event.clientX - startX
+    const dy = event.clientY - startY
+    if (!moved && Math.hypot(dx, dy) < 4) return
+    moved = true
+    if (event.cancelable) event.preventDefault()
+    setPos({ x: originX + dx, y: originY + dy })
+  }
+
+  function onWindowUp(event) {
+    if (!dragging) return
+    if (pointerId != null && event.pointerId !== pointerId) return
+    if (moved) savePanelPos(storageKey, getPos())
+    cleanup()
+  }
+
   function onPointerDown(event) {
     if (event.button != null && event.button !== 0) return
-    if (event.target.closest('button, a, input, select, textarea, label')) return
+    if (event.target instanceof Element) {
+      if (event.target.closest('button, a, input, select, textarea, label')) return
+    }
+    if (dragging) cleanup()
+
     dragging = true
     moved = false
+    pointerId = event.pointerId
+    handleEl = event.currentTarget
     startX = event.clientX
     startY = event.clientY
     const pos = getPos()
     originX = pos.x
     originY = pos.y
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-  }
+    options.onActive?.(true)
 
-  function onPointerMove(event) {
-    if (!dragging) return
-    const dx = event.clientX - startX
-    const dy = event.clientY - startY
-    if (!moved && Math.hypot(dx, dy) < 4) return
-    moved = true
-    setPos({ x: originX + dx, y: originY + dy })
-  }
+    window.addEventListener('pointermove', onWindowMove, { passive: false })
+    window.addEventListener('pointerup', onWindowUp)
+    window.addEventListener('pointercancel', onWindowUp)
 
-  function onPointerUp(event) {
-    if (!dragging) return
-    dragging = false
     try {
-      event.currentTarget.releasePointerCapture?.(event.pointerId)
+      event.currentTarget.setPointerCapture?.(event.pointerId)
     } catch {
-      /* already released */
+      /* some WebViews reject capture; window listeners still work */
     }
-    if (moved) savePanelPos(storageKey, getPos())
+    if (event.cancelable) event.preventDefault()
   }
 
-  return { onPointerDown, onPointerMove, onPointerUp }
+  return { onPointerDown }
 }

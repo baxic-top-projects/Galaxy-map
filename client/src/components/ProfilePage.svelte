@@ -24,6 +24,11 @@
       panelPos = pos
     },
     PANEL_POS_KEY,
+    {
+      onActive(active) {
+        panelDragging = active
+      },
+    },
   )
 
   $effect(() => {
@@ -31,18 +36,7 @@
   })
 
   function onHeadPointerDown(event) {
-    if (event.target.closest('button, a, input, select, textarea, label')) return
-    panelDragging = true
     panelDrag.onPointerDown(event)
-  }
-
-  function onHeadPointerMove(event) {
-    panelDrag.onPointerMove(event)
-  }
-
-  function onHeadPointerUp(event) {
-    panelDragging = false
-    panelDrag.onPointerUp(event)
   }
 
   async function save() {
@@ -93,16 +87,15 @@
 <main class="page">
   <section
     class="profile"
-    role="presentation"
     class:dragging={panelDragging}
-    style="--drag-x: {panelPos.x}px; --drag-y: {panelPos.y}px"
-    title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
-    onpointerdown={onHeadPointerDown}
-    onpointermove={onHeadPointerMove}
-    onpointerup={onHeadPointerUp}
-    onpointercancel={onHeadPointerUp}
+    style="transform: translate3d({panelPos.x}px, {panelPos.y}px, 0)"
   >
-    <div class="profile-head">
+    <div
+      class="profile-head"
+      role="presentation"
+      title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
+      onpointerdown={onHeadPointerDown}
+    >
       <button class="back" type="button" onclick={() => onBack?.()}>
         ← {locale === 'en' ? 'Back to map' : 'Назад к карте'}
       </button>
@@ -148,16 +141,17 @@
     border-radius: 16px;
     border: 1px solid rgba(150,190,255,.2);
     background: #09111f;
-    transform: translate3d(var(--drag-x, 0px), var(--drag-y, 0px), 0);
-    touch-action: none;
-    cursor: grab;
-    user-select: none;
   }
   .profile-head {
     margin: -0.35rem -0.35rem 0.35rem;
-    padding: 0.35rem;
+    padding: 0.55rem 0.35rem;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
   }
-  .profile.dragging {
+  .profile.dragging,
+  .profile.dragging .profile-head {
     cursor: grabbing;
   }
   .back { border: 0; background: transparent; color: #aac9f2; cursor: pointer; }
