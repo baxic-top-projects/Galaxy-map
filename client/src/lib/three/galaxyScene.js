@@ -1761,7 +1761,7 @@ async function createProceduralPoliticalPlate(galaxy) {
 
   if (centralSpatial) {
     for (let py = 0; py < size; py += 1) {
-      if (py > 0 && py % 12 === 0) await yieldToBrowser()
+      if (py > 0 && py % 32 === 0) await yieldToBrowser()
       for (let px = 0; px < size; px += 1) {
         const gx = ((px + 0.5) / size) * 2 * lim - lim
         const gy = -(((py + 0.5) / size) * 2 * lim - lim)
@@ -1839,7 +1839,7 @@ async function createProceduralPoliticalPlate(galaxy) {
     const nearestDistance = new Float32Array(size * size)
     nearestDistance.fill(Infinity)
     for (let systemNumber = 0; systemNumber < systems.length; systemNumber += 1) {
-      if (systemNumber > 0 && systemNumber % 256 === 0) await yieldToBrowser()
+      if (systemNumber > 0 && systemNumber % 512 === 0) await yieldToBrowser()
       const system = systems[systemNumber]
       const idx = systemIndex.get(system.id)
       if (idx == null) continue
@@ -1898,7 +1898,7 @@ async function createProceduralPoliticalPlate(galaxy) {
   // Cream outline: single-sided between polities, around the Axis Well, and against void.
   // Void-cream inside the well ring stays suppressed (kills leftover claim arcs).
   for (let py = 0; py < size; py += 1) {
-    if (py > 0 && py % 24 === 0) await yieldToBrowser()
+    if (py > 0 && py % 48 === 0) await yieldToBrowser()
     for (let px = 0; px < size; px += 1) {
       const i = py * size + px
       const current = owner[i]

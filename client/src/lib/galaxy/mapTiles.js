@@ -74,6 +74,17 @@ export function allTiles(size = DEFAULT_TILE_GRID_SIZE) {
   return tiles
 }
 
+/** All tiles ordered core→rim so the first paint fills the dense overview first. */
+export function allTilesCenterOut(size = DEFAULT_TILE_GRID_SIZE) {
+  const grid = Number(size) > 0 ? Math.floor(Number(size)) : DEFAULT_TILE_GRID_SIZE
+  const center = (grid - 1) / 2
+  return allTiles(grid).sort((a, b) => {
+    const da = (a.tx - center) ** 2 + (a.ty - center) ** 2
+    const db = (b.tx - center) ** 2 + (b.ty - center) ** 2
+    return da - db || a.tx - b.tx || a.ty - b.ty
+  })
+}
+
 /**
  * Approximate visible galaxy XY bounds from an orbit camera looking at z=0.
  * Uses target + distance-based half-extent (good enough for tile selection).

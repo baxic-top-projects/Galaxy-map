@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   allTiles,
+  allTilesCenterOut,
   boundsFromCameraView,
   expandTiles,
   tileKey,
@@ -29,6 +30,24 @@ describe('mapTiles', () => {
   test('allTiles fills the grid', () => {
     expect(allTiles(4)).toHaveLength(16)
     expect(tileKey(2, 3)).toBe('2:3')
+  })
+
+  test('allTilesCenterOut starts near the core', () => {
+    const ordered = allTilesCenterOut(4)
+    expect(ordered).toHaveLength(16)
+    expect(ordered[0]).toEqual({ tx: 1, ty: 1 })
+    expect(ordered[ordered.length - 1]).toEqual(
+      expect.objectContaining({
+        tx: expect.any(Number),
+        ty: expect.any(Number),
+      }),
+    )
+    const firstDist =
+      (ordered[0].tx - 1.5) ** 2 + (ordered[0].ty - 1.5) ** 2
+    const lastDist =
+      (ordered[ordered.length - 1].tx - 1.5) ** 2 +
+      (ordered[ordered.length - 1].ty - 1.5) ** 2
+    expect(firstDist).toBeLessThanOrEqual(lastDist)
   })
 
   test('boundsFromCameraView grows with distance', () => {

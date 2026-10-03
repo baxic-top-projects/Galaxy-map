@@ -21,7 +21,7 @@
     persistGalaxySystemsSnapshot,
     systemLabel,
   } from './lib/galaxy/loadGalaxy.js'
-  import { allTiles, expandTiles, tileKey } from './lib/galaxy/mapTiles.js'
+  import { allTilesCenterOut, expandTiles, tileKey } from './lib/galaxy/mapTiles.js'
   import { updateSystemOwner } from './lib/galaxy/ownershipApi.js'
   import { estimateZoom } from './lib/galaxy/labelLod.js'
   import { connectStormSocket, stormForSystem } from './lib/galaxy/stormsApi.js'
@@ -111,19 +111,43 @@
   const loadedTiles = new Set()
   const inFlightTiles = new Set()
   let cacheRevision = $state(null)
+  /** Accumulates tile systems without per-tile reactive scene rebuilds. */
+  let pendingById = null
+  let systemsDirty = false
 
-  function mergeSystems(chunkSystems) {
-    if (!galaxy || !chunkSystems?.length) return
-    const byId = new Map(galaxy.byId)
-    for (const system of chunkSystems) byId.set(system.id, system)
-    galaxy = {
-      ...galaxy,
-      systems: Array.from(byId.values()),
-      byId,
-    }
+  function resetPendingSystems(fromGalaxy = galaxy) {
+    pendingById = new Map(fromGalaxy?.byId || [])
+    systemsDirty = false
   }
 
-  async function ensureTiles(tiles) {
+  function absorbSystems(chunkSystems) {
+    if (!galaxy || !chunkSystems?.length) return
+    if (!pendingById) pendingById = new Map(galaxy.byId)
+    for (const system of chunkSystems) pendingById.set(system.id, system)
+    systemsDirty = true
+  }
+
+  function flushSystems() {
+    if (!galaxy || !pendingById || !systemsDirty) return
+    systemsDirty = false
+    const systems = Array.from(pendingById.values())
+    const byId = new Map(pendingById)
+    galaxy = {
+      ...galaxy,
+      systems,
+      byId,
+    }
+    pendingById = new Map(byId)
+  }
+
+  /**
+   * @param {Array<{tx:number,ty:number}>} tiles
+   * @param {{ mode?: 'viewport' | 'hydrate' | 'silent' }} [options]
+   * - viewport: one scene update when this batch finishes (pan/zoom)
+   * - hydrate: few milestone paints core→rim (cold start, not 256 redraws)
+   * - silent: absorb only; caller flushes (warm revalidate)
+   */
+  async function ensureTiles(tiles, { mode = 'viewport' } = {}) {
     const revision = cacheRevision || galaxy?.cacheRevision || null
     const missing = []
     for (const tile of tiles || []) {
@@ -133,25 +157,43 @@
       missing.push(tile)
     }
     if (!missing.length) return
-    await mapPool(missing, 8, async (tile) => {
+    const total = missing.length
+    const flushAt =
+      mode === 'hydrate'
+        ? new Set(
+            [0.15, 0.4, 0.7, 1].map((fraction) =>
+              Math.max(1, Math.min(total, Math.ceil(total * fraction))),
+            ),
+          )
+        : null
+    let completed = 0
+    await mapPool(missing, 16, async (tile) => {
       const key = tileKey(tile.tx, tile.ty)
       try {
         const data = await loadWithRetry(() =>
           loadGalaxySystemsTile(tile.tx, tile.ty, undefined, { revision }),
         )
         loadedTiles.add(key)
-        mergeSystems(data.systems)
+        absorbSystems(data.systems)
+        completed += 1
+        if (flushAt?.has(completed)) flushSystems()
       } finally {
         inFlightTiles.delete(key)
       }
     })
+    if (mode !== 'silent') flushSystems()
   }
 
   function handleViewportTiles(tiles) {
     const grid = galaxy?.tileGrid
     if (!grid) return
+    // Warm full catalog: viewport prefetch stays on disk/network, no star flicker.
+    if (galaxy?.meta?.systemsHydrated) {
+      void ensureTiles(expandTiles(tiles, 1, grid.size), { mode: 'silent' })
+      return
+    }
     const expanded = expandTiles(tiles, 1, grid.size)
-    void ensureTiles(expanded)
+    void ensureTiles(expanded, { mode: 'viewport' })
   }
 
   async function hydrateGalaxySlices() {
@@ -159,9 +201,14 @@
     const revision = cacheRevision || galaxy?.cacheRevision || null
     const edgesPromise = loadWithRetry(() => loadGalaxyEdges())
     const searchPromise = loadWithRetry(() => loadGalaxySearch())
-    // Background fill of the whole tile grid (viewport requests race ahead of this).
+    const alreadyHydrated = Boolean(galaxy?.meta?.systemsHydrated)
+    // Background fill: milestone paints when cold; silent absorb when warm.
     const systemsPromise = grid
-      ? ensureTiles(allTiles(grid.size))
+      ? ensureTiles(allTilesCenterOut(grid.size), {
+          mode: alreadyHydrated ? 'silent' : 'hydrate',
+        }).then(() => {
+          if (alreadyHydrated) flushSystems()
+        })
       : Promise.resolve()
 
     const [edgesResult, searchResult, systemsResult] = await Promise.allSettled([
@@ -237,6 +284,7 @@
         cacheRevision = warm.revision
         for (const key of warm.tileKeys || []) loadedTiles.add(key)
         galaxy = warm.galaxy
+        resetPendingSystems(warm.galaxy)
         loading = false
       }
 
@@ -270,6 +318,7 @@
       } else {
         galaxy = nextMap
       }
+      resetPendingSystems(galaxy)
       loading = false
       void hydrateGalaxySlices()
     } catch (err) {
