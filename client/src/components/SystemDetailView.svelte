@@ -68,15 +68,6 @@
 
 {#if detail}
   <div class="system-stage" style={`--starfield:url('${starfieldUrl}')`}>
-    <button
-      type="button"
-      class="close"
-      aria-label={locale === 'en' ? 'Back to galaxy' : 'К галактике'}
-      title={locale === 'en' ? 'Back to galaxy' : 'К галактике'}
-      onclick={() => onZoomOut?.()}
-    >
-      ×
-    </button>
     <canvas bind:this={canvas} class="detail-canvas" aria-label="System detail view"></canvas>
     {#if storm}
       <div
@@ -137,32 +128,6 @@
     width: 100%;
     height: 100%;
     background: transparent;
-  }
-
-  .close {
-    position: absolute;
-    top: calc(0.85rem + env(safe-area-inset-top, 0px));
-    right: 0.85rem;
-    z-index: 6;
-    width: 2.35rem;
-    height: 2.35rem;
-    padding: 0;
-    border-radius: 999px;
-    border: 1px solid rgba(170, 200, 255, 0.35);
-    background: rgba(8, 14, 28, 0.88);
-    color: #e8eef8;
-    font-size: 1.45rem;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
-  }
-
-  .close:hover {
-    border-color: rgba(190, 220, 255, 0.65);
-    color: #fff;
   }
 
   .storm-banner {
