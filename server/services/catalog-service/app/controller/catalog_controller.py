@@ -16,6 +16,11 @@ def get_galaxy():
     return catalog_query.get_galaxy_index()
 
 
+@router.get("/internal/v1/galaxy/graph")
+def get_galaxy_graph():
+    return catalog_query.get_galaxy_graph()
+
+
 @router.patch("/internal/v1/systems/{system_id:path}/owner")
 def patch_system_owner(
     system_id: str,

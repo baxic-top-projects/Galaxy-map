@@ -176,6 +176,25 @@ class CatalogQueryService:
             )
             return _apply_galaxy_ownership(result, manual=manual)
 
+    def get_galaxy_graph(self) -> dict:
+        """Lean id/kind + edge payload for storm-service (avoids the full index in memory)."""
+        with SessionLocal() as session:
+            systems = [
+                {"id": system_id, "kind": kind}
+                for system_id, kind in session.execute(
+                    select(SystemRow.id, SystemRow.kind).order_by(SystemRow.id)
+                )
+            ]
+            edges: dict[str, list[dict]] = {"canon": [], "display": []}
+            for a, b, graph in session.execute(select(EdgeRow.a, EdgeRow.b, EdgeRow.graph)):
+                if graph in edges:
+                    edges[graph].append({"a": a, "b": b})
+            return {
+                "systems": systems,
+                "edgesCanon": edges["canon"],
+                "edgesDisplay": edges["display"],
+            }
+
     def get_system_by_id(self, system_id: str) -> dict:
         key = f"system:id:{system_id}"
         with SessionLocal() as session:

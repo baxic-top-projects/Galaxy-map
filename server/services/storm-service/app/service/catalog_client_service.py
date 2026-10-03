@@ -13,12 +13,18 @@ logger = logging.getLogger(__name__)
 
 def fetch_galaxy_index(settings: Settings, *, attempts: int = 40, delay_seconds: float = 3.0) -> dict[str, Any]:
     """Load galaxy graph payload from catalog-service (Postgres-backed)."""
-    url = f"{settings.catalog_service_url.rstrip('/')}/internal/v1/galaxy"
+    base_url = settings.catalog_service_url.rstrip("/")
+    # The lean graph endpoint keeps startup memory low; the full index is only a
+    # fallback for catalog builds that predate it.
+    graph_url = f"{base_url}/internal/v1/galaxy/graph"
+    index_url = f"{base_url}/internal/v1/galaxy"
     last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
             with httpx.Client(timeout=settings.catalog_timeout_seconds) as client:
-                response = client.get(url)
+                response = client.get(graph_url)
+                if response.status_code == 404:
+                    response = client.get(index_url)
                 response.raise_for_status()
                 payload = response.json()
             systems = payload.get("systems") or []
