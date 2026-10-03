@@ -565,26 +565,39 @@
   }
 
   @media (max-width: 820px) {
+    .hud-top {
+      z-index: 30;
+    }
+
     .panel {
-      /* Center on mobile so it sits clearly above the realm nav chips. */
-      top: 50%;
-      bottom: auto;
+      /* Free band between top HUD/profile and bottom realm nav. */
+      top: calc(10.5rem + env(safe-area-inset-top, 0px));
+      bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
       right: 0.9rem;
       left: 0.9rem;
       width: auto;
-      max-height: min(46vh, calc(100dvh - 11rem - env(safe-area-inset-bottom, 0px)));
+      max-height: none;
       overflow: auto;
       padding-top: 0.85rem;
-      transform: translateY(-50%);
+      transform: none;
+      z-index: 8;
     }
 
     .panel-head {
       margin-top: 0;
       padding-top: 0;
+      flex-direction: row-reverse;
+      justify-content: flex-end;
     }
 
     .panel-head h2 {
       font-size: 1.05rem;
+      flex: 1;
+    }
+
+    .close {
+      /* Keep × on the left so it never sits under the profile chip. */
+      margin-right: 0.35rem;
     }
   }
 </style>
