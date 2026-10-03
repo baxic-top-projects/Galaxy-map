@@ -5,6 +5,17 @@
  * @typedef {{ id: string, kind: string, token: string, nameEn: string, nameRu: string, stem: string|null, planetTypeKey?: string }} SearchEntry
  */
 
+import {
+  catalogRevisionFromMap,
+  clearTileCache,
+  getCachedTile,
+  loadGalaxyWarmCache,
+  setCachedEdges,
+  setCachedMap,
+  setCachedSearch,
+  setCachedTile,
+} from './tileCache.js'
+
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || ''
 let activeWorldNames = new Map()
 const WORLD_PREFIXES = [
@@ -113,6 +124,7 @@ function assembleGalaxy(data) {
     ...data,
     systems,
     tileGrid: data.tileGrid || null,
+    cacheRevision: data.cacheRevision || null,
     edgesCanon: data.edgesCanon || [],
     edgesDisplay: data.edgesDisplay || [],
     search,
@@ -122,41 +134,89 @@ function assembleGalaxy(data) {
 }
 
 /**
+ * Instant paint from IndexedDB (seed + previously fetched tiles).
+ * Returns null when the local cache is empty.
+ */
+export async function loadGalaxyFromCache() {
+  const warm = await loadGalaxyWarmCache()
+  if (!warm) return null
+  const galaxy = assembleGalaxy({
+    ...warm.map,
+    systems: warm.systems,
+    edgesCanon: warm.edgesCanon,
+    edgesDisplay: warm.edgesDisplay,
+    search: warm.search,
+    cacheRevision: warm.revision,
+    meta: {
+      ...(warm.map.meta || {}),
+      systemsHydrated: warm.systemsHydrated,
+    },
+  })
+  return {
+    galaxy,
+    revision: warm.revision,
+    tileKeys: warm.tileKeys,
+    systemsHydrated: warm.systemsHydrated,
+  }
+}
+
+/**
  * Map bootstrap: meta + polities + seed systems + tileGrid (no edges/search yet).
- * @returns {Promise<{
- *   meta: object,
- *   polities: Polity[],
- *   systems: GalaxySystem[],
- *   tileGrid: { size: number, mapLim: number } | null,
- *   edgesCanon: Edge[],
- *   edgesDisplay: Edge[],
- *   search: SearchEntry[],
- *   byId: Map<string, GalaxySystem>,
- *   polityByStem: Map<string, Polity>
- * }>}
+ * Revalidates against the network and refreshes the persistent cache revision.
  */
 export async function loadGalaxyMap(baseUrl = DEFAULT_API_BASE, options = {}) {
   const data = await fetchGalaxyJson('/api/v1/galaxy/map', baseUrl, options)
+  const revision = catalogRevisionFromMap(data)
+  const previous = options.previousRevision || null
+  if (previous && previous !== revision) {
+    await clearTileCache()
+  }
+  await setCachedMap(revision, {
+    meta: data.meta || {},
+    polities: data.polities || [],
+    systems: data.systems || [],
+    tileGrid: data.tileGrid || null,
+  })
   return assembleGalaxy({
     ...data,
     edgesCanon: [],
     edgesDisplay: [],
     search: [],
+    cacheRevision: revision,
   })
 }
 
 /** @returns {Promise<{ tx: number, ty: number, systems: GalaxySystem[] }>} */
 export async function loadGalaxySystemsTile(tx, ty, baseUrl = DEFAULT_API_BASE, options = {}) {
+  const revision = options.revision || null
+  if (revision && options.preferCache !== false) {
+    const cached = await getCachedTile(revision, tx, ty)
+    if (cached) return cached
+  }
   const query = new URLSearchParams({
     tx: String(tx),
     ty: String(ty),
   })
   const data = await fetchGalaxyJson(`/api/v1/galaxy/systems?${query}`, baseUrl, options)
-  return {
+  const tile = {
     tx: Number(data.tx ?? tx),
     ty: Number(data.ty ?? ty),
     systems: data.systems || [],
   }
+  if (revision) {
+    await setCachedTile(revision, tile.tx, tile.ty, tile.systems)
+  }
+  return tile
+}
+
+export async function persistGalaxyEdges(revision, edges) {
+  if (!revision || !edges) return
+  await setCachedEdges(revision, edges)
+}
+
+export async function persistGalaxySearch(revision, search) {
+  if (!revision || !search) return
+  await setCachedSearch(revision, search)
 }
 
 /** Run async workers over items with a fixed concurrency limit. */

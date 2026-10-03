@@ -10,11 +10,14 @@
   import SystemDetailView from './components/SystemDetailView.svelte'
   import {
     loadGalaxyEdges,
+    loadGalaxyFromCache,
     loadGalaxyMap,
     loadGalaxySearch,
     loadGalaxySystemsTile,
     loadSystemDetail,
     mapPool,
+    persistGalaxyEdges,
+    persistGalaxySearch,
     systemLabel,
   } from './lib/galaxy/loadGalaxy.js'
   import { allTiles, expandTiles, tileKey } from './lib/galaxy/mapTiles.js'
@@ -106,6 +109,7 @@
 
   const loadedTiles = new Set()
   const inFlightTiles = new Set()
+  let cacheRevision = $state(null)
 
   function mergeSystems(chunkSystems) {
     if (!galaxy || !chunkSystems?.length) return
@@ -119,6 +123,7 @@
   }
 
   async function ensureTiles(tiles) {
+    const revision = cacheRevision || galaxy?.cacheRevision || null
     const missing = []
     for (const tile of tiles || []) {
       const key = tileKey(tile.tx, tile.ty)
@@ -130,7 +135,9 @@
     await mapPool(missing, 8, async (tile) => {
       const key = tileKey(tile.tx, tile.ty)
       try {
-        const data = await loadWithRetry(() => loadGalaxySystemsTile(tile.tx, tile.ty))
+        const data = await loadWithRetry(() =>
+          loadGalaxySystemsTile(tile.tx, tile.ty, undefined, { revision }),
+        )
         loadedTiles.add(key)
         mergeSystems(data.systems)
       } finally {
@@ -148,6 +155,7 @@
 
   async function hydrateGalaxySlices() {
     const grid = galaxy?.tileGrid
+    const revision = cacheRevision || galaxy?.cacheRevision || null
     const edgesPromise = loadWithRetry(() => loadGalaxyEdges())
     const searchPromise = loadWithRetry(() => loadGalaxySearch())
     // Background fill of the whole tile grid (viewport requests race ahead of this).
@@ -173,12 +181,14 @@
           edgeCountCanon: edgesResult.value.edgesCanon.length,
         },
       }
+      if (revision) void persistGalaxyEdges(revision, edgesResult.value)
     }
     if (searchResult.status === 'fulfilled') {
       next = {
         ...next,
         search: searchResult.value,
       }
+      if (revision) void persistGalaxySearch(revision, searchResult.value)
     }
     next = {
       ...next,
@@ -211,11 +221,46 @@
         // Keep local /models fallbacks when asset-service is unavailable.
       })
     try {
-      galaxy = await loadWithRetry(() => loadGalaxyMap())
+      // Google Maps-style warm start: paint from local tile cache immediately.
+      const warm = await loadGalaxyFromCache()
+      if (warm?.galaxy) {
+        cacheRevision = warm.revision
+        for (const key of warm.tileKeys || []) loadedTiles.add(key)
+        galaxy = warm.galaxy
+        loading = false
+      }
+
+      const previousRevision = cacheRevision
+      const nextMap = await loadWithRetry(() =>
+        loadGalaxyMap(undefined, { previousRevision }),
+      )
+      if (previousRevision && nextMap.cacheRevision !== previousRevision) {
+        loadedTiles.clear()
+      }
+      cacheRevision = nextMap.cacheRevision
+      // Keep already-cached systems when revision matches; only replace seed/meta.
+      if (galaxy && previousRevision && previousRevision === nextMap.cacheRevision) {
+        const byId = new Map(galaxy.byId)
+        for (const system of nextMap.systems || []) byId.set(system.id, system)
+        galaxy = {
+          ...nextMap,
+          systems: Array.from(byId.values()),
+          byId,
+          edgesCanon: galaxy.edgesCanon,
+          edgesDisplay: galaxy.edgesDisplay,
+          search: galaxy.search,
+          meta: {
+            ...nextMap.meta,
+            systemsHydrated: galaxy.meta?.systemsHydrated,
+          },
+        }
+      } else {
+        galaxy = nextMap
+      }
       loading = false
       void hydrateGalaxySlices()
     } catch (err) {
-      error = err instanceof Error ? err.message : String(err)
+      if (!galaxy) error = err instanceof Error ? err.message : String(err)
       loading = false
     }
 

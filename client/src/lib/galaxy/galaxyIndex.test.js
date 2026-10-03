@@ -184,12 +184,13 @@ describe('loadGalaxy API client', () => {
     const galaxy = await loadGalaxyMap('http://gateway.test')
     expect(galaxy.systems).toHaveLength(1)
     expect(galaxy.tileGrid).toEqual({ size: 16, mapLim: 1.06 })
+    expect(galaxy.cacheRevision).toBeTruthy()
     expect(galaxy.edgesDisplay).toEqual([])
     expect(galaxy.search).toEqual([])
     expect(galaxy.byId.get('A:One').token).toBe('One')
   })
 
-  test('loads spatial system tiles and mapPool concurrency', async () => {
+  test('loads spatial system tiles from network then cache', async () => {
     const seen = []
     vi.stubGlobal(
       'fetch',
@@ -213,10 +214,14 @@ describe('loadGalaxy API client', () => {
       }),
     )
 
-    const tile = await loadGalaxySystemsTile(3, 7, 'http://gateway.test')
+    const tile = await loadGalaxySystemsTile(3, 7, 'http://gateway.test', { revision: 'r1' })
     expect(tile.tx).toBe(3)
     expect(tile.ty).toBe(7)
     expect(tile.systems[0].id).toBe('T3_7')
+
+    const cached = await loadGalaxySystemsTile(3, 7, 'http://gateway.test', { revision: 'r1' })
+    expect(cached.systems[0].id).toBe('T3_7')
+    expect(seen.filter((key) => key === '3:7')).toHaveLength(1)
 
     const coords = [
       { tx: 0, ty: 0 },
@@ -225,10 +230,9 @@ describe('loadGalaxy API client', () => {
       { tx: 3, ty: 0 },
     ]
     const results = await mapPool(coords, 2, async ({ tx, ty }) =>
-      loadGalaxySystemsTile(tx, ty, 'http://gateway.test'),
+      loadGalaxySystemsTile(tx, ty, 'http://gateway.test', { revision: 'r1' }),
     )
     expect(results).toHaveLength(4)
-    expect(seen).toContain('3:7')
     expect(seen).toContain('3:0')
   })
 
