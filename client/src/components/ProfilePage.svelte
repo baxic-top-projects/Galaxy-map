@@ -93,6 +93,7 @@
 <main class="page">
   <section
     class="profile"
+    role="presentation"
     class:dragging={panelDragging}
     style="--drag-x: {panelPos.x}px; --drag-y: {panelPos.y}px"
     title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
