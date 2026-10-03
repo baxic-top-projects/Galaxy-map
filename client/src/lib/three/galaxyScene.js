@@ -1413,11 +1413,16 @@ async function createProceduralPoliticalPlate(galaxy) {
   for (const system of neutralOwned) {
     if (Math.hypot(system.x, system.y) <= centralInfluenceR) centralSeed.push(system)
   }
-  const centralSpatial = centralSeed.length
-    ? buildSpatialIndex([
-        ...new Map(centralSeed.map((system) => [system.id, system])).values(),
-      ])
-    : null
+  // Sparse polity filters (1–few stars) must not run full-disk nearest-neighbor
+  // fill: even one in-disk seed forces every central pixel to expand the search
+  // and freezes the tab. Bounded claim paint is enough for those views.
+  const sparsePolitical = politicalOwned.length > 0 && politicalOwned.length < 80
+  const centralSpatial =
+    !sparsePolitical && centralSeed.length
+      ? buildSpatialIndex([
+          ...new Map(centralSeed.map((system) => [system.id, system])).values(),
+        ])
+      : null
   const frontierOwned = politicalOwned.filter((system) =>
     system.id.startsWith('frontier:'),
   )
@@ -1616,8 +1621,12 @@ async function createProceduralPoliticalPlate(galaxy) {
   // One shared bounded Voronoi pass gives the 21 frontier polities and neutral
   // stars equal cells. Reassigning a star therefore recolors its existing cell
   // instead of layering a second claim over the previous territory.
+  // Sparse filters paint every remaining political system the same way so the
+  // polity still gets a visible claim without the central-disk NN pass.
   await paintBoundedClaims(
-    [...frontierOwned, ...neutralOwned],
+    sparsePolitical
+      ? [...politicalOwned, ...neutralOwned]
+      : [...frontierOwned, ...neutralOwned],
     frontierClaimMax,
   )
 

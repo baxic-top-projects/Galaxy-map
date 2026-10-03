@@ -175,12 +175,24 @@
     if (!polityFilter) return galaxy
     const systems = visibleSystems
     const ids = new Set(systems.map((system) => system.id))
+    const edgesDisplay = (galaxy.edgesDisplay ?? []).filter(
+      (edge) => ids.has(edge.a) && ids.has(edge.b),
+    )
+    const edgesCanon = (galaxy.edgesCanon ?? []).filter(
+      (edge) => ids.has(edge.a) && ids.has(edge.b),
+    )
     return {
       ...galaxy,
       systems,
       byId: new Map(systems.map((system) => [system.id, system])),
-      edgesDisplay: galaxy.edgesDisplay.filter((edge) => ids.has(edge.a) && ids.has(edge.b)),
-      edgesCanon: galaxy.edgesCanon.filter((edge) => ids.has(edge.a) && ids.has(edge.b)),
+      edgesDisplay,
+      edgesCanon,
+      meta: {
+        ...galaxy.meta,
+        systemCount: systems.length,
+        edgeCountDisplay: edgesDisplay.length,
+        edgeCountCanon: edgesCanon.length,
+      },
     }
   })
 
