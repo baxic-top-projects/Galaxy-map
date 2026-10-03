@@ -989,6 +989,11 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   const hyperlaneTargets = []
   let pointerDown = null
   let arrowRadius = 8
+  let bodiesPaused = false
+
+  function setBodiesPaused(value) {
+    bodiesPaused = !!value
+  }
 
   function onWheel(event) {
     if (event.deltaY <= 0) return
@@ -1519,25 +1524,34 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     raf = requestAnimationFrame(frame)
     const elapsed = performance.now() * 0.001
     stormBoundary?.userData.updateVisual?.(elapsed)
-    for (const body of animated) {
-      body.mesh?.userData.updateVisual?.(elapsed, camera)
-      if (body.beltSpin) {
-        body.beltSpin.mesh.userData.updateVisual?.(elapsed, camera)
-        body.beltSpin.mesh.rotation.y += body.beltSpin.speed * 0.016
-        continue
+    if (!bodiesPaused) {
+      for (const body of animated) {
+        body.mesh?.userData.updateVisual?.(elapsed, camera)
+        if (body.beltSpin) {
+          body.beltSpin.mesh.userData.updateVisual?.(elapsed, camera)
+          body.beltSpin.mesh.rotation.y += body.beltSpin.speed * 0.016
+          continue
+        }
+        if (body.spin) {
+          body.mesh.rotation.y += body.spin
+        }
+        if (!body.orbit) {
+          if (!body.mesh.userData.disableSpin) body.mesh.rotation.y += 0.0025
+          continue
+        }
+        body.angle += body.speed * 0.016
+        body.mesh.position.x = Math.cos(body.angle) * body.orbit
+        body.mesh.position.y = 0
+        body.mesh.position.z = Math.sin(body.angle) * body.orbit
+        body.mesh.rotation.y += 0.012
       }
-      if (body.spin) {
-        body.mesh.rotation.y += body.spin
+    } else {
+      for (const body of animated) {
+        body.mesh?.userData.updateVisual?.(elapsed, camera)
+        if (body.beltSpin) {
+          body.beltSpin.mesh.userData.updateVisual?.(elapsed, camera)
+        }
       }
-      if (!body.orbit) {
-        if (!body.mesh.userData.disableSpin) body.mesh.rotation.y += 0.0025
-        continue
-      }
-      body.angle += body.speed * 0.016
-      body.mesh.position.x = Math.cos(body.angle) * body.orbit
-      body.mesh.position.y = 0
-      body.mesh.position.z = Math.sin(body.angle) * body.orbit
-      body.mesh.rotation.y += 0.012
     }
     applyKeyboardPan()
     controls.update()
@@ -1571,5 +1585,5 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
   build()
   raf = requestAnimationFrame(frame)
 
-  return { dispose, resize, setStorm }
+  return { dispose, resize, setStorm, setBodiesPaused }
 }

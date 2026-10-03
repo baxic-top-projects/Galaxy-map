@@ -22,6 +22,8 @@
     onBackToGalaxy = undefined,
     onCloseSelected = undefined,
     onEnterSystem = undefined,
+    onBodiesPaused = undefined,
+    bodiesPaused = false,
     onPoliticalMap = undefined,
     showPoliticalMap = true,
     user = null,
@@ -199,6 +201,17 @@
       </button>
     {/if}
     {#if mode === 'system'}
+      <button
+        type="button"
+        class="ghost"
+        class:active={bodiesPaused}
+        aria-pressed={bodiesPaused}
+        onclick={() => onBodiesPaused?.(!bodiesPaused)}
+      >
+        {bodiesPaused
+          ? (locale === 'en' ? 'Resume orbits' : 'Запуск орбит')
+          : (locale === 'en' ? 'Pause orbits' : 'Стоп орбит')}
+      </button>
       <button type="button" class="primary" onclick={() => onBackToGalaxy?.()}>
         {locale === 'en' ? 'Galaxy view' : 'К галактике'}
       </button>

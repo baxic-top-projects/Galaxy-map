@@ -7,6 +7,7 @@
     galaxy = null,
     locale = 'ru',
     storm = null,
+    bodiesPaused = false,
     onLabels = undefined,
     onZoomOut = undefined,
     onTravelTo = undefined,
@@ -46,6 +47,7 @@
         next.dispose()
         return
       }
+      next.setBodiesPaused?.(untrack(() => bodiesPaused))
       api = next
     })
 
@@ -58,6 +60,10 @@
 
   $effect(() => {
     api?.setStorm(storm)
+  })
+
+  $effect(() => {
+    api?.setBodiesPaused?.(bodiesPaused)
   })
 
   onDestroy(() => {

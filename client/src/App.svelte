@@ -47,6 +47,7 @@
   let detail = $state(null)
   let polityFilter = $state('')
   let mode = $state('galaxy')
+  let bodiesPaused = $state(false)
   let labels = $state([])
   let showPoliticalMap = $state(true)
   let focusRequest = $state(null)
@@ -191,6 +192,7 @@
   function handleEnterSystem(system) {
     selected = system
     ownerError = ''
+    bodiesPaused = false
     mode = 'system'
   }
 
@@ -353,8 +355,10 @@
           {galaxy}
           {locale}
           storm={selectedStorm}
+          {bodiesPaused}
           onZoomOut={() => {
             mode = 'galaxy'
+            bodiesPaused = false
             resetToken += 1
           }}
           onTravelTo={handleEnterSystem}
@@ -398,8 +402,13 @@
         selected = null
       }}
       onEnterSystem={handleEnterSystem}
+      {bodiesPaused}
+      onBodiesPaused={(value) => {
+        bodiesPaused = value
+      }}
       onBackToGalaxy={() => {
         mode = 'galaxy'
+        bodiesPaused = false
       }}
     />
   </main>
