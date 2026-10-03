@@ -141,6 +141,18 @@ def test_locked_layout_preserves_current_one_hundred_fifty_five_polities():
     assert len(locked_base) >= 155
     assert len(locked_ownership) >= 155
     assert all("star-extra" not in object_id for object_id in locked_ownership)
+    locked_extras = [
+        object_id
+        for object_id in locked_ownership
+        if "-extra-" in object_id
+    ]
+    assert len(locked_extras) == 82
+    assert all(
+        "black_hole-extra" in object_id or "junction-extra" in object_id
+        for object_id in locked_extras
+    )
+    # Base spiral (5432) + locked BH/junction extras (82) stay on the map.
+    assert len(objects) == 5432 + 82
     fingerprint = "\n".join(
         f"{object_id}={stem}"
         for object_id, stem in sorted(locked_ownership.items())

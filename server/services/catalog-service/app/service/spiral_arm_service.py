@@ -31,13 +31,10 @@ from app.service.frontier_naming import (
 )
 from app.service.spiral_geometry import (
     ARM_COUNT,
-    BLACK_HOLES_PER_ARM,
     GENERATOR_SEED,
     ID_PREFIX,
-    JUNCTIONS_PER_ARM,
     MAP_LIMIT,
     OUTER_RADIUS,
-    STARS_PER_ARM,
     ArmObject,
     arm_edges,
     generate_arm_objects,
@@ -181,10 +178,13 @@ def gateway_edges(
 
 def apply_spiral_extension() -> dict[str, int]:
     generated = generate_arm_objects()
-    generated_ids = {obj.id for obj in generated}
     locked_base, locked_clusters, locked_ownership = (
         load_locked_frontier_layout(generated)
     )
+    # Layout lock may append legacy black_hole/junction extras that already render
+    # on the map. Include them in generated_ids so sync does not delete them and
+    # the public systemCount stays stable across deploys (9063).
+    generated_ids = {obj.id for obj in generated}
 
     with SessionLocal() as session:
         existing = list(session.scalars(select(SystemRow)))
@@ -354,6 +354,9 @@ def apply_spiral_extension() -> dict[str, int]:
         )
         meta = session.get(GalaxyMetaRow, 1)
         meta_payload = dict(meta.payload or {}) if meta else {}
+        spiral_stars = sum(1 for obj in generated if obj.kind == "star")
+        spiral_black_holes = sum(1 for obj in generated if obj.kind == "black_hole")
+        spiral_junctions = sum(1 for obj in generated if obj.kind == "junction")
         meta_payload.update(
             {
                 "mapLim": MAP_LIMIT,
@@ -361,9 +364,9 @@ def apply_spiral_extension() -> dict[str, int]:
                 "spiralArmCount": ARM_COUNT,
                 "spiralOuterRadius": OUTER_RADIUS,
                 "spiralSeed": GENERATOR_SEED,
-                "spiralStars": ARM_COUNT * STARS_PER_ARM,
-                "spiralBlackHoles": ARM_COUNT * BLACK_HOLES_PER_ARM,
-                "spiralJunctions": ARM_COUNT * JUNCTIONS_PER_ARM,
+                "spiralStars": spiral_stars,
+                "spiralBlackHoles": spiral_black_holes,
+                "spiralJunctions": spiral_junctions,
                 "frontierPolities": len(FRONTIER_POLITIES),
                 "frontierAssignedSystems": len(ownership),
                 "frontierTerritoryClaims": (
