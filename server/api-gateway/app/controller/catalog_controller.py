@@ -25,6 +25,36 @@ async def galaxy_index():
     )
 
 
+@router.get("/api/v1/galaxy/map")
+async def galaxy_map():
+    response = await catalog_client.request("GET", "/internal/v1/galaxy/map")
+    return Response(
+        content=response.content,
+        status_code=response.status_code,
+        media_type="application/json",
+    )
+
+
+@router.get("/api/v1/galaxy/edges")
+async def galaxy_edges():
+    response = await catalog_client.request("GET", "/internal/v1/galaxy/edges")
+    return Response(
+        content=response.content,
+        status_code=response.status_code,
+        media_type="application/json",
+    )
+
+
+@router.get("/api/v1/galaxy/search")
+async def galaxy_search():
+    response = await catalog_client.request("GET", "/internal/v1/galaxy/search")
+    return Response(
+        content=response.content,
+        status_code=response.status_code,
+        media_type="application/json",
+    )
+
+
 @router.patch("/api/v1/systems/{system_id:path}/owner")
 async def system_owner(
     system_id: str,

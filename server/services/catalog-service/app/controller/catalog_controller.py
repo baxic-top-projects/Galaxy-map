@@ -16,6 +16,21 @@ def get_galaxy():
     return catalog_query.get_galaxy_index()
 
 
+@router.get("/internal/v1/galaxy/map")
+def get_galaxy_map():
+    return catalog_query.get_galaxy_map()
+
+
+@router.get("/internal/v1/galaxy/edges")
+def get_galaxy_edges():
+    return catalog_query.get_galaxy_edges()
+
+
+@router.get("/internal/v1/galaxy/search")
+def get_galaxy_search():
+    return catalog_query.get_galaxy_search()
+
+
 @router.get("/internal/v1/galaxy/graph")
 def get_galaxy_graph():
     return catalog_query.get_galaxy_graph()

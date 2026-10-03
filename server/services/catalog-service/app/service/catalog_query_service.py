@@ -76,16 +76,37 @@ def _apply_system_ownership(
 
 
 def _apply_galaxy_ownership(payload: dict, *, manual: dict[str, str] | None = None) -> dict:
-    return {
-        **payload,
-        "systems": [
+    next_payload = {**payload}
+    if "systems" in payload:
+        next_payload["systems"] = [
             _apply_system_ownership(system, manual=manual)
             for system in payload.get("systems") or []
-        ],
-        "search": [
+        ]
+    if "search" in payload:
+        next_payload["search"] = [
             _apply_system_ownership(entry, manual=manual)
             for entry in payload.get("search") or []
-        ],
+        ]
+    return next_payload
+
+
+def _system_index_row(row: SystemRow) -> dict:
+    return {
+        "id": row.id,
+        "token": row.token,
+        "stem": row.stem,
+        "kind": row.kind,
+        "nameEn": row.name_en,
+        "nameRu": row.name_ru,
+        "starTypeKey": row.star_type_key,
+        "sectorId": row.sector_id,
+        "capital": row.capital,
+        "x": row.x,
+        "y": row.y,
+        "z": row.z,
+        "worldCount": row.world_count,
+        "territoryAnchor": (row.detail or {}).get("territoryAnchor", True),
+        "shard": row.shard,
     }
 
 
@@ -116,6 +137,65 @@ class CatalogQueryService:
                 "error": str(exc),
             }
 
+    def _cache_galaxy_slices(self, result: dict, *, cache_generation: int) -> None:
+        ttl = settings.redis_galaxy_ttl_seconds
+        self.cache.set_json("galaxy", result, ttl, expected_generation=cache_generation)
+        self.cache.set_json(
+            "galaxy:map",
+            {
+                "meta": result.get("meta") or {},
+                "polities": result.get("polities") or [],
+                "systems": result.get("systems") or [],
+            },
+            ttl,
+            expected_generation=cache_generation,
+        )
+        self.cache.set_json(
+            "galaxy:edges",
+            {
+                "edgesCanon": result.get("edgesCanon") or [],
+                "edgesDisplay": result.get("edgesDisplay") or [],
+            },
+            ttl,
+            expected_generation=cache_generation,
+        )
+        self.cache.set_json(
+            "galaxy:search",
+            {"search": result.get("search") or []},
+            ttl,
+            expected_generation=cache_generation,
+        )
+
+    def _build_galaxy_index(self, session) -> dict:
+        meta = session.get(GalaxyMetaRow, 1)
+        polities = [
+            row.payload for row in session.scalars(select(PolityRow).order_by(PolityRow.stem))
+        ]
+        systems = [
+            _system_index_row(row)
+            for row in session.scalars(select(SystemRow).order_by(SystemRow.id))
+        ]
+        edges_canon = [
+            {"a": row.a, "b": row.b}
+            for row in session.scalars(select(EdgeRow).where(EdgeRow.graph == "canon"))
+        ]
+        edges_display = [
+            {"a": row.a, "b": row.b}
+            for row in session.scalars(select(EdgeRow).where(EdgeRow.graph == "display"))
+        ]
+        search = [
+            row.payload
+            for row in session.scalars(select(SearchEntryRow).order_by(SearchEntryRow.id))
+        ]
+        return {
+            "meta": meta.payload if meta else {},
+            "polities": polities,
+            "systems": systems,
+            "edgesCanon": edges_canon,
+            "edgesDisplay": edges_display,
+            "search": search,
+        }
+
     def get_galaxy_index(self) -> dict:
         with SessionLocal() as session:
             cache_generation = self.cache.generation
@@ -124,52 +204,104 @@ class CatalogQueryService:
             if cached is not None:
                 return _apply_galaxy_ownership(cached, manual=manual)
 
-            meta = session.get(GalaxyMetaRow, 1)
-            polities = [row.payload for row in session.scalars(select(PolityRow).order_by(PolityRow.stem))]
-            systems = []
-            for row in session.scalars(select(SystemRow).order_by(SystemRow.id)):
-                systems.append(
-                    {
-                        "id": row.id,
-                        "token": row.token,
-                        "stem": row.stem,
-                        "kind": row.kind,
-                        "nameEn": row.name_en,
-                        "nameRu": row.name_ru,
-                        "starTypeKey": row.star_type_key,
-                        "sectorId": row.sector_id,
-                        "capital": row.capital,
-                        "x": row.x,
-                        "y": row.y,
-                        "z": row.z,
-                        "worldCount": row.world_count,
-                        "territoryAnchor": (row.detail or {}).get(
-                            "territoryAnchor",
-                            True,
-                        ),
-                        "shard": row.shard,
+            result = self._build_galaxy_index(session)
+            # Cache the catalog without overlays so manual ownership stays live.
+            self._cache_galaxy_slices(result, cache_generation=cache_generation)
+            return _apply_galaxy_ownership(result, manual=manual)
+
+    def get_galaxy_map(self) -> dict:
+        """Lean map bootstrap: meta, polities, systems (no edges/search)."""
+        with SessionLocal() as session:
+            cache_generation = self.cache.generation
+            manual = _manual_overrides(session)
+            cached = self.cache.get_json("galaxy:map")
+            if cached is None:
+                full = self.cache.get_json("galaxy")
+                if full is not None:
+                    cached = {
+                        "meta": full.get("meta") or {},
+                        "polities": full.get("polities") or [],
+                        "systems": full.get("systems") or [],
                     }
-                )
-            edges_canon = [
-                {"a": row.a, "b": row.b}
-                for row in session.scalars(select(EdgeRow).where(EdgeRow.graph == "canon"))
+            if cached is not None:
+                return _apply_galaxy_ownership(cached, manual=manual)
+
+            meta = session.get(GalaxyMetaRow, 1)
+            polities = [
+                row.payload
+                for row in session.scalars(select(PolityRow).order_by(PolityRow.stem))
             ]
-            edges_display = [
-                {"a": row.a, "b": row.b}
-                for row in session.scalars(select(EdgeRow).where(EdgeRow.graph == "display"))
+            systems = [
+                _system_index_row(row)
+                for row in session.scalars(select(SystemRow).order_by(SystemRow.id))
             ]
-            search = [row.payload for row in session.scalars(select(SearchEntryRow).order_by(SearchEntryRow.id))]
             result = {
                 "meta": meta.payload if meta else {},
                 "polities": polities,
                 "systems": systems,
-                "edgesCanon": edges_canon,
-                "edgesDisplay": edges_display,
-                "search": search,
             }
-            # Cache the catalog without overlays so manual ownership stays live.
             self.cache.set_json(
-                "galaxy",
+                "galaxy:map",
+                result,
+                settings.redis_galaxy_ttl_seconds,
+                expected_generation=cache_generation,
+            )
+            return _apply_galaxy_ownership(result, manual=manual)
+
+    def get_galaxy_edges(self) -> dict:
+        with SessionLocal() as session:
+            cache_generation = self.cache.generation
+            cached = self.cache.get_json("galaxy:edges")
+            if cached is None:
+                full = self.cache.get_json("galaxy")
+                if full is not None:
+                    cached = {
+                        "edgesCanon": full.get("edgesCanon") or [],
+                        "edgesDisplay": full.get("edgesDisplay") or [],
+                    }
+            if cached is not None:
+                return cached
+
+            result = {
+                "edgesCanon": [
+                    {"a": row.a, "b": row.b}
+                    for row in session.scalars(select(EdgeRow).where(EdgeRow.graph == "canon"))
+                ],
+                "edgesDisplay": [
+                    {"a": row.a, "b": row.b}
+                    for row in session.scalars(select(EdgeRow).where(EdgeRow.graph == "display"))
+                ],
+            }
+            self.cache.set_json(
+                "galaxy:edges",
+                result,
+                settings.redis_galaxy_ttl_seconds,
+                expected_generation=cache_generation,
+            )
+            return result
+
+    def get_galaxy_search(self) -> dict:
+        with SessionLocal() as session:
+            cache_generation = self.cache.generation
+            manual = _manual_overrides(session)
+            cached = self.cache.get_json("galaxy:search")
+            if cached is None:
+                full = self.cache.get_json("galaxy")
+                if full is not None:
+                    cached = {"search": full.get("search") or []}
+            if cached is not None:
+                return _apply_galaxy_ownership(cached, manual=manual)
+
+            result = {
+                "search": [
+                    row.payload
+                    for row in session.scalars(
+                        select(SearchEntryRow).order_by(SearchEntryRow.id)
+                    )
+                ]
+            }
+            self.cache.set_json(
+                "galaxy:search",
                 result,
                 settings.redis_galaxy_ttl_seconds,
                 expected_generation=cache_generation,

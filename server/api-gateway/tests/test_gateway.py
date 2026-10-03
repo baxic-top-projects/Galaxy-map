@@ -111,9 +111,34 @@ def catalog_backend():
                 }
             ],
             "edgesCanon": [],
-            "edgesDisplay": [],
-            "search": [],
+            "edgesDisplay": [{"a": "Miradin_Empire:MiradinSirius", "b": "A:Two"}],
+            "search": [{"id": "Miradin_Empire:MiradinSirius", "kind": "system"}],
         }
+
+    @backend.get("/internal/v1/galaxy/map")
+    def galaxy_map():
+        return {
+            "meta": {"source": "EfolsMiradinsPact"},
+            "polities": [],
+            "systems": [
+                {
+                    "id": "Miradin_Empire:MiradinSirius",
+                    "token": "MiradinSirius",
+                    "shard": "systems/Miradin_Empire__MiradinSirius.json",
+                }
+            ],
+        }
+
+    @backend.get("/internal/v1/galaxy/edges")
+    def galaxy_edges():
+        return {
+            "edgesCanon": [],
+            "edgesDisplay": [{"a": "Miradin_Empire:MiradinSirius", "b": "A:Two"}],
+        }
+
+    @backend.get("/internal/v1/galaxy/search")
+    def galaxy_search():
+        return {"search": [{"id": "Miradin_Empire:MiradinSirius", "kind": "system"}]}
 
     @backend.patch("/internal/v1/systems/{system_id:path}/owner")
     def system_owner(system_id: str, stem: str = Body(..., embed=True)):
@@ -188,6 +213,19 @@ def test_gateway_proxies_storm_asset_and_catalog(monkeypatch, storm_backend, ass
     galaxy = client.get("/api/v1/galaxy")
     assert galaxy.status_code == 200
     assert galaxy.json()["systems"][0]["id"] == "Miradin_Empire:MiradinSirius"
+
+    galaxy_map = client.get("/api/v1/galaxy/map")
+    assert galaxy_map.status_code == 200
+    assert galaxy_map.json()["systems"][0]["id"] == "Miradin_Empire:MiradinSirius"
+    assert "edgesDisplay" not in galaxy_map.json()
+
+    galaxy_edges = client.get("/api/v1/galaxy/edges")
+    assert galaxy_edges.status_code == 200
+    assert galaxy_edges.json()["edgesDisplay"][0]["a"] == "Miradin_Empire:MiradinSirius"
+
+    galaxy_search = client.get("/api/v1/galaxy/search")
+    assert galaxy_search.status_code == 200
+    assert galaxy_search.json()["search"][0]["kind"] == "system"
 
     system = client.get("/api/v1/systems/Miradin_Empire:MiradinSirius")
     assert system.status_code == 200

@@ -8,7 +8,13 @@
   import RealmMapPage from './components/RealmMapPage.svelte'
   import RealmNavigation from './components/RealmNavigation.svelte'
   import SystemDetailView from './components/SystemDetailView.svelte'
-  import { loadGalaxy, loadSystemDetail, systemLabel } from './lib/galaxy/loadGalaxy.js'
+  import {
+    loadGalaxyEdges,
+    loadGalaxyMap,
+    loadGalaxySearch,
+    loadSystemDetail,
+    systemLabel,
+  } from './lib/galaxy/loadGalaxy.js'
   import { updateSystemOwner } from './lib/galaxy/ownershipApi.js'
   import { estimateZoom } from './lib/galaxy/labelLod.js'
   import { connectStormSocket, stormForSystem } from './lib/galaxy/stormsApi.js'
@@ -80,11 +86,11 @@
     if (nextPage === 'universe') mode = 'galaxy'
   }
 
-  async function loadGalaxyWithRetry(attempts = 3) {
+  async function loadWithRetry(loader, attempts = 3) {
     let lastError
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
-        return await loadGalaxy()
+        return await loader()
       } catch (err) {
         lastError = err
         if (attempt + 1 < attempts) {
@@ -93,6 +99,34 @@
       }
     }
     throw lastError
+  }
+
+  async function hydrateGalaxySlices() {
+    const [edgesResult, searchResult] = await Promise.allSettled([
+      loadWithRetry(() => loadGalaxyEdges()),
+      loadWithRetry(() => loadGalaxySearch()),
+    ])
+    if (!galaxy) return
+    let next = galaxy
+    if (edgesResult.status === 'fulfilled') {
+      next = {
+        ...next,
+        edgesCanon: edgesResult.value.edgesCanon,
+        edgesDisplay: edgesResult.value.edgesDisplay,
+        meta: {
+          ...next.meta,
+          edgeCountDisplay: edgesResult.value.edgesDisplay.length,
+          edgeCountCanon: edgesResult.value.edgesCanon.length,
+        },
+      }
+    }
+    if (searchResult.status === 'fulfilled') {
+      next = {
+        ...next,
+        search: searchResult.value,
+      }
+    }
+    galaxy = next
   }
 
   onMount(async () => {
@@ -116,10 +150,11 @@
         // Keep local /models fallbacks when asset-service is unavailable.
       })
     try {
-      galaxy = await loadGalaxyWithRetry()
+      galaxy = await loadWithRetry(() => loadGalaxyMap())
+      loading = false
+      void hydrateGalaxySlices()
     } catch (err) {
       error = err instanceof Error ? err.message : String(err)
-    } finally {
       loading = false
     }
 

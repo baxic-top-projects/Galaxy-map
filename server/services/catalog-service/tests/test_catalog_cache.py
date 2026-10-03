@@ -83,3 +83,48 @@ def test_catalog_uses_cached_payload_without_database(monkeypatch):
 
     assert catalog.get_galaxy_index()["systems"][0]["id"] == "cached"
     assert catalog.get_system_by_id("cached")["id"] == "cached"
+
+
+def test_catalog_map_edges_search_use_slice_caches(monkeypatch):
+    cache = CatalogCacheService(client=FakeRedis())
+    cache.set_json(
+        "galaxy:map",
+        {"meta": {}, "polities": [], "systems": [{"id": "map-sys"}]},
+        60,
+    )
+    cache.set_json(
+        "galaxy:edges",
+        {"edgesCanon": [], "edgesDisplay": [{"a": "map-sys", "b": "other"}]},
+        60,
+    )
+    cache.set_json(
+        "galaxy:search",
+        {"search": [{"id": "map-sys", "kind": "system"}]},
+        60,
+    )
+    catalog = CatalogQueryService(cache=cache)
+
+    class FakeSession:
+        def scalars(self, _statement):
+            return []
+
+        def get(self, _model, _key):
+            return None
+
+        def rollback(self):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(
+        "app.service.catalog_query_service.SessionLocal",
+        FakeSession,
+    )
+
+    assert catalog.get_galaxy_map()["systems"][0]["id"] == "map-sys"
+    assert catalog.get_galaxy_edges()["edgesDisplay"][0]["b"] == "other"
+    assert catalog.get_galaxy_search()["search"][0]["id"] == "map-sys"

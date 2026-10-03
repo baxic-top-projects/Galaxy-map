@@ -88,7 +88,40 @@ function uniquifyWorldSearch(search) {
   return updated
 }
 
+async function fetchGalaxyJson(path, baseUrl = DEFAULT_API_BASE, { timeoutMs = 20000 } = {}) {
+  const url = `${String(baseUrl).replace(/\/$/, '')}${path}`
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  let response
+  try {
+    response = await fetch(url, { signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to load ${path}: ${response.status}`)
+  }
+  return response.json()
+}
+
+function assembleGalaxy(data) {
+  const systems = data.systems || []
+  const byId = new Map(systems.map((system) => [system.id, system]))
+  const search = uniquifyWorldSearch(data.search || [])
+  const polityByStem = new Map((data.polities || []).map((polity) => [polity.stem, polity]))
+  return {
+    ...data,
+    systems,
+    edgesCanon: data.edgesCanon || [],
+    edgesDisplay: data.edgesDisplay || [],
+    search,
+    byId,
+    polityByStem,
+  }
+}
+
 /**
+ * Map bootstrap: meta + polities + systems (no edges/search yet).
  * @returns {Promise<{
  *   meta: object,
  *   polities: Polity[],
@@ -100,33 +133,49 @@ function uniquifyWorldSearch(search) {
  *   polityByStem: Map<string, Polity>
  * }>}
  */
-export async function loadGalaxy(baseUrl = DEFAULT_API_BASE, { timeoutMs = 20000 } = {}) {
-  const url = `${String(baseUrl).replace(/\/$/, '')}/api/v1/galaxy`
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
-  let response
-  try {
-    response = await fetch(url, { signal: controller.signal })
-  } finally {
-    clearTimeout(timeout)
+export async function loadGalaxyMap(baseUrl = DEFAULT_API_BASE, options = {}) {
+  const data = await fetchGalaxyJson('/api/v1/galaxy/map', baseUrl, options)
+  return assembleGalaxy({
+    ...data,
+    edgesCanon: [],
+    edgesDisplay: [],
+    search: [],
+  })
+}
+
+/** @returns {Promise<{ edgesCanon: Edge[], edgesDisplay: Edge[] }>} */
+export async function loadGalaxyEdges(baseUrl = DEFAULT_API_BASE, options = {}) {
+  const data = await fetchGalaxyJson('/api/v1/galaxy/edges', baseUrl, options)
+  return {
+    edgesCanon: data.edgesCanon || [],
+    edgesDisplay: data.edgesDisplay || [],
   }
-  if (!response.ok) {
-    throw new Error(`Failed to load galaxy index: ${response.status}`)
-  }
-  const data = await response.json()
+}
+
+/** @returns {Promise<SearchEntry[]>} */
+export async function loadGalaxySearch(baseUrl = DEFAULT_API_BASE, options = {}) {
+  const data = await fetchGalaxyJson('/api/v1/galaxy/search', baseUrl, options)
+  return uniquifyWorldSearch(data.search || [])
+}
+
+/**
+ * Full catalog in one request (compat / tests). Prefer loadGalaxyMap + slices.
+ * @returns {Promise<{
+ *   meta: object,
+ *   polities: Polity[],
+ *   systems: GalaxySystem[],
+ *   edgesCanon: Edge[],
+ *   edgesDisplay: Edge[],
+ *   search: SearchEntry[],
+ *   byId: Map<string, GalaxySystem>,
+ *   polityByStem: Map<string, Polity>
+ * }>}
+ */
+export async function loadGalaxy(baseUrl = DEFAULT_API_BASE, options = {}) {
+  const data = await fetchGalaxyJson('/api/v1/galaxy', baseUrl, options)
   // Ownership (painted + manual) is applied by catalog-service so the client
   // does not override a server-assigned stem with a stale local JSON map.
-  const systems = data.systems || []
-  const byId = new Map(systems.map((system) => [system.id, system]))
-  const search = uniquifyWorldSearch(data.search || [])
-  const polityByStem = new Map(data.polities.map((polity) => [polity.stem, polity]))
-  return {
-    ...data,
-    systems,
-    search,
-    byId,
-    polityByStem,
-  }
+  return assembleGalaxy(data)
 }
 
 /**

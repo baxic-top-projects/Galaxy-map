@@ -85,6 +85,11 @@
 
   $effect(() => {
     if (!api) return
+    api.setEdges(galaxy?.edgesDisplay || [])
+  })
+
+  $effect(() => {
+    if (!api) return
     const revision = ownershipRevision
     if (revision === appliedOwnershipRevision) return
     appliedOwnershipRevision = revision

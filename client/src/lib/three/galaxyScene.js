@@ -170,12 +170,44 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   keyLight.position.set(20, -30, 50)
   scene.add(keyLight)
 
-  const [basePlate, initialPlate] = await Promise.all([
-    createBasePlate(mapLim),
-    createPoliticalPlate(galaxy, callbacks.locale),
-  ])
-  let plate = initialPlate
-  root.add(basePlate, plate)
+  // Base plate + systems first so the map is interactive before the heavy
+  // political raster finishes (and before edges/search finish hydrating).
+  let disposed = false
+  const basePlate = await createBasePlate(mapLim)
+  root.add(basePlate)
+  let politicalMapVisible = true
+  let plate = new THREE.Group()
+  plate.visible = politicalMapVisible
+  root.add(plate)
+  let politicalBuildVersion = 0
+
+  function disposePoliticalPlate(target) {
+    target.traverse((child) => {
+      if (child.geometry) child.geometry.dispose()
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      for (const material of materials) {
+        if (!material) continue
+        if (material.map) material.map.dispose()
+        material.dispose()
+      }
+    })
+  }
+
+  const bootstrapPoliticalPlate = async () => {
+    const buildVersion = ++politicalBuildVersion
+    const locale = callbacks.locale || 'ru'
+    const nextPlate = await createPoliticalPlate(galaxy, locale)
+    if (disposed || buildVersion !== politicalBuildVersion) {
+      disposePoliticalPlate(nextPlate)
+      return
+    }
+    root.remove(plate)
+    disposePoliticalPlate(plate)
+    plate = nextPlate
+    plate.visible = politicalMapVisible
+    root.add(plate)
+  }
+  void bootstrapPoliticalPlate()
 
   const positions = new Float32Array(galaxy.systems.length * 3)
   const colors = new Float32Array(galaxy.systems.length * 3)
@@ -310,26 +342,6 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   root.add(points)
   const starLayers = [{ points, geometry, material }]
 
-  const edgePositions = []
-  for (const edge of galaxy.edgesDisplay || []) {
-    const a = galaxy.byId.get(edge.a)
-    const b = galaxy.byId.get(edge.b)
-    if (!a || !b) continue
-    edgePositions.push(
-      a.x * GALAXY_SCALE,
-      a.y * GALAXY_SCALE,
-      a.z * GALAXY_SCALE,
-      b.x * GALAXY_SCALE,
-      b.y * GALAXY_SCALE,
-      b.z * GALAXY_SCALE,
-    )
-  }
-  const edgeGeom = new THREE.BufferGeometry()
-  if (edgePositions.length) {
-    edgeGeom.setAttribute('position', new THREE.Float32BufferAttribute(edgePositions, 3))
-  } else {
-    edgeGeom.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(0), 3))
-  }
   const edgeMat = new THREE.LineBasicMaterial({
     color: 0x8aa4bc,
     transparent: true,
@@ -337,9 +349,49 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     depthWrite: false,
     fog: false,
   })
-  const lanes = new THREE.LineSegments(edgeGeom, edgeMat)
+  let edgeGeom = new THREE.BufferGeometry()
+  edgeGeom.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(0), 3))
+  let lanes = new THREE.LineSegments(edgeGeom, edgeMat)
   lanes.renderOrder = 1
-  if (edgePositions.length) root.add(lanes)
+  lanes.visible = false
+  root.add(lanes)
+
+  function setEdges(edgesDisplay = []) {
+    const edgePositions = []
+    for (const edge of edgesDisplay || []) {
+      const a = galaxy.byId.get(edge.a)
+      const b = galaxy.byId.get(edge.b)
+      if (!a || !b) continue
+      edgePositions.push(
+        a.x * GALAXY_SCALE,
+        a.y * GALAXY_SCALE,
+        a.z * GALAXY_SCALE,
+        b.x * GALAXY_SCALE,
+        b.y * GALAXY_SCALE,
+        b.z * GALAXY_SCALE,
+      )
+    }
+    const nextGeom = new THREE.BufferGeometry()
+    nextGeom.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(
+        edgePositions.length ? edgePositions : new Float32Array(0),
+        3,
+      ),
+    )
+    root.remove(lanes)
+    edgeGeom.dispose()
+    edgeGeom = nextGeom
+    lanes = new THREE.LineSegments(edgeGeom, edgeMat)
+    lanes.renderOrder = 1
+    lanes.visible = edgePositions.length > 0
+    root.add(lanes)
+    galaxy.edgesDisplay = edgesDisplay || []
+  }
+
+  if ((galaxy.edgesDisplay || []).length) {
+    setEdges(galaxy.edgesDisplay)
+  }
 
   const stormGroup = new THREE.Group()
   stormGroup.renderOrder = 3
@@ -365,7 +417,6 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   let hoveredId = null
   let raf = 0
   let frameCount = 0
-  let disposed = false
   let focusTween = null
   let lastClickAt = 0
   let lastClickId = null
@@ -695,27 +746,14 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   }
 
   function setPoliticalMap(visible) {
-    plate.visible = !!visible
+    politicalMapVisible = !!visible
+    plate.visible = politicalMapVisible
   }
 
   function setLocale(locale) {
     callbacks.locale = locale
     plate.userData.setLocale?.(locale)
   }
-
-  function disposePoliticalPlate(target) {
-    target.traverse((child) => {
-      if (child.geometry) child.geometry.dispose()
-      const materials = Array.isArray(child.material) ? child.material : [child.material]
-      for (const material of materials) {
-        if (!material) continue
-        if (material.map) material.map.dispose()
-        material.dispose()
-      }
-    })
-  }
-
-  let politicalBuildVersion = 0
 
   async function rebuildPoliticalOwnership(nextGalaxy) {
     if (nextGalaxy) {
@@ -724,19 +762,21 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
       galaxy.search = nextGalaxy.search
       if (nextGalaxy.polityByStem) galaxy.polityByStem = nextGalaxy.polityByStem
       if (nextGalaxy.polities) galaxy.polities = nextGalaxy.polities
+      if (nextGalaxy.edgesDisplay) galaxy.edgesDisplay = nextGalaxy.edgesDisplay
+      if (nextGalaxy.edgesCanon) galaxy.edgesCanon = nextGalaxy.edgesCanon
+      if (nextGalaxy.meta) galaxy.meta = nextGalaxy.meta
     }
     const buildVersion = ++politicalBuildVersion
-    const wasVisible = plate.visible
     const locale = callbacks.locale || 'ru'
     const nextPlate = await createPoliticalPlate(galaxy, locale)
-    if (buildVersion !== politicalBuildVersion) {
+    if (disposed || buildVersion !== politicalBuildVersion) {
       disposePoliticalPlate(nextPlate)
       return
     }
     root.remove(plate)
     disposePoliticalPlate(plate)
     plate = nextPlate
-    plate.visible = wasVisible
+    plate.visible = politicalMapVisible
     root.add(plate)
     emitLabels()
   }
@@ -1010,6 +1050,7 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     setPoliticalMap,
     setLocale,
     setSystemOwner,
+    setEdges,
     rebuildPoliticalOwnership,
     resetView,
     dispose,

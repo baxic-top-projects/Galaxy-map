@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { loadGalaxy, loadSystemDetail, polityLabel, systemLabel } from './loadGalaxy.js'
+import {
+  loadGalaxy,
+  loadGalaxyEdges,
+  loadGalaxyMap,
+  loadGalaxySearch,
+  loadSystemDetail,
+  polityLabel,
+  systemLabel,
+} from './loadGalaxy.js'
 
 describe('loadGalaxy API client', () => {
   afterEach(() => {
@@ -152,5 +160,60 @@ describe('loadGalaxy API client', () => {
     expect(systemLabel(system, 'ru')).toBe('Альфа')
     expect(systemLabel(system, 'en')).toBe('Alpha')
     expect(polityLabel(polity, 'ru')).toBe('Империя')
+  })
+
+  test('loads map bootstrap without edges or search', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        expect(String(url)).toMatch(/\/api\/v1\/galaxy\/map$/)
+        return {
+          ok: true,
+          json: async () => ({
+            meta: { systemCount: 2 },
+            polities: [{ stem: 'A', nameEn: 'A', nameRu: 'А' }],
+            systems: [{ id: 'A:One', stem: 'A', token: 'One', x: 0, y: 0, z: 0 }],
+          }),
+        }
+      }),
+    )
+
+    const galaxy = await loadGalaxyMap('http://gateway.test')
+    expect(galaxy.systems).toHaveLength(1)
+    expect(galaxy.edgesDisplay).toEqual([])
+    expect(galaxy.search).toEqual([])
+    expect(galaxy.byId.get('A:One').token).toBe('One')
+  })
+
+  test('loads edges and search slices', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        const href = String(url)
+        if (href.endsWith('/api/v1/galaxy/edges')) {
+          return {
+            ok: true,
+            json: async () => ({
+              edgesCanon: [{ a: 'A:One', b: 'A:Two' }],
+              edgesDisplay: [{ a: 'A:One', b: 'A:Two' }],
+            }),
+          }
+        }
+        if (href.endsWith('/api/v1/galaxy/search')) {
+          return {
+            ok: true,
+            json: async () => ({
+              search: [{ id: 'A:One', kind: 'system', token: 'One', nameEn: 'One', nameRu: 'Один' }],
+            }),
+          }
+        }
+        throw new Error(`unexpected url ${href}`)
+      }),
+    )
+
+    const edges = await loadGalaxyEdges('http://gateway.test')
+    const search = await loadGalaxySearch('http://gateway.test')
+    expect(edges.edgesDisplay).toHaveLength(1)
+    expect(search[0].token).toBe('One')
   })
 })
