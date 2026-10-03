@@ -1,5 +1,8 @@
 <script>
   import { deleteAvatar, updateProfile, uploadAvatar } from '../lib/auth/authApi.js'
+  import { createPanelDrag, loadPanelPos } from '../lib/ui/panelDrag.js'
+
+  const PANEL_POS_KEY = 'profile-page'
 
   let {
     user,
@@ -12,10 +15,35 @@
   let busy = $state(false)
   let error = $state('')
   let notice = $state('')
+  let panelPos = $state(loadPanelPos(PANEL_POS_KEY))
+  let panelDragging = $state(false)
+
+  const panelDrag = createPanelDrag(
+    () => panelPos,
+    (pos) => {
+      panelPos = pos
+    },
+    PANEL_POS_KEY,
+  )
 
   $effect(() => {
     displayName = user?.display_name || user?.displayName || ''
   })
+
+  function onHeadPointerDown(event) {
+    if (event.target.closest('button, a, input, select, textarea, label')) return
+    panelDragging = true
+    panelDrag.onPointerDown(event)
+  }
+
+  function onHeadPointerMove(event) {
+    panelDrag.onPointerMove(event)
+  }
+
+  function onHeadPointerUp(event) {
+    panelDragging = false
+    panelDrag.onPointerUp(event)
+  }
 
   async function save() {
     busy = true
@@ -63,9 +91,25 @@
 </script>
 
 <main class="page">
-  <section class="profile">
-    <button class="back" type="button" onclick={() => onBack?.()}>← {locale === 'en' ? 'Back to map' : 'Назад к карте'}</button>
-    <h1>{locale === 'en' ? 'Profile' : 'Профиль'}</h1>
+  <section
+    class="profile"
+    class:dragging={panelDragging}
+    style="translate: {panelPos.x}px {panelPos.y}px"
+  >
+    <div
+      class="profile-head"
+      role="presentation"
+      title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
+      onpointerdown={onHeadPointerDown}
+      onpointermove={onHeadPointerMove}
+      onpointerup={onHeadPointerUp}
+      onpointercancel={onHeadPointerUp}
+    >
+      <button class="back" type="button" onclick={() => onBack?.()}>
+        ← {locale === 'en' ? 'Back to map' : 'Назад к карте'}
+      </button>
+      <h1>{locale === 'en' ? 'Profile' : 'Профиль'}</h1>
+    </div>
     <div class="identity">
       {#if user?.avatar_url || user?.avatarUrl}
         <img src={user.avatar_url || user.avatarUrl} alt="" />
@@ -100,8 +144,26 @@
 
 <style>
   .page { min-height: 100vh; display: grid; place-items: center; padding: 1rem; background: #05070f; }
-  .profile { width: min(560px, 100%); padding: 1.6rem; border-radius: 16px; border: 1px solid rgba(150,190,255,.2); background: #09111f; }
+  .profile {
+    width: min(560px, 100%);
+    padding: 1.6rem;
+    border-radius: 16px;
+    border: 1px solid rgba(150,190,255,.2);
+    background: #09111f;
+  }
+  .profile-head {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    margin: -0.35rem -0.35rem 0.35rem;
+    padding: 0.35rem;
+  }
+  .profile.dragging,
+  .profile.dragging .profile-head {
+    cursor: grabbing;
+  }
   .back { border: 0; background: transparent; color: #aac9f2; cursor: pointer; }
+  .profile-head h1 { margin: 0.35rem 0 0; }
   .identity { display: flex; gap: 1rem; align-items: center; margin: 1.2rem 0; }
   .identity img, .avatar { width: 86px; height: 86px; border-radius: 50%; object-fit: cover; }
   .avatar { display: grid; place-items: center; background: #315d96; font-size: 2rem; font-weight: 700; }

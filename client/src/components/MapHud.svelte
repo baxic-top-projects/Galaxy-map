@@ -1,7 +1,10 @@
 <script>
   import { filterSearch } from '../lib/galaxy/search.js'
   import { polityLabel, systemLabel } from '../lib/galaxy/loadGalaxy.js'
+  import { createPanelDrag, loadPanelPos } from '../lib/ui/panelDrag.js'
   import UserMenu from './UserMenu.svelte'
+
+  const PANEL_POS_KEY = 'map-hud-panel'
 
   let {
     galaxy,
@@ -30,6 +33,8 @@
 
   let query = $state('')
   let overviewDismissed = $state(false)
+  let panelPos = $state(loadPanelPos(PANEL_POS_KEY))
+  let panelDragging = $state(false)
   let results = $derived(
     filterSearch(galaxy?.search || [], query, {
       locale,
@@ -46,6 +51,14 @@
   )
   const panelVisible = $derived(!!selected || !overviewDismissed)
 
+  const panelDrag = createPanelDrag(
+    () => panelPos,
+    (pos) => {
+      panelPos = pos
+    },
+    PANEL_POS_KEY,
+  )
+
   $effect(() => {
     if (selected) overviewDismissed = false
   })
@@ -56,6 +69,21 @@
       return
     }
     overviewDismissed = true
+  }
+
+  function onPanelHeadPointerDown(event) {
+    if (event.target.closest('button, a, input, select, textarea, label')) return
+    panelDragging = true
+    panelDrag.onPointerDown(event)
+  }
+
+  function onPanelHeadPointerMove(event) {
+    panelDrag.onPointerMove(event)
+  }
+
+  function onPanelHeadPointerUp(event) {
+    panelDragging = false
+    panelDrag.onPointerUp(event)
   }
 </script>
 
@@ -128,8 +156,20 @@
 </header>
 
 {#if panelVisible}
-<aside class="panel">
-  <div class="panel-head">
+<aside
+  class="panel"
+  class:dragging={panelDragging}
+  style="translate: {panelPos.x}px {panelPos.y}px"
+>
+  <div
+    class="panel-head"
+    role="presentation"
+    title={locale === 'en' ? 'Drag to move' : 'Перетащите, чтобы переместить'}
+    onpointerdown={onPanelHeadPointerDown}
+    onpointermove={onPanelHeadPointerMove}
+    onpointerup={onPanelHeadPointerUp}
+    onpointercancel={onPanelHeadPointerUp}
+  >
     <h2>
       {#if selected}
         {systemLabel(selected, locale)}
@@ -454,6 +494,18 @@
     margin: -0.15rem -0.15rem 0.35rem;
     padding: 0.15rem 0.15rem 0.45rem;
     background: linear-gradient(180deg, rgba(10, 16, 32, 0.98), rgba(10, 16, 32, 0.88));
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .panel.dragging,
+  .panel.dragging .panel-head {
+    cursor: grabbing;
+  }
+
+  .panel.dragging {
+    z-index: 40;
   }
 
   .panel-head h2 {
