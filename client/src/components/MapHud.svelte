@@ -17,6 +17,7 @@
     ownerError = '',
     onReset = undefined,
     onBackToGalaxy = undefined,
+    onCloseSelected = undefined,
     onPoliticalMap = undefined,
     showPoliticalMap = true,
     user = null,
@@ -28,6 +29,7 @@
   } = $props()
 
   let query = $state('')
+  let overviewDismissed = $state(false)
   let results = $derived(
     filterSearch(galaxy?.search || [], query, {
       locale,
@@ -42,6 +44,19 @@
   const canEditOwner = $derived(
     user?.role === 'ADMIN' && !!selected && selected.kind !== 'well',
   )
+  const panelVisible = $derived(!!selected || !overviewDismissed)
+
+  $effect(() => {
+    if (selected) overviewDismissed = false
+  })
+
+  function handleClosePanel() {
+    if (selected) {
+      onCloseSelected?.()
+      return
+    }
+    overviewDismissed = true
+  }
 </script>
 
 <header class="hud-top">
@@ -112,9 +127,26 @@
   </div>
 </header>
 
+{#if panelVisible}
 <aside class="panel">
+  <div class="panel-head">
+    <h2>
+      {#if selected}
+        {systemLabel(selected, locale)}
+      {:else}
+        {locale === 'en' ? 'Galaxy overview' : 'Обзор галактики'}
+      {/if}
+    </h2>
+    <button
+      type="button"
+      class="close"
+      aria-label={locale === 'en' ? 'Close panel' : 'Закрыть панель'}
+      onclick={handleClosePanel}
+    >
+      ×
+    </button>
+  </div>
   {#if selected}
-    <h2>{systemLabel(selected, locale)}</h2>
     <p class="meta">
       {#if selected.kind !== 'junction' && selected.token}
         {selected.token}
@@ -260,7 +292,6 @@
         : 'Двойной клик по звезде, чёрной дыре или стыку открывает систему.'}
     </p>
   {:else}
-    <h2>{locale === 'en' ? 'Galaxy overview' : 'Обзор галактики'}</h2>
     <p class="meta">
       {galaxy?.meta?.systemCount || 0}
       {locale === 'en' ? 'systems' : 'систем'} ·
@@ -274,6 +305,7 @@
     </p>
   {/if}
 </aside>
+{/if}
 
 <style>
   .hud-top,
@@ -411,6 +443,47 @@
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
   }
 
+  .panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.65rem;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: -0.15rem -0.15rem 0.35rem;
+    padding: 0.15rem 0.15rem 0.45rem;
+    background: linear-gradient(180deg, rgba(10, 16, 32, 0.98), rgba(10, 16, 32, 0.88));
+  }
+
+  .panel-head h2 {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+    line-height: 1.25;
+  }
+
+  .close {
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(170, 200, 255, 0.28);
+    background: rgba(8, 14, 28, 0.9);
+    color: #d7e4ff;
+    font-size: 1.35rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .close:hover {
+    border-color: rgba(190, 220, 255, 0.6);
+    color: #fff;
+  }
+
   .panel h2,
   .panel h3 {
     margin: 0 0 0.35rem;
@@ -494,12 +567,23 @@
   @media (max-width: 820px) {
     .panel {
       top: auto;
-      bottom: 1rem;
-      right: 1rem;
-      left: 1rem;
+      /* Sit above the fixed realm nav + Android/home safe area. */
+      bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+      right: 0.75rem;
+      left: 0.75rem;
       width: auto;
-      max-height: 38vh;
+      max-height: min(42vh, calc(100dvh - 9.5rem - env(safe-area-inset-bottom, 0px)));
       overflow: auto;
+      padding-top: 0.85rem;
+    }
+
+    .panel-head {
+      margin-top: 0;
+      padding-top: 0;
+    }
+
+    .panel-head h2 {
+      font-size: 1.05rem;
     }
   }
 </style>

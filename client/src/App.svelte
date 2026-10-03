@@ -394,6 +394,10 @@
         selected = null
         resetToken += 1
       }}
+      onCloseSelected={() => {
+        selected = null
+        if (mode === 'system') mode = 'galaxy'
+      }}
       onBackToGalaxy={() => {
         mode = 'galaxy'
       }}
