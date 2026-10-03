@@ -128,7 +128,7 @@
 </header>
 
 {#if panelVisible}
-<aside class="panel" class:has-selection={!!selected}>
+<aside class="panel">
   <div class="panel-head">
     <h2>
       {#if selected}
@@ -570,49 +570,26 @@
     }
 
     .panel {
-      /* Below top HUD/profile, above realm nav — no overlay on Max Poly. */
-      top: calc(10.5rem + env(safe-area-inset-top, 0px));
-      bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+      /* Compact card in the middle: clear of HUD/profile and realm chips. */
+      top: 50%;
+      bottom: auto;
       right: 0.9rem;
       left: 0.9rem;
       width: auto;
-      max-height: none;
+      max-height: min(46vh, calc(100dvh - 11rem - env(safe-area-inset-bottom, 0px)));
       overflow: auto;
       padding-top: 0.85rem;
-      transform: none;
+      transform: translateY(-50%);
       z-index: 8;
     }
 
     .panel-head {
       margin-top: 0;
       padding-top: 0;
-      position: relative;
     }
 
     .panel-head h2 {
       font-size: 1.05rem;
-    }
-
-    /* Overview: keep the title centered, close stays in the corner. */
-    .panel:not(.has-selection) .panel-head {
-      justify-content: center;
-      min-height: 2rem;
-    }
-
-    .panel:not(.has-selection) .panel-head h2 {
-      text-align: center;
-      width: 100%;
-      padding-inline: 2.4rem;
-    }
-
-    .panel:not(.has-selection) .close {
-      position: absolute;
-      top: 0;
-      right: 0.05rem;
-    }
-
-    .panel.has-selection .panel-head {
-      justify-content: space-between;
     }
   }
 </style>
