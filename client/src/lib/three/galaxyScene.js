@@ -113,6 +113,31 @@ function pointSizeFor(system) {
 /**
  * Create an imperative Three.js galaxy scene attached to a canvas.
  */
+/**
+ * Start building/decoding the political plate as soon as the catalog is ready,
+ * even before the WebGL scene mounts — so fill races with star buffer setup.
+ */
+export function prefetchPoliticalPlate(galaxy, locale = 'ru') {
+  if (!galaxy?.systems?.length) return null
+  if (galaxy._politicalPlatePromise) return galaxy._politicalPlatePromise
+  const canCache =
+    Boolean(galaxy._cachedPoliticalPlate?.blob) ||
+    Boolean(galaxy.meta?.hasPoliticalPlate) ||
+    Boolean(galaxy.cacheRevision)
+  const ready =
+    Boolean(galaxy.meta?.systemsHydrated) ||
+    canCache ||
+    !galaxy.tileGrid
+  if (!ready) return null
+  galaxy._politicalPlatePromise = createPoliticalPlate(galaxy, locale, {
+    allowCache: true,
+  }).catch((err) => {
+    if (galaxy._politicalPlatePromise) galaxy._politicalPlatePromise = null
+    throw err
+  })
+  return galaxy._politicalPlatePromise
+}
+
 export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const mapLim = mapLimitFor(galaxy)
   const overviewScale = mapLim / DEFAULT_MAP_LIM
@@ -218,13 +243,24 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   const bootstrapPoliticalPlate = async ({ allowCache = true } = {}) => {
     const buildVersion = ++politicalBuildVersion
     const locale = callbacks.locale || 'ru'
-    const nextPlate = await createPoliticalPlate(galaxy, locale, {
-      allowCache,
-      // Paint borders as soon as the raster is ready; labels follow.
-      onTerritoriesReady: (partial) => {
-        attachPoliticalPlate(partial, buildVersion)
-      },
-    })
+    let nextPlate = null
+    // Prefer a plate already baking during boot / catalog hydrate.
+    if (galaxy._politicalPlatePromise) {
+      try {
+        nextPlate = await galaxy._politicalPlatePromise
+      } catch {
+        nextPlate = null
+      }
+    }
+    if (!nextPlate) {
+      nextPlate = await createPoliticalPlate(galaxy, locale, {
+        allowCache,
+        // Paint borders as soon as the raster is ready; labels follow.
+        onTerritoriesReady: (partial) => {
+          attachPoliticalPlate(partial, buildVersion)
+        },
+      })
+    }
     attachPoliticalPlate(nextPlate, buildVersion)
   }
   // Cached plate can paint before systems finish hydrating — no need to wait.
@@ -235,10 +271,9 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
     Boolean(galaxy?.tileGrid) &&
     !galaxy?.meta?.systemsHydrated &&
     !hasCachedPlate
-  // Kick off plate decode/build before awaiting the base plate texture.
+  // Plate + base texture + star buffer all overlap on the main thread yields.
   if (!deferPoliticalPlate) void bootstrapPoliticalPlate({ allowCache: true })
-  const basePlate = await createBasePlate(mapLim)
-  root.add(basePlate)
+  const basePlatePromise = createBasePlate(mapLim)
   root.add(plate)
 
   const color = new THREE.Color()
@@ -375,6 +410,9 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
   points.renderOrder = 2
   root.add(points)
   const starLayers = [{ points, geometry, material }]
+
+  const basePlate = await basePlatePromise
+  root.add(basePlate)
 
   const edgeMat = new THREE.LineBasicMaterial({
     color: 0x8aa4bc,

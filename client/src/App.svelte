@@ -182,6 +182,17 @@
     void ensureTiles(expandTiles(tiles, 1, grid.size), { mode: 'silent' })
   }
 
+  function startPoliticalPlatePrefetch(target, loc = locale) {
+    if (!target?.systems?.length) return
+    void import('./lib/three/galaxyScene.js')
+      .then((mod) => {
+        mod.prefetchPoliticalPlate(target, loc)
+      })
+      .catch(() => {
+        // Scene module may still be loading; createGalaxyScene will build the plate.
+      })
+  }
+
   function applyFullCatalog(full) {
     if (!galaxy || !full) return
     const grid = galaxy.tileGrid || full.tileGrid
@@ -219,6 +230,8 @@
       void persistGalaxySearch(revision, full.search)
       void persistGalaxyTilesFromSystems(revision, full.systems, grid)
     }
+    // Bake the political fill during the boot screen / before stars mount.
+    startPoliticalPlatePrefetch(galaxy)
   }
 
   async function hydrateGalaxySlices() {
@@ -353,7 +366,10 @@
           warm.systemsHydrated || warm.galaxy.meta?.systemsHydrated,
         )
         // Only leave the boot screen when the local catalog is already complete.
-        if (warmHydrated) loading = false
+        if (warmHydrated) {
+          startPoliticalPlatePrefetch(warm.galaxy)
+          loading = false
+        }
       }
 
       const previousRevision = cacheRevision
@@ -381,12 +397,14 @@
           search: galaxy.search,
           _cachedPoliticalPlate: galaxy._cachedPoliticalPlate,
           _plateBitmapPromise: galaxy._plateBitmapPromise,
+          _politicalPlatePromise: galaxy._politicalPlatePromise,
           meta: {
             ...nextMap.meta,
             systemsHydrated: galaxy.meta?.systemsHydrated,
             hasPoliticalPlate: galaxy.meta?.hasPoliticalPlate,
           },
         }
+        if (warmHydrated) startPoliticalPlatePrefetch(galaxy)
       } else {
         galaxy = nextMap
       }
@@ -405,6 +423,7 @@
           applyFullCatalog(full)
         } catch {
           await hydrateGalaxySlices()
+          if (galaxy?.meta?.systemsHydrated) startPoliticalPlatePrefetch(galaxy)
         }
         loading = false
       }
