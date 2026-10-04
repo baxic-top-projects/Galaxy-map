@@ -5,6 +5,7 @@
  * @typedef {{ id: string, kind: string, token: string, nameEn: string, nameRu: string, stem: string|null, planetTypeKey?: string }} SearchEntry
  */
 
+import { DEFAULT_MAP_LIM, tileCoordsForPoint } from './mapTiles.js'
 import {
   catalogRevisionFromMap,
   clearTileCache,
@@ -238,6 +239,29 @@ export async function persistGalaxySystemsSnapshot(revision, systems) {
   await setCachedSystemsSnapshot(revision, systems)
 }
 
+/** Split a full systems list into spatial tiles for the next warm start. */
+export async function persistGalaxyTilesFromSystems(revision, systems, tileGrid) {
+  if (!revision || !systems?.length || !tileGrid?.size) return
+  const size = Number(tileGrid.size) || 0
+  const mapLim = Number(tileGrid.mapLim) || DEFAULT_MAP_LIM
+  if (size <= 0) return
+  const buckets = new Map()
+  for (const system of systems) {
+    const { tx, ty } = tileCoordsForPoint(system.x, system.y, mapLim, size)
+    const key = `${tx}:${ty}`
+    let list = buckets.get(key)
+    if (!list) {
+      list = []
+      buckets.set(key, list)
+    }
+    list.push(system)
+  }
+  await mapPool([...buckets.entries()], 8, async ([key, list]) => {
+    const [tx, ty] = key.split(':').map(Number)
+    await setCachedTile(revision, tx, ty, list)
+  })
+}
+
 /** Run async workers over items with a fixed concurrency limit. */
 export async function mapPool(items, concurrency, worker) {
   const list = Array.isArray(items) ? items : []
@@ -285,7 +309,10 @@ export async function loadGalaxySearch(baseUrl = DEFAULT_API_BASE, options = {})
  * }>}
  */
 export async function loadGalaxy(baseUrl = DEFAULT_API_BASE, options = {}) {
-  const data = await fetchGalaxyJson('/api/v1/galaxy', baseUrl, options)
+  const data = await fetchGalaxyJson('/api/v1/galaxy', baseUrl, {
+    timeoutMs: 90000,
+    ...options,
+  })
   // Ownership (painted + manual) is applied by catalog-service so the client
   // does not override a server-assigned stem with a stale local JSON map.
   return assembleGalaxy(data)

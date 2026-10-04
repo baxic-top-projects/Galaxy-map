@@ -9,6 +9,7 @@
   import RealmNavigation from './components/RealmNavigation.svelte'
   import SystemDetailView from './components/SystemDetailView.svelte'
   import {
+    loadGalaxy,
     loadGalaxyEdges,
     loadGalaxyFromCache,
     loadGalaxyMap,
@@ -19,9 +20,10 @@
     persistGalaxyEdges,
     persistGalaxySearch,
     persistGalaxySystemsSnapshot,
+    persistGalaxyTilesFromSystems,
     systemLabel,
   } from './lib/galaxy/loadGalaxy.js'
-  import { allTilesCenterOut, expandTiles, tileKey } from './lib/galaxy/mapTiles.js'
+  import { allTiles, allTilesCenterOut, expandTiles, tileKey } from './lib/galaxy/mapTiles.js'
   import { updateSystemOwner } from './lib/galaxy/ownershipApi.js'
   import { estimateZoom } from './lib/galaxy/labelLod.js'
   import { connectStormSocket, stormForSystem } from './lib/galaxy/stormsApi.js'
@@ -183,9 +185,83 @@
   async function hydrateGalaxySlices() {
     const grid = galaxy?.tileGrid
     const revision = cacheRevision || galaxy?.cacheRevision || null
+
+    // Warm start already has the full catalog — only refill missing slices.
+    if (galaxy?.meta?.systemsHydrated) {
+      const tasks = []
+      if (!galaxy.edgesDisplay?.length) {
+        tasks.push(
+          loadWithRetry(() => loadGalaxyEdges()).then((edges) => {
+            galaxy = {
+              ...galaxy,
+              edgesCanon: edges.edgesCanon,
+              edgesDisplay: edges.edgesDisplay,
+              meta: {
+                ...galaxy.meta,
+                edgeCountDisplay: edges.edgesDisplay.length,
+                edgeCountCanon: edges.edgesCanon.length,
+              },
+            }
+            if (revision) void persistGalaxyEdges(revision, edges)
+          }),
+        )
+      }
+      if (!galaxy.search?.length) {
+        tasks.push(
+          loadWithRetry(() => loadGalaxySearch()).then((search) => {
+            galaxy = { ...galaxy, search }
+            if (revision) void persistGalaxySearch(revision, search)
+          }),
+        )
+      }
+      if (tasks.length) await Promise.allSettled(tasks)
+      return
+    }
+
+    // Cold start: one full catalog request instead of 256 tile round-trips.
+    try {
+      const full = await loadWithRetry(() => loadGalaxy())
+      if (!galaxy) return
+      galaxy = {
+        ...galaxy,
+        systems: full.systems,
+        byId: full.byId,
+        edgesCanon: full.edgesCanon,
+        edgesDisplay: full.edgesDisplay,
+        search: full.search,
+        meta: {
+          ...galaxy.meta,
+          ...(full.meta || {}),
+          systemsHydrated: true,
+          hasPoliticalPlate: galaxy.meta?.hasPoliticalPlate,
+          edgeCountDisplay: full.edgesDisplay?.length || 0,
+          edgeCountCanon: full.edgesCanon?.length || 0,
+        },
+        _cachedPoliticalPlate: galaxy._cachedPoliticalPlate,
+        _plateBitmapPromise: galaxy._plateBitmapPromise,
+      }
+      resetPendingSystems(galaxy)
+      if (grid) {
+        for (const tile of allTiles(grid.size)) {
+          loadedTiles.add(tileKey(tile.tx, tile.ty))
+        }
+      }
+      if (revision) {
+        void persistGalaxySystemsSnapshot(revision, full.systems)
+        void persistGalaxyEdges(revision, {
+          edgesCanon: full.edgesCanon,
+          edgesDisplay: full.edgesDisplay,
+        })
+        void persistGalaxySearch(revision, full.search)
+        void persistGalaxyTilesFromSystems(revision, full.systems, grid)
+      }
+      return
+    } catch {
+      // Fall back to spatial tiles if the bulk index is unavailable.
+    }
+
     const edgesPromise = loadWithRetry(() => loadGalaxyEdges())
     const searchPromise = loadWithRetry(() => loadGalaxySearch())
-    // Fetch every tile into a buffer, then one flush → one star redraw.
     const systemsPromise = grid
       ? ensureTiles(allTilesCenterOut(grid.size), { mode: 'silent' }).then(() => {
           flushSystems()

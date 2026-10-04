@@ -16,6 +16,21 @@ export function clampTileIndex(value, size) {
   return Math.max(0, Math.min(size - 1, Math.floor(value)))
 }
 
+/** Tile index for a galaxy XY point (matches catalog-service grouping). */
+export function tileCoordsForPoint(
+  x,
+  y,
+  mapLim = DEFAULT_MAP_LIM,
+  size = DEFAULT_TILE_GRID_SIZE,
+) {
+  const lim = Number(mapLim) > 0 ? Number(mapLim) : DEFAULT_MAP_LIM
+  const grid = Number(size) > 0 ? Math.floor(Number(size)) : DEFAULT_TILE_GRID_SIZE
+  const span = 2 * lim
+  const tx = clampTileIndex(((Number(x) + lim) / span) * grid, grid)
+  const ty = clampTileIndex(((Number(y) + lim) / span) * grid, grid)
+  return { tx, ty }
+}
+
 /**
  * Inclusive list of tiles overlapping an axis-aligned bounds in galaxy x/y.
  */

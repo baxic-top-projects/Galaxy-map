@@ -4,6 +4,7 @@ import {
   allTilesCenterOut,
   boundsFromCameraView,
   expandTiles,
+  tileCoordsForPoint,
   tileKey,
   tilesForBounds,
 } from './mapTiles.js'
@@ -54,5 +55,9 @@ describe('mapTiles', () => {
     const near = boundsFromCameraView({ x: 0, y: 0 }, 8, 1.06)
     const far = boundsFromCameraView({ x: 0, y: 0 }, 80, 1.06)
     expect(far.maxX - far.minX).toBeGreaterThan(near.maxX - near.minX)
+  })
+
+  test('tileCoordsForPoint maps origin to the center cell', () => {
+    expect(tileCoordsForPoint(0, 0, 1.06, 16)).toEqual({ tx: 8, ty: 8 })
   })
 })
