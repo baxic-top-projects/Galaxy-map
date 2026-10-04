@@ -1,6 +1,6 @@
 <script>
   import { filterSearch } from '../lib/galaxy/search.js'
-  import { polityLabel, systemLabel } from '../lib/galaxy/loadGalaxy.js'
+  import { polityLabel, systemLabel, systemSignature } from '../lib/galaxy/loadGalaxy.js'
   import { createPanelDrag, loadPanelPos } from '../lib/ui/panelDrag.js'
   import UserMenu from './UserMenu.svelte'
 
@@ -289,11 +289,11 @@
   </div>
   {#if selected}
     <p class="meta">
-      {#if selected.kind !== 'junction' && selected.token}
-        {selected.token}
+      {#if selected.kind !== 'junction' && systemSignature(selected)}
+        {systemSignature(selected)}
       {/if}
       {#if selectedPolity}
-        {selected.kind !== 'junction' && selected.token ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
+        {selected.kind !== 'junction' && systemSignature(selected) ? ' · ' : ''}{polityLabel(selectedPolity, locale)}
       {/if}
     </p>
     {#if mode === 'galaxy'}

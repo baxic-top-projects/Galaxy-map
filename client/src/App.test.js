@@ -49,6 +49,26 @@ describe('label LOD', () => {
     )
     expect(labels.some((item) => item.system.id.startsWith('frontier:'))).toBe(false)
   })
+
+  test('labels named hypercorridor junctions when zoomed in', () => {
+    const labels = pickLabels(
+      [
+        ...systems,
+        {
+          id: 'G:Forkoth',
+          token: 'Forkoth',
+          nameEn: 'Forkoth',
+          nameRu: 'Форкот',
+          kind: 'junction',
+          x: 0.3,
+          y: 0,
+          z: 0,
+        },
+      ],
+      { zoom: 8, selectedId: 'G:Forkoth', maxLabels: 10 },
+    )
+    expect(labels.some((item) => item.system.id === 'G:Forkoth')).toBe(true)
+  })
 })
 
 describe('spatial index', () => {

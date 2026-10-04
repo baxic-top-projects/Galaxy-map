@@ -9,21 +9,12 @@ import sys
 import numpy as np
 import requests
 from PIL import Image
-from scipy.ndimage import binary_dilation, distance_transform_edt, label
+from scipy.ndimage import binary_dilation
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CANON_ASSETS = ROOT.parent / "EfolsMiradinsPact" / "assets"
-OUTPUTS = (
-    ROOT / "client" / "src" / "lib" / "galaxy" / "visualOwnership.json",
-    ROOT
-    / "server"
-    / "services"
-    / "catalog-service"
-    / "app"
-    / "data"
-    / "visual_ownership.json",
-)
+OUTPUT = ROOT / "client" / "src" / "lib" / "galaxy" / "visualOwnership.json"
 LABEL_ANCHORS = ROOT / "client" / "src" / "lib" / "galaxy" / "polityLabelAnchors.json"
 TERRITORY_MAP = CANON_ASSETS / "galaxy_territory_plate.png"
 GALAXY_API = "http://galaxyapi.baxic.ru/api/v1/galaxy"
@@ -97,64 +88,13 @@ def decode_owner(polities: list[dict]) -> np.ndarray:
         better = usable & (amount > 0.035) & (error < best_error)
         owner[better] = index
         best_error[better] = error[better]
-
-    # Similar brown/purple fills can classify individual stars as a
-    # neighboring polity. Closed cream borders are authoritative: if a
-    # connected region contains exactly one polity label anchor, assign the
-    # entire region to that polity. Regions sharing multiple anchors retain
-    # the color result above (the galactic core interrupts one such border).
-    anchors = json.loads(LABEL_ANCHORS.read_text(encoding="utf-8"))
-    strong_border = binary_dilation(
-        (np.linalg.norm(rgb - cream, axis=2) < (125 / 255)) & (alpha > 40),
-        iterations=12,
-    )
-    regions, _region_count = label((alpha > 16) & ~strong_border)
-    indices_by_region: dict[int, list[int]] = {}
-    for index, polity in enumerate(polities):
-        anchor = anchors.get(polity["stem"])
-        if not anchor:
-            continue
-        px = round(float(anchor[0]) * (width - 1))
-        py = round(float(anchor[1]) * (height - 1))
-        region = int(regions[py, px])
-        if region > 0:
-            indices_by_region.setdefault(region, []).append(index)
-    bounded_owner = np.full((height, width), -1, dtype=np.int16)
-    for region, indices in indices_by_region.items():
-        mask = regions == region
-        if len(indices) == 1:
-            bounded_owner[mask] = indices[0]
-        else:
-            bounded_owner[mask] = owner[mask]
-
-    missing_owner = bounded_owner < 0
-    if np.any(missing_owner):
-        anchor_owner = np.full((height, width), -1, dtype=np.int16)
-        for index, polity in enumerate(polities):
-            anchor = anchors.get(polity["stem"])
-            if not anchor:
-                continue
-            px = round(float(anchor[0]) * (width - 1))
-            py = round(float(anchor[1]) * (height - 1))
-            anchor_owner[py, px] = index
-        _distance, nearest = distance_transform_edt(
-            anchor_owner < 0,
-            return_distances=True,
-            return_indices=True,
-        )
-        bounded_owner[missing_owner] = anchor_owner[
-            nearest[0][missing_owner],
-            nearest[1][missing_owner],
-        ]
-    return bounded_owner
+    return owner
 
 
 def visual_owner(owner: np.ndarray, x: float, y: float) -> int | None:
     height, width = owner.shape
     px = round(((x + MAP_LIMIT) / (MAP_LIMIT * 2)) * (width - 1))
     py = round((1 - (y + MAP_LIMIT) / (MAP_LIMIT * 2)) * (height - 1))
-    if 0 <= px < width and 0 <= py < height and owner[py, px] >= 0:
-        return int(owner[py, px])
     for radius in (4, 8, 16, 32):
         values = owner[
             max(0, py - radius):min(height, py + radius + 1),
@@ -171,7 +111,8 @@ def main() -> int:
     galaxy = requests.get(GALAXY_API, timeout=60).json()
     polities = galaxy.get("polities", [])
     owner = decode_owner(polities)
-    ownership = {}
+    anchors = json.loads(LABEL_ANCHORS.read_text(encoding="utf-8"))
+    overrides = {}
     unresolved = []
     for system in galaxy.get("systems", []):
         if (
@@ -185,19 +126,27 @@ def main() -> int:
             unresolved.append(system["id"])
             continue
         stem = polities[index]["stem"]
-        ownership[system["id"]] = stem
+        if stem == "Aquarian_Republic":
+            normalized_x = (float(system["x"]) + MAP_LIMIT) / (MAP_LIMIT * 2)
+            normalized_y = (MAP_LIMIT - float(system["y"])) / (MAP_LIMIT * 2)
+            nearest = min(
+                anchors,
+                key=lambda candidate: (
+                    (normalized_x - anchors[candidate][0]) ** 2
+                    + (normalized_y - anchors[candidate][1]) ** 2
+                ),
+            )
+            if nearest == "Astrean_Consortium":
+                stem = "Astrean_Consortium"
+        if stem != system.get("stem"):
+            overrides[system["id"]] = stem
 
-    serialized = json.dumps(
-        ownership,
-        ensure_ascii=False,
-        separators=(",", ":"),
-        sort_keys=True,
+    OUTPUT.write_text(
+        json.dumps(overrides, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
     )
-    for output in OUTPUTS:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(serialized, encoding="utf-8")
     print(
-        f"Wrote {len(OUTPUTS)} ownership maps: {len(ownership)} assignments, "
+        f"Wrote {OUTPUT}: {len(overrides)} ownership corrections, "
         f"{len(unresolved)} unresolved systems"
     )
     return 0

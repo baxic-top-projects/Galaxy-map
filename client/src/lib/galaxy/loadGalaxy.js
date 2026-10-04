@@ -344,16 +344,40 @@ export async function loadSystemDetail(systemOrId, baseUrl = DEFAULT_API_BASE) {
   }
 }
 
+function junctionDisplayName(system, locale = 'ru') {
+  const raw = (locale === 'en' ? system.nameEn : system.nameRu)?.trim() || ''
+  if (raw) {
+    const cleaned =
+      locale === 'en'
+        ? raw.replace(/\s+Junction$/i, '').trim()
+        : raw.replace(/^Стык\s+/i, '').trim()
+    if (cleaned) return cleaned
+  }
+  return system.token?.trim() || ''
+}
+
 export function systemLabel(system, locale = 'ru') {
+  if (system?.kind === 'junction') {
+    return (
+      junctionDisplayName(system, locale) ||
+      (locale === 'en' ? 'Hypercorridor junction' : 'Стык гиперкоридоров')
+    )
+  }
   const label = locale === 'en' ? system.nameEn : system.nameRu
   if (label?.trim()) return label
   if (system.kind === 'black_hole') {
     return locale === 'en' ? 'Unnamed black hole' : 'Безымянная чёрная дыра'
   }
-  if (system.kind === 'junction') {
-    return locale === 'en' ? 'Hypercorridor junction' : 'Стык гиперкоридоров'
-  }
   return locale === 'en' ? 'Unnamed star' : 'Безымянная звезда'
+}
+
+/** Map-side English id under the title (= compact nameEn; not a canon Token field). */
+export function systemSignature(system) {
+  if (!system) return ''
+  if (system.kind === 'junction') return system.token || ''
+  const en = system.nameEn?.trim()
+  if (en) return en.replace(/[^A-Za-z0-9]+/g, '')
+  return system.token || ''
 }
 
 export function polityLabel(polity, locale = 'ru') {

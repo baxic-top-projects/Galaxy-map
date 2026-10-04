@@ -378,9 +378,9 @@ def main() -> None:
             card["nameRu"] = card["nameRu"] or "Осевой Колодец"
             card["starType"] = "Supermassive Black Hole"
         elif sys["kind"] == "junction":
-            # Junction tokens are stable graph IDs — keep them visible in the label.
-            card["nameEn"] = f"{sys['token']} Junction"
-            card["nameRu"] = f"Стык {sys['token']}"
+            # Canon cards already carry display names (Forkoth / Форкот).
+            card["nameEn"] = card["nameEn"] or sys["token"]
+            card["nameRu"] = card["nameRu"] or sys["token"]
             card["starType"] = "Empty hypercorridor node"
 
         capital = (sys["stem"], sys["token"]) in CAPITALS
