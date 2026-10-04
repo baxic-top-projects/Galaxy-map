@@ -5,6 +5,7 @@ on:
     paths:
       - "client/**"
       - "server/**"
+      - "kafka-connect/**"
       - "docker-compose.yml"
       - ".github/workflows/client.yml"
   workflow_dispatch:
@@ -31,6 +32,7 @@ jobs:
           ASSET_ENV: ${{ secrets.ASSET_ENV }}
           CATALOG_ENV: ${{ secrets.CATALOG_ENV }}
           AUTH_ENV: ${{ secrets.AUTH_ENV }}
+          KAFKA_CONNECT_ENV: ${{ secrets.KAFKA_CONNECT_ENV }}
         run: |
           printf '%s\n' "$CLIENT_ENV" > client/.env
           printf '%s\n' "$GATEWAY_ENV" > server/api-gateway/.env
@@ -38,6 +40,7 @@ jobs:
           printf '%s\n' "$ASSET_ENV" > server/services/asset-service/.env
           printf '%s\n' "$CATALOG_ENV" > server/services/catalog-service/.env
           printf '%s\n' "$AUTH_ENV" > server/services/auth-service/.env
+          printf '%s\n' "$KAFKA_CONNECT_ENV" > kafka-connect/.env
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -101,6 +104,7 @@ jobs:
           ASSET_ENV: ${{ secrets.ASSET_ENV }}
           CATALOG_ENV: ${{ secrets.CATALOG_ENV }}
           AUTH_ENV: ${{ secrets.AUTH_ENV }}
+          KAFKA_CONNECT_ENV: ${{ secrets.KAFKA_CONNECT_ENV }}
         run: |
           printf '%s\n' "$CLIENT_ENV" > client/.env
           printf '%s\n' "$GATEWAY_ENV" > server/api-gateway/.env
@@ -108,6 +112,7 @@ jobs:
           printf '%s\n' "$ASSET_ENV" > server/services/asset-service/.env
           printf '%s\n' "$CATALOG_ENV" > server/services/catalog-service/.env
           printf '%s\n' "$AUTH_ENV" > server/services/auth-service/.env
+          printf '%s\n' "$KAFKA_CONNECT_ENV" > kafka-connect/.env
 
       - name: Copy project to server
         uses: appleboy/scp-action@v1.0.0
@@ -116,7 +121,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          source: "client,server,docker-compose.yml"
+          source: "client,server,kafka-connect,docker-compose.yml"
           target: ${{ secrets.DEPLOY_PATH }}
           overwrite: true
 

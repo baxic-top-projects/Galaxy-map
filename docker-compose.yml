@@ -224,6 +224,59 @@ services:
     networks:
       - galaxy_net
 
+  kafka-connect:
+    profiles: ["s3-export"]
+    build:
+      context: ./kafka-connect
+      dockerfile: Dockerfile
+    env_file:
+      - path: ./kafka-connect/.env
+        required: false
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka:9092
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_GROUP_ID: galaxy-s3-connect
+      CONNECT_CONFIG_STORAGE_TOPIC: _galaxy_connect_configs
+      CONNECT_OFFSET_STORAGE_TOPIC: _galaxy_connect_offsets
+      CONNECT_STATUS_STORAGE_TOPIC: _galaxy_connect_status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "1"
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8083/connectors >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - galaxy_net
+
+  kafka-connect-init:
+    profiles: ["s3-export"]
+    image: curlimages/curl:8.16.0
+    env_file:
+      - path: ./kafka-connect/.env
+        required: true
+    environment:
+      KAFKA_CONNECT_URL: http://kafka-connect:8083
+    volumes:
+      - ./kafka-connect/register-s3-connector.sh:/register-s3-connector.sh:ro
+    entrypoint: ["/bin/sh", "/register-s3-connector.sh"]
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - galaxy_net
+
 secrets:
   client_env:
     file: ./client/.env
