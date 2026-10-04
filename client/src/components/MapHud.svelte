@@ -511,6 +511,7 @@
 
   .search {
     position: relative;
+    z-index: 50;
     min-width: min(320px, 70vw);
     max-width: 100%;
   }
@@ -549,17 +550,19 @@
 
   .results {
     position: absolute;
+    z-index: 60;
     top: calc(100% + 0.35rem);
     left: 0;
     right: 0;
     margin: 0;
     padding: 0.35rem;
     list-style: none;
-    background: rgba(8, 14, 28, 0.95);
+    background: rgba(8, 14, 28, 0.98);
     border: 1px solid rgba(170, 200, 255, 0.2);
     border-radius: 12px;
     max-height: 280px;
     overflow: auto;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
   }
 
   .results button {

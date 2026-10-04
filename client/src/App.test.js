@@ -20,6 +20,22 @@ describe('search', () => {
     expect(filterSearch(entries, 'm', { stem: 'Efol_Raih' })).toHaveLength(0)
     expect(filterSearch(entries, 'ef', { stem: 'Efol_Raih' })).toHaveLength(1)
   })
+
+  test('finds by compact English token and spaced nameEn', () => {
+    const rows = [
+      {
+        id: 'O:CorvuthAltair',
+        kind: 'system',
+        token: 'CorvuthAltair',
+        nameEn: 'Corvuth Altair',
+        nameRu: 'Корвут Альтаир',
+        stem: 'Ossirian_Mandate',
+      },
+    ]
+    expect(filterSearch(rows, 'corvuthaltair', { locale: 'ru' })[0].token).toBe('CorvuthAltair')
+    expect(filterSearch(rows, 'корвут', { locale: 'ru' })[0].nameRu).toBe('Корвут Альтаир')
+    expect(filterSearch(rows, 'altair', { locale: 'en' })[0].nameEn).toBe('Corvuth Altair')
+  })
 })
 
 describe('label LOD', () => {
