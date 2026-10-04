@@ -39,8 +39,9 @@ def main() -> int:
         )
         if kind == "junction":
             star_type_key = "junction"
-            card["nameEn"] = f"{token} Junction"
-            card["nameRu"] = f"Стык {token}"
+            # Canon H1 already has EN/RU (Weaveith / Вивит) — never "Стык {token}".
+            card["nameEn"] = card["nameEn"] or token
+            card["nameRu"] = card["nameRu"] or token
             card["starType"] = "Empty hypercorridor node"
         else:
             star_type_key = export._type_key(

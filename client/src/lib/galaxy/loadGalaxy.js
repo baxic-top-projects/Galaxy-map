@@ -20,6 +20,9 @@ import {
 } from './tileCache.js'
 import junctionCanonNames from './junctionCanonNames.json'
 
+const CYRILLIC_RE = /[А-Яа-яЁё]/
+const LATIN_RE = /[A-Za-z]/
+
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || ''
 let activeWorldNames = new Map()
 const WORLD_PREFIXES = [
@@ -119,15 +122,29 @@ async function fetchGalaxyJson(path, baseUrl = DEFAULT_API_BASE, { timeoutMs = 2
   return response.json()
 }
 
-/** Overlay canon junction names (Вивит) so RU UI is not stuck on "Стык Weaveith". */
+/** True RU label: has Cyrillic and no Latin (forbids "Стык Weaveith"). */
+function isPureCyrillicName(value) {
+  const text = (value || '').trim()
+  return Boolean(text) && CYRILLIC_RE.test(text) && !LATIN_RE.test(text)
+}
+
+/**
+ * Overlay canon junction names and strip legacy "Стык Weaveith" / "X Junction".
+ * RU name must never be Стык + Latin.
+ */
 export function applyJunctionCanonNames(systems) {
   if (!systems?.length) return systems || []
   return systems.map((system) => {
     if (system?.kind !== 'junction') return system
     const canon = junctionCanonEntry(system)
-    if (!canon) return system
-    const nameEn = canon.nameEn?.trim() || system.nameEn
-    const nameRu = canon.nameRu?.trim() || system.nameRu
+    let nameEn = (canon?.nameEn || system.nameEn || system.token || '')
+      .replace(/\s+Junction$/i, '')
+      .trim()
+    let nameRu = (canon?.nameRu || system.nameRu || '').trim()
+    nameRu = nameRu.replace(/^Стык\s+/i, '').trim()
+    if (!isPureCyrillicName(nameRu)) {
+      nameRu = isPureCyrillicName(canon?.nameRu) ? canon.nameRu.trim() : ''
+    }
     if (nameEn === system.nameEn && nameRu === system.nameRu) return system
     return { ...system, nameEn, nameRu }
   })
@@ -361,8 +378,6 @@ export async function loadSystemDetail(systemOrId, baseUrl = DEFAULT_API_BASE) {
   }
 }
 
-const CYRILLIC_RE = /[А-Яа-яЁё]/
-
 function junctionCanonEntry(system) {
   if (!system) return null
   if (junctionCanonNames[system.id]) return junctionCanonNames[system.id]
@@ -378,15 +393,14 @@ function junctionCanonEntry(system) {
 }
 
 function junctionDisplayName(system, locale = 'ru') {
-  const canon = junctionCanonEntry(system)
   if (locale === 'ru') {
-    const fromCanon = canon?.nameRu?.trim()
-    if (fromCanon && CYRILLIC_RE.test(fromCanon)) return fromCanon
-    const cleaned = (system.nameRu || '').replace(/^Стык\s+/i, '').trim()
-    if (cleaned && CYRILLIC_RE.test(cleaned)) return cleaned
+    if (isPureCyrillicName(system.nameRu)) return system.nameRu.trim()
+    const canon = junctionCanonEntry(system)?.nameRu?.trim()
+    if (isPureCyrillicName(canon)) return canon
     return ''
   }
-  if (canon?.nameEn?.trim()) return canon.nameEn.trim()
+  const canon = junctionCanonEntry(system)?.nameEn?.trim()
+  if (canon) return canon
   const cleaned = (system.nameEn || '').replace(/\s+Junction$/i, '').trim()
   return cleaned || system.token?.trim() || ''
 }

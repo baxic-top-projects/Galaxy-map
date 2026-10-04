@@ -73,7 +73,9 @@ describe('label LOD', () => {
 
 describe('junction labels', () => {
   test('RU locale uses Cyrillic canon name, not English token', async () => {
-    const { systemLabel } = await import('./lib/galaxy/loadGalaxy.js')
+    const { applyJunctionCanonNames, systemLabel } = await import(
+      './lib/galaxy/loadGalaxy.js'
+    )
     const system = {
       id: 'Miradin_Empire:Weaveith',
       token: 'Weaveith',
@@ -82,6 +84,12 @@ describe('junction labels', () => {
       nameRu: 'Стык Weaveith',
       stem: 'Miradin_Empire',
     }
+    const [patched] = applyJunctionCanonNames([system])
+    expect(patched.nameRu).toBe('Вивит')
+    expect(patched.nameRu.includes('Стык')).toBe(false)
+    expect(/[A-Za-z]/.test(patched.nameRu)).toBe(false)
+    expect(patched.nameEn).toBe('Weaveith')
+    expect(systemLabel(patched, 'ru')).toBe('Вивит')
     expect(systemLabel(system, 'ru')).toBe('Вивит')
     expect(systemLabel(system, 'en')).toBe('Weaveith')
   })
