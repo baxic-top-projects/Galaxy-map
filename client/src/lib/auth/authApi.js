@@ -1,5 +1,6 @@
 const API_BASE = String(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')
 const ACCESS_KEY = 'galaxy.accessToken'
+const PENDING_LOGOUT_KEY = 'galaxy.pendingLogout'
 
 let accessToken = sessionStorage.getItem(ACCESS_KEY) || ''
 
@@ -11,6 +12,47 @@ function setAccessToken(token) {
   accessToken = token || ''
   if (accessToken) sessionStorage.setItem(ACCESS_KEY, accessToken)
   else sessionStorage.removeItem(ACCESS_KEY)
+}
+
+function hasPendingLogout() {
+  try {
+    return localStorage.getItem(PENDING_LOGOUT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function setPendingLogout(pending) {
+  try {
+    if (pending) localStorage.setItem(PENDING_LOGOUT_KEY, '1')
+    else localStorage.removeItem(PENDING_LOGOUT_KEY)
+  } catch {
+    // Ignore quota / private mode.
+  }
+}
+
+/** Best-effort server logout. 401 = already revoked → success. */
+async function postLogout() {
+  const response = await fetch(`${API_BASE}/api/v1/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  return response.ok || response.status === 401
+}
+
+/** Finish a logout that failed while the server was down. */
+export async function flushPendingLogout() {
+  if (!hasPendingLogout()) return true
+  try {
+    if (await postLogout()) {
+      setPendingLogout(false)
+      setAccessToken('')
+      return true
+    }
+  } catch {
+    // Still offline / server down.
+  }
+  return false
 }
 
 async function request(path, options = {}, retry = true) {
@@ -43,11 +85,18 @@ async function request(path, options = {}, retry = true) {
 }
 
 function acceptSession(payload) {
+  setPendingLogout(false)
   setAccessToken(payload?.access_token || payload?.accessToken || '')
   return payload?.user || payload
 }
 
 export async function bootstrapSession() {
+  await flushPendingLogout()
+  // User asked to log out earlier; do not resurrect the session via refresh.
+  if (hasPendingLogout()) {
+    setAccessToken('')
+    return null
+  }
   if (accessToken) {
     try {
       return await request('/me')
@@ -59,6 +108,12 @@ export async function bootstrapSession() {
 }
 
 export async function refreshSession(throwOnError = true) {
+  if (hasPendingLogout()) {
+    await flushPendingLogout()
+    setAccessToken('')
+    if (throwOnError) throw new Error('Session expired')
+    return null
+  }
   try {
     const response = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
       method: 'POST',
@@ -90,11 +145,17 @@ export async function registerAccount(payload) {
   return request('/register', { method: 'POST', body: JSON.stringify(payload) }, false)
 }
 
+/**
+ * Local logout always; server revoke is best-effort.
+ * If the server is down, mark pendingLogout and retry on bootstrap / online.
+ */
 export async function logout() {
+  setAccessToken('')
   try {
-    await request('/logout', { method: 'POST' }, false)
-  } finally {
-    setAccessToken('')
+    if (await postLogout()) setPendingLogout(false)
+    else setPendingLogout(true)
+  } catch {
+    setPendingLogout(true)
   }
 }
 
@@ -159,5 +220,11 @@ export async function promoteAdmin(email) {
   return request('/admin/promote', {
     method: 'POST',
     body: JSON.stringify({ email }),
+  })
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    void flushPendingLogout()
   })
 }
