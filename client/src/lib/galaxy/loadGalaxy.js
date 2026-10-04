@@ -18,6 +18,7 @@ import {
   setCachedSystemsSnapshot,
   setCachedTile,
 } from './tileCache.js'
+import junctionCanonNames from './junctionCanonNames.json'
 
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || ''
 let activeWorldNames = new Map()
@@ -118,8 +119,22 @@ async function fetchGalaxyJson(path, baseUrl = DEFAULT_API_BASE, { timeoutMs = 2
   return response.json()
 }
 
+/** Overlay canon junction names (Вивит) so RU UI is not stuck on "Стык Weaveith". */
+export function applyJunctionCanonNames(systems) {
+  if (!systems?.length) return systems || []
+  return systems.map((system) => {
+    if (system?.kind !== 'junction') return system
+    const canon = junctionCanonEntry(system)
+    if (!canon) return system
+    const nameEn = canon.nameEn?.trim() || system.nameEn
+    const nameRu = canon.nameRu?.trim() || system.nameRu
+    if (nameEn === system.nameEn && nameRu === system.nameRu) return system
+    return { ...system, nameEn, nameRu }
+  })
+}
+
 function assembleGalaxy(data) {
-  const systems = data.systems || []
+  const systems = applyJunctionCanonNames(data.systems || [])
   const byId = new Map(systems.map((system) => [system.id, system]))
   const search = uniquifyWorldSearch(data.search || [])
   const polityByStem = new Map((data.polities || []).map((polity) => [polity.stem, polity]))
@@ -206,7 +221,9 @@ export async function loadGalaxySystemsTile(tx, ty, baseUrl = DEFAULT_API_BASE, 
   const revision = options.revision || null
   if (revision && options.preferCache !== false) {
     const cached = await getCachedTile(revision, tx, ty)
-    if (cached) return cached
+    if (cached) {
+      return { ...cached, systems: applyJunctionCanonNames(cached.systems) }
+    }
   }
   const query = new URLSearchParams({
     tx: String(tx),
@@ -216,7 +233,7 @@ export async function loadGalaxySystemsTile(tx, ty, baseUrl = DEFAULT_API_BASE, 
   const tile = {
     tx: Number(data.tx ?? tx),
     ty: Number(data.ty ?? ty),
-    systems: data.systems || [],
+    systems: applyJunctionCanonNames(data.systems || []),
   }
   if (revision) {
     await setCachedTile(revision, tile.tx, tile.ty, tile.systems)
@@ -344,16 +361,34 @@ export async function loadSystemDetail(systemOrId, baseUrl = DEFAULT_API_BASE) {
   }
 }
 
-function junctionDisplayName(system, locale = 'ru') {
-  const raw = (locale === 'en' ? system.nameEn : system.nameRu)?.trim() || ''
-  if (raw) {
-    const cleaned =
-      locale === 'en'
-        ? raw.replace(/\s+Junction$/i, '').trim()
-        : raw.replace(/^Стык\s+/i, '').trim()
-    if (cleaned) return cleaned
+const CYRILLIC_RE = /[А-Яа-яЁё]/
+
+function junctionCanonEntry(system) {
+  if (!system) return null
+  if (junctionCanonNames[system.id]) return junctionCanonNames[system.id]
+  const token = system.token || (system.id || '').split(':').pop()
+  if (!token) return null
+  const idStem = (system.id || '').split(':')[0]
+  for (const stem of [idStem, system.canonicalStem, system.stem]) {
+    if (!stem) continue
+    const hit = junctionCanonNames[`${stem}:${token}`]
+    if (hit) return hit
   }
-  return system.token?.trim() || ''
+  return null
+}
+
+function junctionDisplayName(system, locale = 'ru') {
+  const canon = junctionCanonEntry(system)
+  if (locale === 'ru') {
+    const fromCanon = canon?.nameRu?.trim()
+    if (fromCanon && CYRILLIC_RE.test(fromCanon)) return fromCanon
+    const cleaned = (system.nameRu || '').replace(/^Стык\s+/i, '').trim()
+    if (cleaned && CYRILLIC_RE.test(cleaned)) return cleaned
+    return ''
+  }
+  if (canon?.nameEn?.trim()) return canon.nameEn.trim()
+  const cleaned = (system.nameEn || '').replace(/\s+Junction$/i, '').trim()
+  return cleaned || system.token?.trim() || ''
 }
 
 export function systemLabel(system, locale = 'ru') {

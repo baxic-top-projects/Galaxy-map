@@ -63,32 +63,49 @@ def uniquify() -> dict:
         system["nameEn"] = _strip_paren(system.get("nameEn") or "")
         system["nameRu"] = _strip_paren(system.get("nameRu") or "")
 
-    # Junctions: always token-based unique labels (token may still collide across stems).
+    # Junctions: keep canon card names (Weaveith / Вивит). Mint only on collisions.
     junction_groups: dict[str, list[dict]] = defaultdict(list)
     for system in systems:
         if system.get("kind") != "junction":
             continue
-        token = system.get("token") or system.get("id", "").split(":")[-1]
-        junction_groups[token].append(system)
+        base = _strip_paren(system.get("nameEn") or "") or system.get("token") or system.get("id", "")
+        # Drop legacy export suffixes before uniquifying.
+        base = re.sub(r"\s+Junction$", "", base, flags=re.I).strip() or base
+        junction_groups[base.casefold()].append(system)
 
     used_en: set[str] = set()
     used_ru: set[str] = set()
     renamed = 0
 
-    for token, rows in junction_groups.items():
+    for _key, rows in junction_groups.items():
         rows_sorted = sorted(rows, key=lambda row: row.get("id") or "")
         for index_row, system in enumerate(rows_sorted):
+            token = system.get("token") or system.get("id", "").split(":")[-1]
+            base_en = re.sub(
+                r"\s+Junction$",
+                "",
+                _strip_paren(system.get("nameEn") or "") or token,
+                flags=re.I,
+            ).strip()
+            base_ru = re.sub(
+                r"^Стык\s+",
+                "",
+                _strip_paren(system.get("nameRu") or "") or "",
+                flags=re.I,
+            ).strip()
+            # Legacy "Стык Weaveith" left an English remainder — treat as missing.
+            if base_ru and not re.search(r"[А-Яа-яЁё]", base_ru):
+                base_ru = ""
             if index_row == 0:
-                candidate_en = f"{token} Junction"
-                candidate_ru = f"Стык {token}"
+                candidate_en = base_en
+                candidate_ru = base_ru or base_en
             else:
-                candidate_en = _mint_en(system["id"] + ":junction", used_en) + " Junction"
-                candidate_ru = "Стык " + _mint_ru(system["id"] + ":junction", used_ru)
-            # Guarantee uniqueness against already assigned.
+                candidate_en = _mint_en(system["id"] + ":junction", used_en)
+                candidate_ru = _mint_ru(system["id"] + ":junction", used_ru)
             while candidate_en in used_en:
-                candidate_en = _mint_en(system["id"] + f":junction:{candidate_en}", used_en) + " Junction"
+                candidate_en = _mint_en(system["id"] + f":junction:{candidate_en}", used_en)
             while candidate_ru in used_ru:
-                candidate_ru = "Стык " + _mint_ru(system["id"] + f":junction:{candidate_ru}", used_ru)
+                candidate_ru = _mint_ru(system["id"] + f":junction:{candidate_ru}", used_ru)
             if system.get("nameEn") != candidate_en or system.get("nameRu") != candidate_ru:
                 renamed += 1
             system["nameEn"] = candidate_en

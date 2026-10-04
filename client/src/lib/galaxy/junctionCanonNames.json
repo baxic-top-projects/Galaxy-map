@@ -1,0 +1,1778 @@
+{
+  "Alkali_Accord:Weaveiel": {
+    "nameEn": "Weaveiel",
+    "nameRu": "Вивиэль"
+  },
+  "Anvil_Covenant:Knototh": {
+    "nameEn": "Knototh",
+    "nameRu": "Нотот"
+  },
+  "Aquarian_Republic:Braidor": {
+    "nameEn": "Braidor",
+    "nameRu": "Брейдор"
+  },
+  "Aquarian_Republic:Claspeia": {
+    "nameEn": "Claspeia",
+    "nameRu": "Класпэя"
+  },
+  "Aquarian_Republic:Crossion": {
+    "nameEn": "Crossion",
+    "nameRu": "Кроссион"
+  },
+  "Aquarian_Republic:Hingeath": {
+    "nameEn": "Hingeath",
+    "nameRu": "Хинджат"
+  },
+  "Aquarian_Republic:Hitchyn": {
+    "nameEn": "Hitchyn",
+    "nameRu": "Хитчин"
+  },
+  "Aquarian_Republic:Joineia": {
+    "nameEn": "Joineia",
+    "nameRu": "Джойнэя"
+  },
+  "Aquarian_Republic:Joinel": {
+    "nameEn": "Joinel",
+    "nameRu": "Джойнэл"
+  },
+  "Aquarian_Republic:Joinion": {
+    "nameEn": "Joinion",
+    "nameRu": "Джойнион"
+  },
+  "Aquarian_Republic:Knotiel": {
+    "nameEn": "Knotiel",
+    "nameRu": "Нотиэль"
+  },
+  "Aquarian_Republic:Knototh": {
+    "nameEn": "Knototh",
+    "nameRu": "Нотот"
+  },
+  "Aquarian_Republic:Pivotaros": {
+    "nameEn": "Pivotaros",
+    "nameRu": "Пивотарос"
+  },
+  "Aquarian_Republic:Pivotel": {
+    "nameEn": "Pivotel",
+    "nameRu": "Пивотэл"
+  },
+  "Aquarian_Republic:Spanyx": {
+    "nameEn": "Spanyx",
+    "nameRu": "Спаникс"
+  },
+  "Aquarian_Republic:Weaveor": {
+    "nameEn": "Weaveor",
+    "nameRu": "Вивор"
+  },
+  "Arden_Protectorate:Braidyn": {
+    "nameEn": "Braidyn",
+    "nameRu": "Брейдин"
+  },
+  "Arden_Protectorate:Hitcheia": {
+    "nameEn": "Hitcheia",
+    "nameRu": "Хитчэя"
+  },
+  "Arden_Protectorate:Spaneia": {
+    "nameEn": "Spaneia",
+    "nameRu": "Спанэя"
+  },
+  "Arden_Protectorate:Spliceath": {
+    "nameEn": "Spliceath",
+    "nameRu": "Сплайсат"
+  },
+  "Arden_Protectorate:Spliceel": {
+    "nameEn": "Spliceel",
+    "nameRu": "Сплайсэл"
+  },
+  "Ash_Directorate:Spanyx": {
+    "nameEn": "Spanyx",
+    "nameRu": "Спаникс"
+  },
+  "Astrean_Consortium:Cruxyx": {
+    "nameEn": "Cruxyx",
+    "nameRu": "Краксикс"
+  },
+  "Astrean_Consortium:Hingearos": {
+    "nameEn": "Hingearos",
+    "nameRu": "Хинджарос"
+  },
+  "Astrean_Consortium:Hitchel": {
+    "nameEn": "Hitchel",
+    "nameRu": "Хитчэл"
+  },
+  "Astrean_Consortium:Seamune": {
+    "nameEn": "Seamune",
+    "nameRu": "Симун"
+  },
+  "Astrean_Consortium:Spanion": {
+    "nameEn": "Spanion",
+    "nameRu": "Спанион"
+  },
+  "Basalt_Mandate:Spliceath": {
+    "nameEn": "Spliceath",
+    "nameRu": "Сплайсат"
+  },
+  "Blossom_Concordat:Hitchyn": {
+    "nameEn": "Hitchyn",
+    "nameRu": "Хитчин"
+  },
+  "Brassian_Charter:Hitchel": {
+    "nameEn": "Hitchel",
+    "nameRu": "Хитчэл"
+  },
+  "Brassian_Charter:Hitchor": {
+    "nameEn": "Hitchor",
+    "nameRu": "Хитчор"
+  },
+  "Brassian_Charter:Seamune": {
+    "nameEn": "Seamune",
+    "nameRu": "Симун"
+  },
+  "Brassian_Charter:Spliceane": {
+    "nameEn": "Spliceane",
+    "nameRu": "Сплайсейн"
+  },
+  "Brumal_Crown:Pivotyn": {
+    "nameEn": "Pivotyn",
+    "nameRu": "Пивотин"
+  },
+  "Cascade_Protectorate:Hingeith": {
+    "nameEn": "Hingeith",
+    "nameRu": "Хинджит"
+  },
+  "Celestar_Covenant:Crossith": {
+    "nameEn": "Crossith",
+    "nameRu": "Кроссит"
+  },
+  "Celestar_Covenant:Crossor": {
+    "nameEn": "Crossor",
+    "nameRu": "Кроссор"
+  },
+  "Celestar_Covenant:Joinune": {
+    "nameEn": "Joinune",
+    "nameRu": "Джойнун"
+  },
+  "Celestar_Covenant:Twinearos": {
+    "nameEn": "Twinearos",
+    "nameRu": "Твайнарос"
+  },
+  "Choir_Synod:Weaveel": {
+    "nameEn": "Weaveel",
+    "nameRu": "Вивэл"
+  },
+  "Chronokeep_Plutonian_Republic:Braidel": {
+    "nameEn": "Braidel",
+    "nameRu": "Брейдэл"
+  },
+  "Chronokeep_Plutonian_Republic:Cruxel": {
+    "nameEn": "Cruxel",
+    "nameRu": "Краксэл"
+  },
+  "Chronokeep_Plutonian_Republic:Seamiel": {
+    "nameEn": "Seamiel",
+    "nameRu": "Симиэль"
+  },
+  "Chronokeep_Plutonian_Republic:Spliceiel": {
+    "nameEn": "Spliceiel",
+    "nameRu": "Сплайсиэль"
+  },
+  "Cinder_Dominion:Spanor": {
+    "nameEn": "Spanor",
+    "nameRu": "Спанор"
+  },
+  "Coil_Protectorate:Spliceoth": {
+    "nameEn": "Spliceoth",
+    "nameRu": "Сплайсот"
+  },
+  "Corvel_Republic:Crossath": {
+    "nameEn": "Crossath",
+    "nameRu": "Кроссат"
+  },
+  "Corvel_Republic:Seamor": {
+    "nameEn": "Seamor",
+    "nameRu": "Симор"
+  },
+  "Corvel_Republic:Twineeia": {
+    "nameEn": "Twineeia",
+    "nameRu": "Твайнэя"
+  },
+  "Courtmark_Aldebaran_Empire:Cruxath": {
+    "nameEn": "Cruxath",
+    "nameRu": "Краксат"
+  },
+  "Courtmark_Aldebaran_Empire:Cruxith": {
+    "nameEn": "Cruxith",
+    "nameRu": "Краксит"
+  },
+  "Courtmark_Aldebaran_Empire:Joineth": {
+    "nameEn": "Joineth",
+    "nameRu": "Джойнет"
+  },
+  "Courtmark_Aldebaran_Empire:Knotyx": {
+    "nameEn": "Knotyx",
+    "nameRu": "Нотикс"
+  },
+  "Courtmark_Aldebaran_Empire:Pivotiel": {
+    "nameEn": "Pivotiel",
+    "nameRu": "Пивотиэль"
+  },
+  "Courtmark_Aldebaran_Empire:Spliceeth": {
+    "nameEn": "Spliceeth",
+    "nameRu": "Сплайсет"
+  },
+  "Cryoforge_Plutonian_Republic:Cruxoth": {
+    "nameEn": "Cruxoth",
+    "nameRu": "Краксот"
+  },
+  "Cryoforge_Plutonian_Republic:Joinath": {
+    "nameEn": "Joinath",
+    "nameRu": "Джойнат"
+  },
+  "Cryoforge_Plutonian_Republic:Seamor": {
+    "nameEn": "Seamor",
+    "nameRu": "Симор"
+  },
+  "Cryoforge_Plutonian_Republic:Twineel": {
+    "nameEn": "Twineel",
+    "nameRu": "Твайнэл"
+  },
+  "Cyberlins:Claspath": {
+    "nameEn": "Claspath",
+    "nameRu": "Класпат"
+  },
+  "Cyberlins:Crossiel": {
+    "nameEn": "Crossiel",
+    "nameRu": "Кроссиэль"
+  },
+  "Cyberlins:Cruxath": {
+    "nameEn": "Cruxath",
+    "nameRu": "Краксат"
+  },
+  "Cyberlins:Cruxion": {
+    "nameEn": "Cruxion",
+    "nameRu": "Краксион"
+  },
+  "Cyberlins:Hingeyn": {
+    "nameEn": "Hingeyn",
+    "nameRu": "Хинджин"
+  },
+  "Cyberlins:Joiniel": {
+    "nameEn": "Joiniel",
+    "nameRu": "Джойниэль"
+  },
+  "Cyberlins:Joinune": {
+    "nameEn": "Joinune",
+    "nameRu": "Джойнун"
+  },
+  "Cyberlins:Knotane": {
+    "nameEn": "Knotane",
+    "nameRu": "Нотейн"
+  },
+  "Cyberlins:Knotiel": {
+    "nameEn": "Knotiel",
+    "nameRu": "Нотиэль"
+  },
+  "Cyberlins:Knotyn": {
+    "nameEn": "Knotyn",
+    "nameRu": "Нотин"
+  },
+  "Cyberlins:Seamath": {
+    "nameEn": "Seamath",
+    "nameRu": "Симат"
+  },
+  "Dalian_Federation:Braidiel": {
+    "nameEn": "Braidiel",
+    "nameRu": "Брейдиэль"
+  },
+  "Dalian_Federation:Cruxyx": {
+    "nameEn": "Cruxyx",
+    "nameRu": "Краксикс"
+  },
+  "Dalian_Federation:Forkyn": {
+    "nameEn": "Forkyn",
+    "nameRu": "Форкин"
+  },
+  "Dalian_Federation:Seamyn": {
+    "nameEn": "Seamyn",
+    "nameRu": "Симин"
+  },
+  "Dalian_Federation:Twineyx": {
+    "nameEn": "Twineyx",
+    "nameRu": "Твайникс"
+  },
+  "Dravorn_Dominion:Hingeeth": {
+    "nameEn": "Hingeeth",
+    "nameRu": "Хинджет"
+  },
+  "Dustcaravan_Martian_Republica:Cruxath": {
+    "nameEn": "Cruxath",
+    "nameRu": "Краксат"
+  },
+  "Dustcaravan_Martian_Republica:Hingeath": {
+    "nameEn": "Hingeath",
+    "nameRu": "Хинджат"
+  },
+  "Dustcaravan_Martian_Republica:Joineth": {
+    "nameEn": "Joineth",
+    "nameRu": "Джойнет"
+  },
+  "Dustcaravan_Martian_Republica:Weaveeia": {
+    "nameEn": "Weaveeia",
+    "nameRu": "Вивэя"
+  },
+  "Dustcaravan_Martian_Republica:Weaveor": {
+    "nameEn": "Weaveor",
+    "nameRu": "Вивор"
+  },
+  "Efol_Raih:Braidath": {
+    "nameEn": "Braidath",
+    "nameRu": "Брейдат"
+  },
+  "Efol_Raih:Braidel": {
+    "nameEn": "Braidel",
+    "nameRu": "Брейдэл"
+  },
+  "Efol_Raih:Braidiel": {
+    "nameEn": "Braidiel",
+    "nameRu": "Брейдиэль"
+  },
+  "Efol_Raih:Braidith": {
+    "nameEn": "Braidith",
+    "nameRu": "Брейдит"
+  },
+  "Efol_Raih:Braidor": {
+    "nameEn": "Braidor",
+    "nameRu": "Брейдор"
+  },
+  "Efol_Raih:Braidoth": {
+    "nameEn": "Braidoth",
+    "nameRu": "Брейдот"
+  },
+  "Efol_Raih:Braidune": {
+    "nameEn": "Braidune",
+    "nameRu": "Брейдун"
+  },
+  "Efol_Raih:Braidyx": {
+    "nameEn": "Braidyx",
+    "nameRu": "Брейдикс"
+  },
+  "Efol_Raih:Claspane": {
+    "nameEn": "Claspane",
+    "nameRu": "Класпейн"
+  },
+  "Efol_Raih:Claspion": {
+    "nameEn": "Claspion",
+    "nameRu": "Класпион"
+  },
+  "Efol_Raih:Claspyn": {
+    "nameEn": "Claspyn",
+    "nameRu": "Класпин"
+  },
+  "Efol_Raih:Claspyx": {
+    "nameEn": "Claspyx",
+    "nameRu": "Класпикс"
+  },
+  "Efol_Raih:Crossath": {
+    "nameEn": "Crossath",
+    "nameRu": "Кроссат"
+  },
+  "Efol_Raih:Crossith": {
+    "nameEn": "Crossith",
+    "nameRu": "Кроссит"
+  },
+  "Efol_Raih:Cruxane": {
+    "nameEn": "Cruxane",
+    "nameRu": "Краксейн"
+  },
+  "Efol_Raih:Cruxeia": {
+    "nameEn": "Cruxeia",
+    "nameRu": "Краксэя"
+  },
+  "Efol_Raih:Cruxel": {
+    "nameEn": "Cruxel",
+    "nameRu": "Краксэл"
+  },
+  "Efol_Raih:Cruxeth": {
+    "nameEn": "Cruxeth",
+    "nameRu": "Краксет"
+  },
+  "Efol_Raih:Cruxion": {
+    "nameEn": "Cruxion",
+    "nameRu": "Краксион"
+  },
+  "Efol_Raih:Cruxor": {
+    "nameEn": "Cruxor",
+    "nameRu": "Краксор"
+  },
+  "Efol_Raih:Cruxoth": {
+    "nameEn": "Cruxoth",
+    "nameRu": "Краксот"
+  },
+  "Efol_Raih:Cruxyn": {
+    "nameEn": "Cruxyn",
+    "nameRu": "Краксин"
+  },
+  "Efol_Raih:Forkaros": {
+    "nameEn": "Forkaros",
+    "nameRu": "Форкарос"
+  },
+  "Efol_Raih:Forkel": {
+    "nameEn": "Forkel",
+    "nameRu": "Форкэл"
+  },
+  "Efol_Raih:Forkion": {
+    "nameEn": "Forkion",
+    "nameRu": "Форкион"
+  },
+  "Efol_Raih:Forkith": {
+    "nameEn": "Forkith",
+    "nameRu": "Форкит"
+  },
+  "Efol_Raih:Forkor": {
+    "nameEn": "Forkor",
+    "nameRu": "Форкор"
+  },
+  "Efol_Raih:Forkoth": {
+    "nameEn": "Forkoth",
+    "nameRu": "Форкот"
+  },
+  "Efol_Raih:Hingeion": {
+    "nameEn": "Hingeion",
+    "nameRu": "Хинджион"
+  },
+  "Efol_Raih:Hingeor": {
+    "nameEn": "Hingeor",
+    "nameRu": "Хинджор"
+  },
+  "Efol_Raih:Hingeoth": {
+    "nameEn": "Hingeoth",
+    "nameRu": "Хинджот"
+  },
+  "Efol_Raih:Hingeyn": {
+    "nameEn": "Hingeyn",
+    "nameRu": "Хинджин"
+  },
+  "Efol_Raih:Hitchath": {
+    "nameEn": "Hitchath",
+    "nameRu": "Хитчат"
+  },
+  "Efol_Raih:Hitchel": {
+    "nameEn": "Hitchel",
+    "nameRu": "Хитчэл"
+  },
+  "Efol_Raih:Hitchiel": {
+    "nameEn": "Hitchiel",
+    "nameRu": "Хитчиэль"
+  },
+  "Efol_Raih:Hitchion": {
+    "nameEn": "Hitchion",
+    "nameRu": "Хитчион"
+  },
+  "Efol_Raih:Hitchor": {
+    "nameEn": "Hitchor",
+    "nameRu": "Хитчор"
+  },
+  "Efol_Raih:Hitchoth": {
+    "nameEn": "Hitchoth",
+    "nameRu": "Хитчот"
+  },
+  "Efol_Raih:Hitchune": {
+    "nameEn": "Hitchune",
+    "nameRu": "Хитчун"
+  },
+  "Efol_Raih:Joinath": {
+    "nameEn": "Joinath",
+    "nameRu": "Джойнат"
+  },
+  "Efol_Raih:Joineth": {
+    "nameEn": "Joineth",
+    "nameRu": "Джойнет"
+  },
+  "Efol_Raih:Joiniel": {
+    "nameEn": "Joiniel",
+    "nameRu": "Джойниэль"
+  },
+  "Efol_Raih:Joinion": {
+    "nameEn": "Joinion",
+    "nameRu": "Джойнион"
+  },
+  "Efol_Raih:Joinith": {
+    "nameEn": "Joinith",
+    "nameRu": "Джойнит"
+  },
+  "Efol_Raih:Joinoth": {
+    "nameEn": "Joinoth",
+    "nameRu": "Джойнот"
+  },
+  "Efol_Raih:Knotane": {
+    "nameEn": "Knotane",
+    "nameRu": "Нотейн"
+  },
+  "Efol_Raih:Knotaros": {
+    "nameEn": "Knotaros",
+    "nameRu": "Нотарос"
+  },
+  "Efol_Raih:Knotel": {
+    "nameEn": "Knotel",
+    "nameRu": "Нотэл"
+  },
+  "Efol_Raih:Knotyx": {
+    "nameEn": "Knotyx",
+    "nameRu": "Нотикс"
+  },
+  "Efol_Raih:Latcharos": {
+    "nameEn": "Latcharos",
+    "nameRu": "Лачарос"
+  },
+  "Efol_Raih:Latcheia": {
+    "nameEn": "Latcheia",
+    "nameRu": "Лачэя"
+  },
+  "Efol_Raih:Latcheth": {
+    "nameEn": "Latcheth",
+    "nameRu": "Лачет"
+  },
+  "Efol_Raih:Latchion": {
+    "nameEn": "Latchion",
+    "nameRu": "Лачион"
+  },
+  "Efol_Raih:Latchyx": {
+    "nameEn": "Latchyx",
+    "nameRu": "Лачикс"
+  },
+  "Efol_Raih:Pivotaros": {
+    "nameEn": "Pivotaros",
+    "nameRu": "Пивотарос"
+  },
+  "Efol_Raih:Pivotath": {
+    "nameEn": "Pivotath",
+    "nameRu": "Пивотат"
+  },
+  "Efol_Raih:Pivoteth": {
+    "nameEn": "Pivoteth",
+    "nameRu": "Пивотет"
+  },
+  "Efol_Raih:Pivotune": {
+    "nameEn": "Pivotune",
+    "nameRu": "Пивотун"
+  },
+  "Efol_Raih:Pivotyn": {
+    "nameEn": "Pivotyn",
+    "nameRu": "Пивотин"
+  },
+  "Efol_Raih:Pivotyx": {
+    "nameEn": "Pivotyx",
+    "nameRu": "Пивотикс"
+  },
+  "Efol_Raih:Seameia": {
+    "nameEn": "Seameia",
+    "nameRu": "Симэя"
+  },
+  "Efol_Raih:Seameth": {
+    "nameEn": "Seameth",
+    "nameRu": "Симет"
+  },
+  "Efol_Raih:Seamith": {
+    "nameEn": "Seamith",
+    "nameRu": "Симит"
+  },
+  "Efol_Raih:Seamoth": {
+    "nameEn": "Seamoth",
+    "nameRu": "Симот"
+  },
+  "Efol_Raih:Seamyx": {
+    "nameEn": "Seamyx",
+    "nameRu": "Симикс"
+  },
+  "Efol_Raih:Spanath": {
+    "nameEn": "Spanath",
+    "nameRu": "Спанат"
+  },
+  "Efol_Raih:Spanyx": {
+    "nameEn": "Spanyx",
+    "nameRu": "Спаникс"
+  },
+  "Efol_Raih:Spliceath": {
+    "nameEn": "Spliceath",
+    "nameRu": "Сплайсат"
+  },
+  "Efol_Raih:Spliceith": {
+    "nameEn": "Spliceith",
+    "nameRu": "Сплайсит"
+  },
+  "Efol_Raih:Spliceor": {
+    "nameEn": "Spliceor",
+    "nameRu": "Сплайсор"
+  },
+  "Efol_Raih:Spliceune": {
+    "nameEn": "Spliceune",
+    "nameRu": "Сплайсун"
+  },
+  "Efol_Raih:Spliceyn": {
+    "nameEn": "Spliceyn",
+    "nameRu": "Сплайсин"
+  },
+  "Efol_Raih:Twineath": {
+    "nameEn": "Twineath",
+    "nameRu": "Твайнат"
+  },
+  "Efol_Raih:Twineeia": {
+    "nameEn": "Twineeia",
+    "nameRu": "Твайнэя"
+  },
+  "Efol_Raih:Twineor": {
+    "nameEn": "Twineor",
+    "nameRu": "Твайнор"
+  },
+  "Efol_Raih:Twineyx": {
+    "nameEn": "Twineyx",
+    "nameRu": "Твайникс"
+  },
+  "Efol_Raih:Weaveel": {
+    "nameEn": "Weaveel",
+    "nameRu": "Вивэл"
+  },
+  "Efol_Raih:Weaveion": {
+    "nameEn": "Weaveion",
+    "nameRu": "Вивион"
+  },
+  "Efol_Raih:Weaveyn": {
+    "nameEn": "Weaveyn",
+    "nameRu": "Вивин"
+  },
+  "Eidar_Commune:Braidane": {
+    "nameEn": "Braidane",
+    "nameRu": "Брейдейн"
+  },
+  "Eidar_Commune:Claspeth": {
+    "nameEn": "Claspeth",
+    "nameRu": "Класпет"
+  },
+  "Eidar_Commune:Weaveyn": {
+    "nameEn": "Weaveyn",
+    "nameRu": "Вивин"
+  },
+  "Ember_Array:Crossaros": {
+    "nameEn": "Crossaros",
+    "nameRu": "Кроссарос"
+  },
+  "Extragroks:Braidoth": {
+    "nameEn": "Braidoth",
+    "nameRu": "Брейдот"
+  },
+  "Extragroks:Hitchiel": {
+    "nameEn": "Hitchiel",
+    "nameRu": "Хитчиэль"
+  },
+  "Extragroks:Hitchune": {
+    "nameEn": "Hitchune",
+    "nameRu": "Хитчун"
+  },
+  "Extragroks:Latchyx": {
+    "nameEn": "Latchyx",
+    "nameRu": "Лачикс"
+  },
+  "Extragroks:Seamith": {
+    "nameEn": "Seamith",
+    "nameRu": "Симит"
+  },
+  "Extragroks:Seamoth": {
+    "nameEn": "Seamoth",
+    "nameRu": "Симот"
+  },
+  "Extragroks:Spliceyx": {
+    "nameEn": "Spliceyx",
+    "nameRu": "Сплайсикс"
+  },
+  "Extragroks:Twineel": {
+    "nameEn": "Twineel",
+    "nameRu": "Твайнэл"
+  },
+  "Extragroks:Twineor": {
+    "nameEn": "Twineor",
+    "nameRu": "Твайнор"
+  },
+  "Facet_Compact:Braidel": {
+    "nameEn": "Braidel",
+    "nameRu": "Брейдэл"
+  },
+  "Faraday_Chamber:Weaveath": {
+    "nameEn": "Weaveath",
+    "nameRu": "Виват"
+  },
+  "Feedseal_Veronian_Republic:Claspoth": {
+    "nameEn": "Claspoth",
+    "nameRu": "Класпот"
+  },
+  "Feedseal_Veronian_Republic:Crossaros": {
+    "nameEn": "Crossaros",
+    "nameRu": "Кроссарос"
+  },
+  "Feedseal_Veronian_Republic:Hingeel": {
+    "nameEn": "Hingeel",
+    "nameRu": "Хинджэл"
+  },
+  "Feedseal_Veronian_Republic:Hitchyn": {
+    "nameEn": "Hitchyn",
+    "nameRu": "Хитчин"
+  },
+  "Fjorn_Dominion:Claspath": {
+    "nameEn": "Claspath",
+    "nameRu": "Класпат"
+  },
+  "Fjorn_Dominion:Crossor": {
+    "nameEn": "Crossor",
+    "nameRu": "Кроссор"
+  },
+  "Fjorn_Dominion:Cruxane": {
+    "nameEn": "Cruxane",
+    "nameRu": "Краксейн"
+  },
+  "Fjorn_Dominion:Cruxith": {
+    "nameEn": "Cruxith",
+    "nameRu": "Краксит"
+  },
+  "Fjorn_Dominion:Hingearos": {
+    "nameEn": "Hingearos",
+    "nameRu": "Хинджарос"
+  },
+  "Fjorn_Dominion:Seamel": {
+    "nameEn": "Seamel",
+    "nameRu": "Симэл"
+  },
+  "Grainthrone_Zemlyania:Forkyx": {
+    "nameEn": "Forkyx",
+    "nameRu": "Форкикс"
+  },
+  "Grainthrone_Zemlyania:Pivotyx": {
+    "nameEn": "Pivotyx",
+    "nameRu": "Пивотикс"
+  },
+  "Grainthrone_Zemlyania:Spliceath": {
+    "nameEn": "Spliceath",
+    "nameRu": "Сплайсат"
+  },
+  "Grainthrone_Zemlyania:Weaveiel": {
+    "nameEn": "Weaveiel",
+    "nameRu": "Вивиэль"
+  },
+  "Grindar_Union:Crosseia": {
+    "nameEn": "Crosseia",
+    "nameRu": "Кроссэя"
+  },
+  "Grindar_Union:Crossion": {
+    "nameEn": "Crossion",
+    "nameRu": "Кроссион"
+  },
+  "Grindar_Union:Forkoth": {
+    "nameEn": "Forkoth",
+    "nameRu": "Форкот"
+  },
+  "Grindar_Union:Hingeith": {
+    "nameEn": "Hingeith",
+    "nameRu": "Хинджит"
+  },
+  "Grindar_Union:Joinaros": {
+    "nameEn": "Joinaros",
+    "nameRu": "Джойнарос"
+  },
+  "Grindar_Union:Joinune": {
+    "nameEn": "Joinune",
+    "nameRu": "Джойнун"
+  },
+  "Grindar_Union:Knototh": {
+    "nameEn": "Knototh",
+    "nameRu": "Нотот"
+  },
+  "Grindar_Union:Latchyn": {
+    "nameEn": "Latchyn",
+    "nameRu": "Лачин"
+  },
+  "Grindar_Union:Seameia": {
+    "nameEn": "Seameia",
+    "nameRu": "Симэя"
+  },
+  "Grindar_Union:Seamel": {
+    "nameEn": "Seamel",
+    "nameRu": "Симэл"
+  },
+  "Grindar_Union:Seamor": {
+    "nameEn": "Seamor",
+    "nameRu": "Симор"
+  },
+  "Grindar_Union:Spanaros": {
+    "nameEn": "Spanaros",
+    "nameRu": "Спанарос"
+  },
+  "Grindar_Union:Spliceane": {
+    "nameEn": "Spliceane",
+    "nameRu": "Сплайсейн"
+  },
+  "Grindar_Union:Spliceeia": {
+    "nameEn": "Spliceeia",
+    "nameRu": "Сплайсэя"
+  },
+  "Grindar_Union:Spliceoth": {
+    "nameEn": "Spliceoth",
+    "nameRu": "Сплайсот"
+  },
+  "Grit_March:Hitcheia": {
+    "nameEn": "Hitcheia",
+    "nameRu": "Хитчэя"
+  },
+  "Helion_League:Braideia": {
+    "nameEn": "Braideia",
+    "nameRu": "Брейдэя"
+  },
+  "Helion_League:Crossoth": {
+    "nameEn": "Crossoth",
+    "nameRu": "Кроссот"
+  },
+  "Helion_League:Knotaros": {
+    "nameEn": "Knotaros",
+    "nameRu": "Нотарос"
+  },
+  "Helion_League:Spanion": {
+    "nameEn": "Spanion",
+    "nameRu": "Спанион"
+  },
+  "Helion_League:Spliceane": {
+    "nameEn": "Spliceane",
+    "nameRu": "Сплайсейн"
+  },
+  "Helion_League:Twineion": {
+    "nameEn": "Twineion",
+    "nameRu": "Твайнион"
+  },
+  "Hex_Mandate:Cruxath": {
+    "nameEn": "Cruxath",
+    "nameRu": "Краксат"
+  },
+  "Hoarfrost_Crown:Latchoth": {
+    "nameEn": "Latchoth",
+    "nameRu": "Лачот"
+  },
+  "Houseward_Aldebaran_Empire:Braideia": {
+    "nameEn": "Braideia",
+    "nameRu": "Брейдэя"
+  },
+  "Houseward_Aldebaran_Empire:Claspith": {
+    "nameEn": "Claspith",
+    "nameRu": "Класпит"
+  },
+  "Houseward_Aldebaran_Empire:Crossiel": {
+    "nameEn": "Crossiel",
+    "nameRu": "Кроссиэль"
+  },
+  "Houseward_Aldebaran_Empire:Hingeion": {
+    "nameEn": "Hingeion",
+    "nameRu": "Хинджион"
+  },
+  "Houseward_Aldebaran_Empire:Seamath": {
+    "nameEn": "Seamath",
+    "nameRu": "Симат"
+  },
+  "Houseward_Aldebaran_Empire:Seamiel": {
+    "nameEn": "Seamiel",
+    "nameRu": "Симиэль"
+  },
+  "Illorian_Coronate:Cruxyx": {
+    "nameEn": "Cruxyx",
+    "nameRu": "Краксикс"
+  },
+  "Illorian_Coronate:Pivotor": {
+    "nameEn": "Pivotor",
+    "nameRu": "Пивотор"
+  },
+  "Illorian_Coronate:Spanane": {
+    "nameEn": "Spanane",
+    "nameRu": "Спанейн"
+  },
+  "Ilyr_Assembly:Latchyx": {
+    "nameEn": "Latchyx",
+    "nameRu": "Лачикс"
+  },
+  "Ironbark_League:Seameth": {
+    "nameEn": "Seameth",
+    "nameRu": "Симет"
+  },
+  "Jetty_Protectorate:Pivotyx": {
+    "nameEn": "Pivotyx",
+    "nameRu": "Пивотикс"
+  },
+  "Jewel_Compact:Pivotune": {
+    "nameEn": "Pivotune",
+    "nameRu": "Пивотун"
+  },
+  "Kair_Republic:Crossiel": {
+    "nameEn": "Crossiel",
+    "nameRu": "Кроссиэль"
+  },
+  "Kair_Republic:Forkiel": {
+    "nameEn": "Forkiel",
+    "nameRu": "Форкиэль"
+  },
+  "Kair_Republic:Seameth": {
+    "nameEn": "Seameth",
+    "nameRu": "Симет"
+  },
+  "Kair_Republic:Spliceane": {
+    "nameEn": "Spliceane",
+    "nameRu": "Сплайсейн"
+  },
+  "Kair_Republic:Weaveion": {
+    "nameEn": "Weaveion",
+    "nameRu": "Вивион"
+  },
+  "Kassar_League:Cruxyx": {
+    "nameEn": "Cruxyx",
+    "nameRu": "Краксикс"
+  },
+  "Kassar_League:Hitcheia": {
+    "nameEn": "Hitcheia",
+    "nameRu": "Хитчэя"
+  },
+  "Kassar_League:Seamion": {
+    "nameEn": "Seamion",
+    "nameRu": "Симион"
+  },
+  "Kassar_League:Spanyn": {
+    "nameEn": "Spanyn",
+    "nameRu": "Спанин"
+  },
+  "Kassar_League:Twineune": {
+    "nameEn": "Twineune",
+    "nameRu": "Твайнун"
+  },
+  "Kerven_Federation:Braidel": {
+    "nameEn": "Braidel",
+    "nameRu": "Брейдэл"
+  },
+  "Kerven_Federation:Cruxaros": {
+    "nameEn": "Cruxaros",
+    "nameRu": "Краксарос"
+  },
+  "Kerven_Federation:Cruxor": {
+    "nameEn": "Cruxor",
+    "nameRu": "Краксор"
+  },
+  "Koty:Crossith": {
+    "nameEn": "Crossith",
+    "nameRu": "Кроссит"
+  },
+  "Koty:Cruxath": {
+    "nameEn": "Cruxath",
+    "nameRu": "Краксат"
+  },
+  "Koty:Hitchor": {
+    "nameEn": "Hitchor",
+    "nameRu": "Хитчор"
+  },
+  "Koty:Joineth": {
+    "nameEn": "Joineth",
+    "nameRu": "Джойнет"
+  },
+  "Koty:Spliceor": {
+    "nameEn": "Spliceor",
+    "nameRu": "Сплайсор"
+  },
+  "Koty:Twinearos": {
+    "nameEn": "Twinearos",
+    "nameRu": "Твайнарос"
+  },
+  "Koty:Twineion": {
+    "nameEn": "Twineion",
+    "nameRu": "Твайнион"
+  },
+  "Landbook_Zemlyania:Claspoth": {
+    "nameEn": "Claspoth",
+    "nameRu": "Класпот"
+  },
+  "Landbook_Zemlyania:Hingeion": {
+    "nameEn": "Hingeion",
+    "nameRu": "Хинджион"
+  },
+  "Landbook_Zemlyania:Hitchune": {
+    "nameEn": "Hitchune",
+    "nameRu": "Хитчун"
+  },
+  "Landbook_Zemlyania:Spaneia": {
+    "nameEn": "Spaneia",
+    "nameRu": "Спанэя"
+  },
+  "Latch_Guild_Republic:Crossel": {
+    "nameEn": "Crossel",
+    "nameRu": "Кроссэл"
+  },
+  "Ledger_Chamber:Spliceeth": {
+    "nameEn": "Spliceeth",
+    "nameRu": "Сплайсет"
+  },
+  "Lin_Republic:Knotion": {
+    "nameEn": "Knotion",
+    "nameRu": "Нотион"
+  },
+  "Lin_Republic:Spaniel": {
+    "nameEn": "Spaniel",
+    "nameRu": "Спаниэль"
+  },
+  "Lin_Republic:Twineath": {
+    "nameEn": "Twineath",
+    "nameRu": "Твайнат"
+  },
+  "Liorian_Republic:Cruxoth": {
+    "nameEn": "Cruxoth",
+    "nameRu": "Краксот"
+  },
+  "Liorian_Republic:Hingeion": {
+    "nameEn": "Hingeion",
+    "nameRu": "Хинджион"
+  },
+  "Liorian_Republic:Hitchiel": {
+    "nameEn": "Hitchiel",
+    "nameRu": "Хитчиэль"
+  },
+  "Liorian_Republic:Latchyx": {
+    "nameEn": "Latchyx",
+    "nameRu": "Лачикс"
+  },
+  "Meridian_Chamber:Spliceane": {
+    "nameEn": "Spliceane",
+    "nameRu": "Сплайсейн"
+  },
+  "Meridian_Chamber:Twineeth": {
+    "nameEn": "Twineeth",
+    "nameRu": "Твайнет"
+  },
+  "Miradin_Empire:Braidane": {
+    "nameEn": "Braidane",
+    "nameRu": "Брейдейн"
+  },
+  "Miradin_Empire:Braidaros": {
+    "nameEn": "Braidaros",
+    "nameRu": "Брейдарос"
+  },
+  "Miradin_Empire:Braidath": {
+    "nameEn": "Braidath",
+    "nameRu": "Брейдат"
+  },
+  "Miradin_Empire:Braideia": {
+    "nameEn": "Braideia",
+    "nameRu": "Брейдэя"
+  },
+  "Miradin_Empire:Braidith": {
+    "nameEn": "Braidith",
+    "nameRu": "Брейдит"
+  },
+  "Miradin_Empire:Braidor": {
+    "nameEn": "Braidor",
+    "nameRu": "Брейдор"
+  },
+  "Miradin_Empire:Braidoth": {
+    "nameEn": "Braidoth",
+    "nameRu": "Брейдот"
+  },
+  "Miradin_Empire:Braidyn": {
+    "nameEn": "Braidyn",
+    "nameRu": "Брейдин"
+  },
+  "Miradin_Empire:Claspane": {
+    "nameEn": "Claspane",
+    "nameRu": "Класпейн"
+  },
+  "Miradin_Empire:Claspel": {
+    "nameEn": "Claspel",
+    "nameRu": "Класпэл"
+  },
+  "Miradin_Empire:Claspeth": {
+    "nameEn": "Claspeth",
+    "nameRu": "Класпет"
+  },
+  "Miradin_Empire:Claspiel": {
+    "nameEn": "Claspiel",
+    "nameRu": "Класпиэль"
+  },
+  "Miradin_Empire:Claspyx": {
+    "nameEn": "Claspyx",
+    "nameRu": "Класпикс"
+  },
+  "Miradin_Empire:Crosseia": {
+    "nameEn": "Crosseia",
+    "nameRu": "Кроссэя"
+  },
+  "Miradin_Empire:Crossiel": {
+    "nameEn": "Crossiel",
+    "nameRu": "Кроссиэль"
+  },
+  "Miradin_Empire:Crossyn": {
+    "nameEn": "Crossyn",
+    "nameRu": "Кроссин"
+  },
+  "Miradin_Empire:Cruxeia": {
+    "nameEn": "Cruxeia",
+    "nameRu": "Краксэя"
+  },
+  "Miradin_Empire:Cruxeth": {
+    "nameEn": "Cruxeth",
+    "nameRu": "Краксет"
+  },
+  "Miradin_Empire:Forkaros": {
+    "nameEn": "Forkaros",
+    "nameRu": "Форкарос"
+  },
+  "Miradin_Empire:Forkeia": {
+    "nameEn": "Forkeia",
+    "nameRu": "Форкэя"
+  },
+  "Miradin_Empire:Forkiel": {
+    "nameEn": "Forkiel",
+    "nameRu": "Форкиэль"
+  },
+  "Miradin_Empire:Forkion": {
+    "nameEn": "Forkion",
+    "nameRu": "Форкион"
+  },
+  "Miradin_Empire:Forkith": {
+    "nameEn": "Forkith",
+    "nameRu": "Форкит"
+  },
+  "Miradin_Empire:Forkyx": {
+    "nameEn": "Forkyx",
+    "nameRu": "Форкикс"
+  },
+  "Miradin_Empire:Hingeiel": {
+    "nameEn": "Hingeiel",
+    "nameRu": "Хинджиэль"
+  },
+  "Miradin_Empire:Hingeith": {
+    "nameEn": "Hingeith",
+    "nameRu": "Хинджит"
+  },
+  "Miradin_Empire:Hingeor": {
+    "nameEn": "Hingeor",
+    "nameRu": "Хинджор"
+  },
+  "Miradin_Empire:Hingeoth": {
+    "nameEn": "Hingeoth",
+    "nameRu": "Хинджот"
+  },
+  "Miradin_Empire:Hingeyn": {
+    "nameEn": "Hingeyn",
+    "nameRu": "Хинджин"
+  },
+  "Miradin_Empire:Hitcharos": {
+    "nameEn": "Hitcharos",
+    "nameRu": "Хитчарос"
+  },
+  "Miradin_Empire:Hitchath": {
+    "nameEn": "Hitchath",
+    "nameRu": "Хитчат"
+  },
+  "Miradin_Empire:Hitchel": {
+    "nameEn": "Hitchel",
+    "nameRu": "Хитчэл"
+  },
+  "Miradin_Empire:Hitcheth": {
+    "nameEn": "Hitcheth",
+    "nameRu": "Хитчет"
+  },
+  "Miradin_Empire:Hitchiel": {
+    "nameEn": "Hitchiel",
+    "nameRu": "Хитчиэль"
+  },
+  "Miradin_Empire:Hitchoth": {
+    "nameEn": "Hitchoth",
+    "nameRu": "Хитчот"
+  },
+  "Miradin_Empire:Hitchune": {
+    "nameEn": "Hitchune",
+    "nameRu": "Хитчун"
+  },
+  "Miradin_Empire:Joinane": {
+    "nameEn": "Joinane",
+    "nameRu": "Джойнейн"
+  },
+  "Miradin_Empire:Joinaros": {
+    "nameEn": "Joinaros",
+    "nameRu": "Джойнарос"
+  },
+  "Miradin_Empire:Joinel": {
+    "nameEn": "Joinel",
+    "nameRu": "Джойнэл"
+  },
+  "Miradin_Empire:Joinion": {
+    "nameEn": "Joinion",
+    "nameRu": "Джойнион"
+  },
+  "Miradin_Empire:Joinith": {
+    "nameEn": "Joinith",
+    "nameRu": "Джойнит"
+  },
+  "Miradin_Empire:Joinoth": {
+    "nameEn": "Joinoth",
+    "nameRu": "Джойнот"
+  },
+  "Miradin_Empire:Joinune": {
+    "nameEn": "Joinune",
+    "nameRu": "Джойнун"
+  },
+  "Miradin_Empire:Knotiel": {
+    "nameEn": "Knotiel",
+    "nameRu": "Нотиэль"
+  },
+  "Miradin_Empire:Knotion": {
+    "nameEn": "Knotion",
+    "nameRu": "Нотион"
+  },
+  "Miradin_Empire:Knotith": {
+    "nameEn": "Knotith",
+    "nameRu": "Нотит"
+  },
+  "Miradin_Empire:Knotyn": {
+    "nameEn": "Knotyn",
+    "nameRu": "Нотин"
+  },
+  "Miradin_Empire:Knotyx": {
+    "nameEn": "Knotyx",
+    "nameRu": "Нотикс"
+  },
+  "Miradin_Empire:Latchath": {
+    "nameEn": "Latchath",
+    "nameRu": "Лачат"
+  },
+  "Miradin_Empire:Latchiel": {
+    "nameEn": "Latchiel",
+    "nameRu": "Лачиэль"
+  },
+  "Miradin_Empire:Latchion": {
+    "nameEn": "Latchion",
+    "nameRu": "Лачион"
+  },
+  "Miradin_Empire:Latchith": {
+    "nameEn": "Latchith",
+    "nameRu": "Лачит"
+  },
+  "Miradin_Empire:Latchune": {
+    "nameEn": "Latchune",
+    "nameRu": "Лачун"
+  },
+  "Miradin_Empire:Latchyn": {
+    "nameEn": "Latchyn",
+    "nameRu": "Лачин"
+  },
+  "Miradin_Empire:Latchyx": {
+    "nameEn": "Latchyx",
+    "nameRu": "Лачикс"
+  },
+  "Miradin_Empire:Pivotune": {
+    "nameEn": "Pivotune",
+    "nameRu": "Пивотун"
+  },
+  "Miradin_Empire:Pivotyx": {
+    "nameEn": "Pivotyx",
+    "nameRu": "Пивотикс"
+  },
+  "Miradin_Empire:Seameia": {
+    "nameEn": "Seameia",
+    "nameRu": "Симэя"
+  },
+  "Miradin_Empire:Seameth": {
+    "nameEn": "Seameth",
+    "nameRu": "Симет"
+  },
+  "Miradin_Empire:Seamion": {
+    "nameEn": "Seamion",
+    "nameRu": "Симион"
+  },
+  "Miradin_Empire:Seamor": {
+    "nameEn": "Seamor",
+    "nameRu": "Симор"
+  },
+  "Miradin_Empire:Spanaros": {
+    "nameEn": "Spanaros",
+    "nameRu": "Спанарос"
+  },
+  "Miradin_Empire:Spanel": {
+    "nameEn": "Spanel",
+    "nameRu": "Спанэл"
+  },
+  "Miradin_Empire:Spaneth": {
+    "nameEn": "Spaneth",
+    "nameRu": "Спанет"
+  },
+  "Miradin_Empire:Spaniel": {
+    "nameEn": "Spaniel",
+    "nameRu": "Спаниэль"
+  },
+  "Miradin_Empire:Spliceeia": {
+    "nameEn": "Spliceeia",
+    "nameRu": "Сплайсэя"
+  },
+  "Miradin_Empire:Spliceel": {
+    "nameEn": "Spliceel",
+    "nameRu": "Сплайсэл"
+  },
+  "Miradin_Empire:Spliceion": {
+    "nameEn": "Spliceion",
+    "nameRu": "Сплайсион"
+  },
+  "Miradin_Empire:Spliceith": {
+    "nameEn": "Spliceith",
+    "nameRu": "Сплайсит"
+  },
+  "Miradin_Empire:Spliceune": {
+    "nameEn": "Spliceune",
+    "nameRu": "Сплайсун"
+  },
+  "Miradin_Empire:Twineane": {
+    "nameEn": "Twineane",
+    "nameRu": "Твайнейн"
+  },
+  "Miradin_Empire:Twineith": {
+    "nameEn": "Twineith",
+    "nameRu": "Твайнит"
+  },
+  "Miradin_Empire:Twineor": {
+    "nameEn": "Twineor",
+    "nameRu": "Твайнор"
+  },
+  "Miradin_Empire:Twineune": {
+    "nameEn": "Twineune",
+    "nameRu": "Твайнун"
+  },
+  "Miradin_Empire:Weaveath": {
+    "nameEn": "Weaveath",
+    "nameRu": "Виват"
+  },
+  "Miradin_Empire:Weaveion": {
+    "nameEn": "Weaveion",
+    "nameRu": "Вивион"
+  },
+  "Miradin_Empire:Weaveith": {
+    "nameEn": "Weaveith",
+    "nameRu": "Вивит"
+  },
+  "Miradin_Empire:Weaveor": {
+    "nameEn": "Weaveor",
+    "nameRu": "Вивор"
+  },
+  "Miradin_Empire:Weaveune": {
+    "nameEn": "Weaveune",
+    "nameRu": "Вивун"
+  },
+  "Miradin_Empire:Weaveyx": {
+    "nameEn": "Weaveyx",
+    "nameRu": "Вивикс"
+  },
+  "Morat_Syndicate:Cruxane": {
+    "nameEn": "Cruxane",
+    "nameRu": "Краксейн"
+  },
+  "Morat_Syndicate:Cruxion": {
+    "nameEn": "Cruxion",
+    "nameRu": "Краксион"
+  },
+  "Morat_Syndicate:Hingeor": {
+    "nameEn": "Hingeor",
+    "nameRu": "Хинджор"
+  },
+  "Morat_Syndicate:Joiniel": {
+    "nameEn": "Joiniel",
+    "nameRu": "Джойниэль"
+  },
+  "Needle_Union:Twineel": {
+    "nameEn": "Twineel",
+    "nameRu": "Твайнэл"
+  },
+  "Nerite_Concordat:Claspion": {
+    "nameEn": "Claspion",
+    "nameRu": "Класпион"
+  },
+  "Nerite_Concordat:Crosseia": {
+    "nameEn": "Crosseia",
+    "nameRu": "Кроссэя"
+  },
+  "Nerite_Concordat:Seamor": {
+    "nameEn": "Seamor",
+    "nameRu": "Симор"
+  },
+  "Noctis_Assembly:Claspeia": {
+    "nameEn": "Claspeia",
+    "nameRu": "Класпэя"
+  },
+  "Noctis_Assembly:Hitchoth": {
+    "nameEn": "Hitchoth",
+    "nameRu": "Хитчот"
+  },
+  "Noctis_Assembly:Pivotyn": {
+    "nameEn": "Pivotyn",
+    "nameRu": "Пивотин"
+  },
+  "Oris_Directorate:Knototh": {
+    "nameEn": "Knototh",
+    "nameRu": "Нотот"
+  },
+  "Oris_Directorate:Spanor": {
+    "nameEn": "Spanor",
+    "nameRu": "Спанор"
+  },
+  "Oris_Directorate:Weaveeia": {
+    "nameEn": "Weaveeia",
+    "nameRu": "Вивэя"
+  },
+  "Ortel_Republic:Crossion": {
+    "nameEn": "Crossion",
+    "nameRu": "Кроссион"
+  },
+  "Ortel_Republic:Crossith": {
+    "nameEn": "Crossith",
+    "nameRu": "Кроссит"
+  },
+  "Ortel_Republic:Forkyx": {
+    "nameEn": "Forkyx",
+    "nameRu": "Форкикс"
+  },
+  "Ortel_Republic:Joinune": {
+    "nameEn": "Joinune",
+    "nameRu": "Джойнун"
+  },
+  "Ortel_Republic:Latchoth": {
+    "nameEn": "Latchoth",
+    "nameRu": "Лачот"
+  },
+  "Ortheon_Guild_Republic:Claspyn": {
+    "nameEn": "Claspyn",
+    "nameRu": "Класпин"
+  },
+  "Ossirian_Mandate:Joinyx": {
+    "nameEn": "Joinyx",
+    "nameRu": "Джойникс"
+  },
+  "Packclear_Nhar_Corporation:Claspeia": {
+    "nameEn": "Claspeia",
+    "nameRu": "Класпэя"
+  },
+  "Packclear_Nhar_Corporation:Pivoteth": {
+    "nameEn": "Pivoteth",
+    "nameRu": "Пивотет"
+  },
+  "Packclear_Nhar_Corporation:Spliceath": {
+    "nameEn": "Spliceath",
+    "nameRu": "Сплайсат"
+  },
+  "Packclear_Nhar_Corporation:Spliceel": {
+    "nameEn": "Spliceel",
+    "nameRu": "Сплайсэл"
+  },
+  "Packclear_Nhar_Corporation:Weaveith": {
+    "nameEn": "Weaveith",
+    "nameRu": "Вивит"
+  },
+  "Pin_Covenant:Twinearos": {
+    "nameEn": "Twinearos",
+    "nameRu": "Твайнарос"
+  },
+  "Prismglass_Assembly:Braidane": {
+    "nameEn": "Braidane",
+    "nameRu": "Брейдейн"
+  },
+  "Prism_Assembly:Joinune": {
+    "nameEn": "Joinune",
+    "nameRu": "Джойнун"
+  },
+  "Pyralis_Directorate:Latcheth": {
+    "nameEn": "Latcheth",
+    "nameRu": "Лачет"
+  },
+  "Redjournal_Martian_Republica:Cruxoth": {
+    "nameEn": "Cruxoth",
+    "nameRu": "Краксот"
+  },
+  "Redjournal_Martian_Republica:Hitcharos": {
+    "nameEn": "Hitcharos",
+    "nameRu": "Хитчарос"
+  },
+  "Redjournal_Martian_Republica:Knotion": {
+    "nameEn": "Knotion",
+    "nameRu": "Нотион"
+  },
+  "Redjournal_Martian_Republica:Pivotion": {
+    "nameEn": "Pivotion",
+    "nameRu": "Пивотион"
+  },
+  "Redjournal_Martian_Republica:Spanel": {
+    "nameEn": "Spanel",
+    "nameRu": "Спанэл"
+  },
+  "Remar_Federation:Hitchoth": {
+    "nameEn": "Hitchoth",
+    "nameRu": "Хитчот"
+  },
+  "Remar_Federation:Hitchyx": {
+    "nameEn": "Hitchyx",
+    "nameRu": "Хитчикс"
+  },
+  "Remar_Federation:Knotaros": {
+    "nameEn": "Knotaros",
+    "nameRu": "Нотарос"
+  },
+  "Remar_Federation:Twineor": {
+    "nameEn": "Twineor",
+    "nameRu": "Твайнор"
+  },
+  "Rime_Crown:Claspion": {
+    "nameEn": "Claspion",
+    "nameRu": "Класпион"
+  },
+  "Ronar_Protectorate:Braidor": {
+    "nameEn": "Braidor",
+    "nameRu": "Брейдор"
+  },
+  "Ronar_Protectorate:Claspune": {
+    "nameEn": "Claspune",
+    "nameRu": "Класпун"
+  },
+  "Ronar_Protectorate:Crossyx": {
+    "nameEn": "Crossyx",
+    "nameRu": "Кроссикс"
+  },
+  "Ronar_Protectorate:Spliceor": {
+    "nameEn": "Spliceor",
+    "nameRu": "Сплайсор"
+  },
+  "Salt_Accord:Hingeyn": {
+    "nameEn": "Hingeyn",
+    "nameRu": "Хинджин"
+  },
+  "Scroll_Union:Claspune": {
+    "nameEn": "Claspune",
+    "nameRu": "Класпун"
+  },
+  "Selqari_Synod:Joineia": {
+    "nameEn": "Joineia",
+    "nameRu": "Джойнэя"
+  },
+  "Serrin_Cordon:Crossoth": {
+    "nameEn": "Crossoth",
+    "nameRu": "Кроссот"
+  },
+  "Sharevault_Nhar_Corporation:Crossyn": {
+    "nameEn": "Crossyn",
+    "nameRu": "Кроссин"
+  },
+  "Sharevault_Nhar_Corporation:Forkyx": {
+    "nameEn": "Forkyx",
+    "nameRu": "Форкикс"
+  },
+  "Sharevault_Nhar_Corporation:Hitcheia": {
+    "nameEn": "Hitcheia",
+    "nameRu": "Хитчэя"
+  },
+  "Sharevault_Nhar_Corporation:Twineion": {
+    "nameEn": "Twineion",
+    "nameRu": "Твайнион"
+  },
+  "Sharevault_Nhar_Corporation:Weaveyn": {
+    "nameEn": "Weaveyn",
+    "nameRu": "Вивин"
+  },
+  "Sigil_Mandate:Cruxoth": {
+    "nameEn": "Cruxoth",
+    "nameRu": "Краксот"
+  },
+  "Slotfair_Veronian_Republic:Braidor": {
+    "nameEn": "Braidor",
+    "nameRu": "Брейдор"
+  },
+  "Slotfair_Veronian_Republic:Forkaros": {
+    "nameEn": "Forkaros",
+    "nameRu": "Форкарос"
+  },
+  "Slotfair_Veronian_Republic:Forkyn": {
+    "nameEn": "Forkyn",
+    "nameRu": "Форкин"
+  },
+  "Slotfair_Veronian_Republic:Latchoth": {
+    "nameEn": "Latchoth",
+    "nameRu": "Лачот"
+  },
+  "Solvian_Commune:Braidath": {
+    "nameEn": "Braidath",
+    "nameRu": "Брейдат"
+  },
+  "Solvian_Commune:Crossyx": {
+    "nameEn": "Crossyx",
+    "nameRu": "Кроссикс"
+  },
+  "Soot_Directorate:Hitchel": {
+    "nameEn": "Hitchel",
+    "nameRu": "Хитчэл"
+  },
+  "Spanlink_League:Pivotath": {
+    "nameEn": "Pivotath",
+    "nameRu": "Пивотат"
+  },
+  "Span_League:Latchor": {
+    "nameEn": "Latchor",
+    "nameRu": "Лачор"
+  },
+  "Specular_League:Hitcheth": {
+    "nameEn": "Hitcheth",
+    "nameRu": "Хитчет"
+  },
+  "Surian_Coronate:Braidion": {
+    "nameEn": "Braidion",
+    "nameRu": "Брейдион"
+  },
+  "Surian_Coronate:Claspeia": {
+    "nameEn": "Claspeia",
+    "nameRu": "Класпэя"
+  },
+  "Surian_Coronate:Knotath": {
+    "nameEn": "Knotath",
+    "nameRu": "Нотат"
+  },
+  "Surian_Coronate:Twineath": {
+    "nameEn": "Twineath",
+    "nameRu": "Твайнат"
+  },
+  "Surian_Coronate:Twineel": {
+    "nameEn": "Twineel",
+    "nameRu": "Твайнэл"
+  },
+  "Talaris_Communion:Spliceath": {
+    "nameEn": "Spliceath",
+    "nameRu": "Сплайсат"
+  },
+  "Teimar_Union:Claspyn": {
+    "nameEn": "Claspyn",
+    "nameRu": "Класпин"
+  },
+  "Teimar_Union:Crossiel": {
+    "nameEn": "Crossiel",
+    "nameRu": "Кроссиэль"
+  },
+  "Teimar_Union:Spanane": {
+    "nameEn": "Spanane",
+    "nameRu": "Спанейн"
+  },
+  "Tessar_Syndicate:Cruxyx": {
+    "nameEn": "Cruxyx",
+    "nameRu": "Краксикс"
+  },
+  "Tessar_Syndicate:Latchune": {
+    "nameEn": "Latchune",
+    "nameRu": "Лачун"
+  },
+  "Tessar_Syndicate:Seamyx": {
+    "nameEn": "Seamyx",
+    "nameRu": "Симикс"
+  },
+  "Tessar_Syndicate:Spliceeth": {
+    "nameEn": "Spliceeth",
+    "nameRu": "Сплайсет"
+  },
+  "Thalassian_Concordat:Claspeia": {
+    "nameEn": "Claspeia",
+    "nameRu": "Класпэя"
+  },
+  "Thalassian_Concordat:Hitchor": {
+    "nameEn": "Hitchor",
+    "nameRu": "Хитчор"
+  },
+  "Thalassian_Concordat:Joinoth": {
+    "nameEn": "Joinoth",
+    "nameRu": "Джойнот"
+  },
+  "Thalassian_Concordat:Seamane": {
+    "nameEn": "Seamane",
+    "nameRu": "Симейн"
+  },
+  "Thalassian_Concordat:Twineor": {
+    "nameEn": "Twineor",
+    "nameRu": "Твайнор"
+  },
+  "Varis_Republic:Cruxyn": {
+    "nameEn": "Cruxyn",
+    "nameRu": "Краксин"
+  },
+  "Varis_Republic:Pivotel": {
+    "nameEn": "Pivotel",
+    "nameRu": "Пивотэл"
+  },
+  "Varis_Republic:Seamyx": {
+    "nameEn": "Seamyx",
+    "nameRu": "Симикс"
+  },
+  "Varis_Republic:Spanor": {
+    "nameEn": "Spanor",
+    "nameRu": "Спанор"
+  },
+  "Velan_Commonwealth:Claspion": {
+    "nameEn": "Claspion",
+    "nameRu": "Класпион"
+  },
+  "Velan_Commonwealth:Hingeith": {
+    "nameEn": "Hingeith",
+    "nameRu": "Хинджит"
+  },
+  "Velan_Commonwealth:Knotaros": {
+    "nameEn": "Knotaros",
+    "nameRu": "Нотарос"
+  },
+  "Velan_Commonwealth:Pivotune": {
+    "nameEn": "Pivotune",
+    "nameRu": "Пивотун"
+  },
+  "Velan_Commonwealth:Weaveith": {
+    "nameEn": "Weaveith",
+    "nameRu": "Вивит"
+  },
+  "Velan_Commonwealth:Weaveyx": {
+    "nameEn": "Weaveyx",
+    "nameRu": "Вивикс"
+  },
+  "Vespar_Chamber:Claspoth": {
+    "nameEn": "Claspoth",
+    "nameRu": "Класпот"
+  },
+  "Vespar_Chamber:Cruxaros": {
+    "nameEn": "Cruxaros",
+    "nameRu": "Краксарос"
+  },
+  "Vespar_Chamber:Knotune": {
+    "nameEn": "Knotune",
+    "nameRu": "Нотун"
+  },
+  "Veyran_Accord:Joinith": {
+    "nameEn": "Joinith",
+    "nameRu": "Джойнит"
+  },
+  "Vhalian_Caravanate:Hitchel": {
+    "nameEn": "Hitchel",
+    "nameRu": "Хитчэл"
+  },
+  "Wren_Accord:Crosseth": {
+    "nameEn": "Crosseth",
+    "nameRu": "Кроссет"
+  },
+  "Zergs:Latchoth": {
+    "nameEn": "Latchoth",
+    "nameRu": "Лачот"
+  },
+  "Zergs:Pivotath": {
+    "nameEn": "Pivotath",
+    "nameRu": "Пивотат"
+  },
+  "Zergs:Spanel": {
+    "nameEn": "Spanel",
+    "nameRu": "Спанэл"
+  },
+  "Zergs:Twineor": {
+    "nameEn": "Twineor",
+    "nameRu": "Твайнор"
+  },
+  "Zergs:Twineune": {
+    "nameEn": "Twineune",
+    "nameRu": "Твайнун"
+  }
+}

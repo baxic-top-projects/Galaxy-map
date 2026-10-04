@@ -71,6 +71,22 @@ describe('label LOD', () => {
   })
 })
 
+describe('junction labels', () => {
+  test('RU locale uses Cyrillic canon name, not English token', async () => {
+    const { systemLabel } = await import('./lib/galaxy/loadGalaxy.js')
+    const system = {
+      id: 'Miradin_Empire:Weaveith',
+      token: 'Weaveith',
+      kind: 'junction',
+      nameEn: 'Weaveith Junction',
+      nameRu: 'Стык Weaveith',
+      stem: 'Miradin_Empire',
+    }
+    expect(systemLabel(system, 'ru')).toBe('Вивит')
+    expect(systemLabel(system, 'en')).toBe('Weaveith')
+  })
+})
+
 describe('spatial index', () => {
   test('returns nearest system', () => {
     const index = buildSpatialIndex([
