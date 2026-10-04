@@ -182,6 +182,45 @@
     void ensureTiles(expandTiles(tiles, 1, grid.size), { mode: 'silent' })
   }
 
+  function applyFullCatalog(full) {
+    if (!galaxy || !full) return
+    const grid = galaxy.tileGrid || full.tileGrid
+    const revision = cacheRevision || galaxy.cacheRevision || null
+    galaxy = {
+      ...galaxy,
+      systems: full.systems,
+      byId: full.byId,
+      edgesCanon: full.edgesCanon,
+      edgesDisplay: full.edgesDisplay,
+      search: full.search,
+      meta: {
+        ...galaxy.meta,
+        ...(full.meta || {}),
+        systemsHydrated: true,
+        hasPoliticalPlate: galaxy.meta?.hasPoliticalPlate,
+        edgeCountDisplay: full.edgesDisplay?.length || 0,
+        edgeCountCanon: full.edgesCanon?.length || 0,
+      },
+      _cachedPoliticalPlate: galaxy._cachedPoliticalPlate,
+      _plateBitmapPromise: galaxy._plateBitmapPromise,
+    }
+    resetPendingSystems(galaxy)
+    if (grid) {
+      for (const tile of allTiles(grid.size)) {
+        loadedTiles.add(tileKey(tile.tx, tile.ty))
+      }
+    }
+    if (revision) {
+      void persistGalaxySystemsSnapshot(revision, full.systems)
+      void persistGalaxyEdges(revision, {
+        edgesCanon: full.edgesCanon,
+        edgesDisplay: full.edgesDisplay,
+      })
+      void persistGalaxySearch(revision, full.search)
+      void persistGalaxyTilesFromSystems(revision, full.systems, grid)
+    }
+  }
+
   async function hydrateGalaxySlices() {
     const grid = galaxy?.tileGrid
     const revision = cacheRevision || galaxy?.cacheRevision || null
@@ -221,40 +260,7 @@
     // Cold start: one full catalog request instead of 256 tile round-trips.
     try {
       const full = await loadWithRetry(() => loadGalaxy())
-      if (!galaxy) return
-      galaxy = {
-        ...galaxy,
-        systems: full.systems,
-        byId: full.byId,
-        edgesCanon: full.edgesCanon,
-        edgesDisplay: full.edgesDisplay,
-        search: full.search,
-        meta: {
-          ...galaxy.meta,
-          ...(full.meta || {}),
-          systemsHydrated: true,
-          hasPoliticalPlate: galaxy.meta?.hasPoliticalPlate,
-          edgeCountDisplay: full.edgesDisplay?.length || 0,
-          edgeCountCanon: full.edgesCanon?.length || 0,
-        },
-        _cachedPoliticalPlate: galaxy._cachedPoliticalPlate,
-        _plateBitmapPromise: galaxy._plateBitmapPromise,
-      }
-      resetPendingSystems(galaxy)
-      if (grid) {
-        for (const tile of allTiles(grid.size)) {
-          loadedTiles.add(tileKey(tile.tx, tile.ty))
-        }
-      }
-      if (revision) {
-        void persistGalaxySystemsSnapshot(revision, full.systems)
-        void persistGalaxyEdges(revision, {
-          edgesCanon: full.edgesCanon,
-          edgesDisplay: full.edgesDisplay,
-        })
-        void persistGalaxySearch(revision, full.search)
-        void persistGalaxyTilesFromSystems(revision, full.systems, grid)
-      }
+      applyFullCatalog(full)
       return
     } catch {
       // Fall back to spatial tiles if the bulk index is unavailable.
@@ -337,15 +343,24 @@
 
     try {
       const warm = await warmPromise
+      let warmHydrated = false
       if (warm?.galaxy) {
         cacheRevision = warm.revision
         for (const key of warm.tileKeys || []) loadedTiles.add(key)
         galaxy = warm.galaxy
         resetPendingSystems(warm.galaxy)
-        loading = false
+        warmHydrated = Boolean(
+          warm.systemsHydrated || warm.galaxy.meta?.systemsHydrated,
+        )
+        // Only leave the boot screen when the local catalog is already complete.
+        if (warmHydrated) loading = false
       }
 
       const previousRevision = cacheRevision
+      // Race the full index with map bootstrap so cold start is not map→wait→galaxy.
+      const fullPromise = warmHydrated
+        ? null
+        : loadWithRetry(() => loadGalaxy())
       const nextMap = await loadWithRetry(() =>
         loadGalaxyMap(undefined, { previousRevision }),
       )
@@ -376,8 +391,23 @@
         galaxy = nextMap
       }
       resetPendingSystems(galaxy)
-      loading = false
-      void hydrateGalaxySlices()
+
+      if (warmHydrated) {
+        loading = false
+        void hydrateGalaxySlices()
+      } else {
+        // Stay on "Загрузка галактики…" until the full catalog is applied —
+        // never flash the ~seed-sized map (e.g. 567 systems) in the HUD.
+        try {
+          const full = fullPromise
+            ? await fullPromise
+            : await loadWithRetry(() => loadGalaxy())
+          applyFullCatalog(full)
+        } catch {
+          await hydrateGalaxySlices()
+        }
+        loading = false
+      }
     } catch (err) {
       if (!galaxy) error = err instanceof Error ? err.message : String(err)
       loading = false
