@@ -17,6 +17,7 @@ from app.dto.storm import (
     SystemStormStateDto,
 )
 from app.service.galaxy_graph_service import GalaxyGraphService
+from app.service.storm_model_client import StormModelClient
 
 STORM_PALETTE: dict[StormType, str] = {
     "electric": "#6ec8ff",
@@ -268,6 +269,7 @@ class StormSimulationService:
         self.storms: list[StormDto] = []
         self._lock = threading.RLock()
         self._counter = 0
+        self._model = StormModelClient(settings)
         self._adjacency = {key: list(values) for key, values in graph.adjacency.items()}
         for system_id in graph.systems:
             self._adjacency.setdefault(system_id, [])
@@ -338,13 +340,22 @@ class StormSimulationService:
             advanced = self._advance_many(payloads)
             surviving = [StormDto.model_validate(item) for item in advanced if item is not None]
             self.storms = surviving
-            if (
-                len(self.storms) < self.settings.max_active_storms
-                and self.rng.random() < self.settings.spawn_chance
-            ):
-                spawned = self._spawn_storm()
-                if spawned is not None:
-                    self.storms.append(spawned)
+            spawned = False
+            if len(self.storms) < self.settings.max_active_storms:
+                systems = self._system_states(self.storms)
+                decision = self._model.decide(
+                    tick=self.tick,
+                    storms=self.storms,
+                    systems=systems,
+                    fallback_chance=self.settings.spawn_chance,
+                    rng_roll=self.rng.random(),
+                )
+                if decision.should_spawn:
+                    created = self._spawn_storm(storm_type=decision.storm_type)
+                    if created is not None:
+                        self.storms.append(created)
+                        spawned = True
+            self._model.note_spawn_outcome(spawned)
             return self.snapshot()
 
     def _advance_many(self, payloads: list[dict[str, Any]]) -> list[dict[str, Any] | None]:
@@ -356,7 +367,7 @@ class StormSimulationService:
             return [_advance_storm_payload(item) for item in payloads]
         return list(self._pool.map(_advance_storm_payload, payloads, chunksize=1))
 
-    def _spawn_storm(self) -> StormDto | None:
+    def _spawn_storm(self, storm_type: StormType | None = None) -> StormDto | None:
         occupied = {
             system.systemId for storm in self.storms for system in storm.affectedSystems
         }
@@ -367,7 +378,9 @@ class StormSimulationService:
         # Prefer connected systems so storms can travel.
         connected = [system_id for system_id in candidates if self._adjacency.get(system_id)]
         origin = self.rng.choice(connected or candidates)
-        storm_type = self.rng.choice(STORM_TYPES)
+        chosen_type: StormType = (
+            storm_type if storm_type in STORM_TYPES else self.rng.choice(STORM_TYPES)
+        )
         self._counter += 1
         digest = hashlib.sha1(
             f"{self.settings.seed}:{self.tick}:{origin}:{self._counter}".encode()
@@ -381,7 +394,7 @@ class StormSimulationService:
         )
         storm = StormDto(
             id=f"storm-{digest}",
-            type=storm_type,
+            type=chosen_type,
             stage="forming",
             originSystemId=origin,
             currentSystemId=origin,
@@ -392,7 +405,7 @@ class StormSimulationService:
             intensity=0.35,
             radiusHops=0,
             ageTicks=0,
-            color=STORM_PALETTE[storm_type],
+            color=STORM_PALETTE[chosen_type],
             affectedSystems=[],
         )
         refreshed = _refresh_affected_payload(storm.model_dump(mode="json"), self._adjacency)

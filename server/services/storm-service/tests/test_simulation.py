@@ -7,6 +7,7 @@ import pytest
 
 from app.config.settings import Settings
 from app.service.galaxy_graph_service import GalaxyGraphService
+from app.service.storm_model_client import FEATURE_COLUMNS, build_spawn_features
 from app.service.storm_simulation_service import StormSimulationService
 
 
@@ -40,6 +41,21 @@ def test_graph_spreads_only_along_hypercorridors(tiny_galaxy: Path):
     assert "A:Isle" not in hops
 
 
+def test_spawn_features_match_model_columns():
+    features = build_spawn_features(
+        tick=12,
+        storms=[],
+        systems=[],
+        ticks_since_spawn=3,
+        spawns_last_5_ticks=1,
+    )
+    assert list(features.keys()) == list(FEATURE_COLUMNS)
+    assert features["tick"] == 12.0
+    assert features["active_storm_count"] == 0.0
+    assert features["ticks_since_spawn"] == 3.0
+    assert features["spawns_last_5_ticks"] == 1.0
+
+
 def test_storm_migrates_along_hyperlanes(tiny_galaxy: Path):
     settings = Settings(
         galaxy_index_path=tiny_galaxy,
@@ -56,6 +72,8 @@ def test_storm_migrates_along_hyperlanes(tiny_galaxy: Path):
         path_hops_max=4,
         worker_processes=1,
         kafka_enabled=False,
+        model_enabled=False,
+        model_url="",
     )
     sim = StormSimulationService(GalaxyGraphService(tiny_galaxy), settings)
 
@@ -118,6 +136,8 @@ def test_parallel_workers_advance_storms(tiny_galaxy: Path):
         path_hops_max=4,
         worker_processes=2,
         kafka_enabled=False,
+        model_enabled=False,
+        model_url="",
     )
     sim = StormSimulationService(GalaxyGraphService(tiny_galaxy), settings)
     try:

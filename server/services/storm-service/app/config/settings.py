@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     seed: int = 20260928
     tick_seconds: float = 2.0
     max_active_storms: int = 8
+    # Used when model is disabled or /invocations fails.
     spawn_chance: float = 0.35
     form_ticks: int = 4
     active_ticks: int = 18
@@ -29,6 +30,12 @@ class Settings(BaseSettings):
     kafka_bootstrap_servers: str = "kafka:9092"
     kafka_topic: str = "galaxy.storms"
     kafka_enabled: bool = True
+    # MLflow stormmodel scoring (https://stormmodel.baxic.ru). Empty URL = random spawn.
+    model_enabled: bool = True
+    model_url: str = ""
+    model_username: str = "model-api"
+    model_password: str = ""
+    model_timeout_seconds: float = 10.0
 
 
 settings = Settings()
