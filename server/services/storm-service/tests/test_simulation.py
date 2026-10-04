@@ -7,7 +7,7 @@ import pytest
 
 from app.config.settings import Settings
 from app.service.galaxy_graph_service import GalaxyGraphService
-from app.service.storm_model_client import FEATURE_COLUMNS, build_spawn_features
+from app.service.storm_model_client import FEATURE_COLUMNS, StormModelClient, build_spawn_features
 from app.service.storm_simulation_service import StormSimulationService
 
 
@@ -54,6 +54,33 @@ def test_spawn_features_match_model_columns():
     assert features["active_storm_count"] == 0.0
     assert features["ticks_since_spawn"] == 3.0
     assert features["spawns_last_5_ticks"] == 1.0
+
+
+def test_empty_map_boosts_model_probability(monkeypatch):
+    settings = Settings(
+        model_enabled=True,
+        model_url="https://stormmodel.example",
+        model_decision_mode="probability",
+        spawn_chance=0.35,
+        kafka_enabled=False,
+    )
+    client = StormModelClient(settings)
+    monkeypatch.setattr(
+        client,
+        "_invoke",
+        lambda features: (False, "electric", 0.05),
+    )
+    # Low model p, but empty map raises floor to spawn_chance → roll 0.2 should spawn.
+    decision = client.decide(
+        tick=1,
+        storms=[],
+        systems=[],
+        fallback_chance=0.35,
+        rng_roll=0.2,
+    )
+    assert decision.source == "model"
+    assert decision.should_spawn is True
+    assert decision.storm_type == "electric"
 
 
 def test_storm_migrates_along_hyperlanes(tiny_galaxy: Path):

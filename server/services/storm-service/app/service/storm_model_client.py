@@ -171,11 +171,29 @@ class StormModelClient:
             spawns_last_5_ticks=sum(self._recent_spawns),
         )
         try:
-            should_spawn, storm_type, probability = self._invoke(features)
+            _model_should, storm_type, probability = self._invoke(features)
+            p = float(probability) if probability is not None else 0.0
+            # Empty map safety: never stay barren longer than the old random baseline.
+            if len(storms) == 0:
+                p = max(p, fallback_chance)
+            mode = (self.settings.model_decision_mode or "probability").strip().lower()
+            if mode == "threshold":
+                should_spawn = p >= float(self.settings.model_spawn_threshold)
+            else:
+                should_spawn = rng_roll < p
+            logger.info(
+                "storm model tick=%s p=%.4f should=%s type=%s storms=%s mode=%s",
+                tick,
+                p,
+                should_spawn,
+                storm_type,
+                len(storms),
+                mode,
+            )
             return SpawnDecision(
                 should_spawn=should_spawn,
                 storm_type=storm_type,
-                spawn_probability=probability,
+                spawn_probability=p,
                 source="model",
             )
         except Exception as exc:  # noqa: BLE001

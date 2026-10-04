@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     model_username: str = "model-api"
     model_password: str = ""
     model_timeout_seconds: float = 10.0
+    # probability = Bernoulli(spawn_probability); threshold = spawn_probability >= value.
+    # Model's built-in should_spawn uses 0.5 and is too strict for live traffic.
+    model_decision_mode: str = "probability"
+    model_spawn_threshold: float = 0.25
 
 
 settings = Settings()
