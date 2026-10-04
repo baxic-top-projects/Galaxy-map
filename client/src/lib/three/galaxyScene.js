@@ -278,13 +278,19 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 
   const color = new THREE.Color()
   const geometry = new THREE.BufferGeometry()
+  // Chunk star buffer fills so the political raster (same main thread) can keep
+  // progressing between slices instead of waiting on a 9k-point sync burst.
+  const STAR_WRITE_CHUNK = 768
+  let systemsWriteVersion = 0
 
-  function writeSystemAttributes(systems) {
-    const positions = new Float32Array(systems.length * 3)
-    const colors = new Float32Array(systems.length * 3)
-    const sizes = new Float32Array(systems.length)
-    const kinds = new Float32Array(systems.length)
-    systems.forEach((system, index) => {
+  async function writeSystemAttributes(systems, isCancelled = () => false) {
+    const list = Array.isArray(systems) ? systems : []
+    const positions = new Float32Array(list.length * 3)
+    const colors = new Float32Array(list.length * 3)
+    const sizes = new Float32Array(list.length)
+    const kinds = new Float32Array(list.length)
+    for (let index = 0; index < list.length; index += 1) {
+      const system = list[index]
       const i = index * 3
       positions[i] = system.x * GALAXY_SCALE
       positions[i + 1] = system.y * GALAXY_SCALE
@@ -308,15 +314,22 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
       colors[i] = color.r
       colors[i + 1] = color.g
       colors[i + 2] = color.b
-    })
+
+      if (index > 0 && index % STAR_WRITE_CHUNK === 0) {
+        await yieldToBrowser()
+        if (isCancelled()) return false
+      }
+    }
+    if (isCancelled()) return false
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
     geometry.setAttribute('kind', new THREE.BufferAttribute(kinds, 1))
     geometry.computeBoundingSphere()
+    return true
   }
 
-  writeSystemAttributes(galaxy.systems)
+  await writeSystemAttributes(galaxy.systems, () => disposed)
 
   const material = new THREE.ShaderMaterial({
     transparent: true,
@@ -487,14 +500,19 @@ export async function createGalaxyScene(canvas, galaxy, callbacks = {}) {
 
   let systemsFingerprint = `${galaxy.systems.length}:${galaxy.systems[0]?.id || ''}:${galaxy.systems[galaxy.systems.length - 1]?.id || ''}`
 
-  function setSystems(systems = []) {
+  async function setSystems(systems = []) {
     const nextSystems = Array.isArray(systems) ? systems : []
     const fingerprint = `${nextSystems.length}:${nextSystems[0]?.id || ''}:${nextSystems[nextSystems.length - 1]?.id || ''}`
     if (fingerprint === systemsFingerprint) return
     systemsFingerprint = fingerprint
+    const writeVersion = ++systemsWriteVersion
     galaxy.systems = nextSystems
     galaxy.byId = new Map(nextSystems.map((system) => [system.id, system]))
-    writeSystemAttributes(nextSystems)
+    const wrote = await writeSystemAttributes(
+      nextSystems,
+      () => disposed || writeVersion !== systemsWriteVersion,
+    )
+    if (!wrote || disposed || writeVersion !== systemsWriteVersion) return
     spatial = buildSpatialIndex(nextSystems)
     emitLabels()
   }
@@ -1638,12 +1656,17 @@ function makeSplitPlateMeshFromTexture(texture, mapLim = DEFAULT_MAP_LIM) {
 }
 
 function yieldToBrowser() {
+  // Prefer scheduler.yield when available so star chunks and territory raster
+  // can interleave without waiting a full animation frame each slice.
+  if (typeof scheduler !== 'undefined' && typeof scheduler.yield === 'function') {
+    return scheduler.yield()
+  }
   return new Promise((resolve) => {
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(() => resolve())
-    } else {
-      setTimeout(resolve, 0)
+      return
     }
+    setTimeout(resolve, 0)
   })
 }
 
