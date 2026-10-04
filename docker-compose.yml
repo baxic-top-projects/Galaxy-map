@@ -225,10 +225,10 @@ services:
       - galaxy_net
 
   kafka-connect:
-    profiles: ["s3-export"]
     build:
       context: ./kafka-connect
       dockerfile: Dockerfile
+    container_name: galaxy-kafka-connect
     env_file:
       - path: ./kafka-connect/.env
         required: false
@@ -246,6 +246,7 @@ services:
       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8083/connectors >/dev/null"]
       interval: 10s
@@ -260,7 +261,6 @@ services:
       - galaxy_net
 
   kafka-connect-init:
-    profiles: ["s3-export"]
     image: curlimages/curl:8.16.0
     env_file:
       - path: ./kafka-connect/.env
