@@ -15,3 +15,7 @@ __pycache__/
 
 # Optional offline seed artifacts (not used at runtime; catalog serves from Postgres).
 server/seed/
+
+# k3s local credentials
+infra/k3s/kubeconfig*.yaml
+
