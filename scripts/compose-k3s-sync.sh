@@ -148,7 +148,12 @@ fi
 cd "$project_dir"
 config_json=$(mktemp)
 config_yaml=$(mktemp)
-trap 'rm -f "$config_json" "$config_yaml"' EXIT
+# Private TMPDIR for compose/buildx: shared /tmp may be cleaned mid-build,
+# deleting the build metadata file compose reads back after the build.
+tmp_root=${COMPOSE_K3S_TMPDIR:-${HOME:-/tmp}/.cache/compose-k3s-sync}
+mkdir -p "$tmp_root"
+compose_tmpdir=$(mktemp -d "${tmp_root}/build.XXXXXX")
+trap 'rm -f "$config_json" "$config_yaml"; rm -rf "$compose_tmpdir"' EXIT
 config_ready=false
 if [[ "$image_separator" == "-" ]] &&
   "${compose[@]}" config --format json >"$config_json" 2>/dev/null; then
@@ -253,7 +258,7 @@ if [[ "$skip_build" != true && "$dry_run" != true ]]; then
   log "building Compose project $project_name"
   build_args=()
   [[ "$no_cache" == true ]] && build_args+=(--no-cache)
-  "${compose[@]}" build "${build_args[@]}"
+  TMPDIR="$compose_tmpdir" "${compose[@]}" build "${build_args[@]}"
 fi
 
 local_ips=" $(hostname -I 2>/dev/null || true) "
