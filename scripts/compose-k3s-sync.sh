@@ -24,7 +24,8 @@ Environment:
   COMPOSE_K3S_EXTRA_NAMESERVERS   Public DNS for Maildev/SMTP Deployments (default: 8.8.8.8,1.1.1.1)
   COMPOSE_K3S_SKIP_SMTP_DNS       Set to 1 to skip Maildev dnsConfig on the Deployment
   COMPOSE_K3S_STRICT_ROLLOUT      Set to 1 to fail when kubectl rollout status fails
-  COMPOSE_K3S_LOCK_WAIT           Seconds to wait for a concurrent deployment (default: 1800)
+  COMPOSE_BAKE                    Default 0 — avoid compose bake metadata-file races on build
+  TMPDIR                          Default /tmp for compose build temp files
 EOF
 }
 
@@ -278,11 +279,7 @@ PY
 lock_dir=${COMPOSE_K3S_LOCK_DIR:-${XDG_RUNTIME_DIR:-/tmp}}
 mkdir -p "$lock_dir"
 exec 9>"${lock_dir}/compose-k3s-sync-${kube_project}.lock"
-lock_wait=${COMPOSE_K3S_LOCK_WAIT:-1800}
-if ! flock -n 9; then
-  log "another deployment of $kube_project is running; waiting up to ${lock_wait}s for it to finish"
-  flock -w "$lock_wait" 9 || die "another deployment of $kube_project is still running after ${lock_wait}s"
-fi
+flock -n 9 || die "another deployment of $kube_project is already running"
 
 mapfile -t sync_services < <(
   python3 - "$config_json" "$image_separator" <<'PY'
@@ -318,7 +315,22 @@ if [[ "$skip_build" != true && "$dry_run" != true ]]; then
   log "building Compose project $project_name"
   build_args=()
   [[ "$no_cache" == true ]] && build_args+=(--no-cache)
-  "${compose[@]}" build "${build_args[@]}"
+  export TMPDIR="${TMPDIR:-/tmp}"
+  export COMPOSE_BAKE="${COMPOSE_BAKE:-0}"
+  mkdir -p "$TMPDIR"
+  build_services=()
+  for row in "${sync_services[@]}"; do
+    IFS=$'\t' read -r service _ _ _ <<<"$row"
+    build_services+=("$service")
+  done
+  if ((${#build_services[@]} <= 1)); then
+    "${compose[@]}" build "${build_args[@]}"
+  else
+    for service in "${build_services[@]}"; do
+      log "building service $service"
+      "${compose[@]}" build "${build_args[@]}" "$service"
+    done
+  fi
 fi
 
 local_ips=" $(hostname -I 2>/dev/null || true) "
