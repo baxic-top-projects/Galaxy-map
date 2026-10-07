@@ -213,7 +213,11 @@ PY
 lock_dir=${COMPOSE_K3S_LOCK_DIR:-${XDG_RUNTIME_DIR:-/tmp}}
 mkdir -p "$lock_dir"
 exec 9>"${lock_dir}/compose-k3s-sync-${kube_project}.lock"
-flock -n 9 || die "another deployment of $kube_project is already running"
+lock_timeout=${COMPOSE_K3S_LOCK_TIMEOUT:-1200}
+if ! flock -n 9; then
+  log "another deployment of $kube_project is running; waiting up to ${lock_timeout}s for it to finish"
+  flock -w "$lock_timeout" 9 || die "another deployment of $kube_project is still running after ${lock_timeout}s"
+fi
 
 mapfile -t sync_services < <(
   python3 - "$config_json" "$image_separator" <<'PY'
