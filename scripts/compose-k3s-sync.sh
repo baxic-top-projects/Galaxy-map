@@ -349,7 +349,11 @@ acquire_deploy_lock() {
     log "clearing stale lock holders for $kube_project"
     # Close our own handle first so fuser -k does not kill this script.
     exec 9>&-
-    fuser -k "$lock_file" >/dev/null 2>&1 || true
+    local holder
+    for holder in $(fuser "$lock_file" 2>/dev/null); do
+      [[ "$holder" == "$$" || "$holder" == "$BASHPID" ]] && continue
+      kill "$holder" 2>/dev/null || true
+    done
     sleep 2
     exec 9>"$lock_file"
     if flock -n 9; then
