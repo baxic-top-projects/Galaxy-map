@@ -347,15 +347,8 @@ acquire_deploy_lock() {
   fi
   if [[ "$clear_orphan" == 1 ]] && command -v fuser >/dev/null 2>&1; then
     log "clearing stale lock holders for $kube_project"
-    # Close our own handle first so fuser -k does not kill this script.
-    exec 9>&-
-    local holder
-    for holder in $(fuser "$lock_file" 2>/dev/null); do
-      [[ "$holder" == "$$" || "$holder" == "$BASHPID" ]] && continue
-      kill "$holder" 2>/dev/null || true
-    done
+    fuser -k "$lock_file" 2>/dev/null || true
     sleep 2
-    exec 9>"$lock_file"
     if flock -n 9; then
       return 0
     fi
