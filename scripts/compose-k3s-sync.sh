@@ -1,16 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Bash reads scripts incrementally, so a concurrent deploy overwriting this file
-# (scp overwrite: true) corrupts a running sync. Re-exec from a private snapshot.
-if [[ -z "${COMPOSE_K3S_SYNC_SNAPSHOT:-}" ]]; then
-  snapshot=$(mktemp "${TMPDIR:-/tmp}/compose-k3s-sync.XXXXXX")
-  cp -- "${BASH_SOURCE[0]}" "$snapshot"
-  COMPOSE_K3S_SYNC_SNAPSHOT=$snapshot exec bash "$snapshot" "$@"
-fi
-# The open file descriptor keeps the snapshot readable after unlinking.
-rm -f -- "$COMPOSE_K3S_SYNC_SNAPSHOT"
-
 usage() {
   cat <<'EOF'
 Usage: compose-k3s-sync --project-dir DIR [options]
@@ -37,8 +27,8 @@ Environment:
   COMPOSE_BAKE                    Default 0 — avoid compose bake metadata-file races on build
   BUILDX_NO_DEFAULT_ATTESTATIONS  Default 1 — skip provenance attestation (metadata-file flake)
   TMPDIR                          Default /tmp for compose build temp files
-  COMPOSE_K3S_LOCK_WAIT           Seconds to wait for per-project flock (default 1800; 0 = fail immediately)
-  COMPOSE_K3S_CLEAR_ORPHAN_LOCK   Set to 1 to fuser -k lock holders after the wait (default 0)
+  COMPOSE_K3S_LOCK_WAIT           Seconds to wait for per-project flock (0 = fail immediately)
+  COMPOSE_K3S_CLEAR_ORPHAN_LOCK   Set to 1 to fuser -k stale lock holders after wait (default 1)
 EOF
 }
 
@@ -293,8 +283,8 @@ lock_dir=${COMPOSE_K3S_LOCK_DIR:-${XDG_RUNTIME_DIR:-/tmp}}
 mkdir -p "$lock_dir"
 lock_file="${lock_dir}/compose-k3s-sync-${kube_project}.lock"
 exec 9>"$lock_file"
-lock_wait=${COMPOSE_K3S_LOCK_WAIT:-1800}
-clear_orphan=${COMPOSE_K3S_CLEAR_ORPHAN_LOCK:-0}
+lock_wait=${COMPOSE_K3S_LOCK_WAIT:-0}
+clear_orphan=${COMPOSE_K3S_CLEAR_ORPHAN_LOCK:-1}
 acquire_deploy_lock() {
   if flock -n 9; then
     return 0
@@ -327,10 +317,7 @@ with open(sys.argv[1], encoding="utf-8") as stream:
 
 project = config["name"]
 separator = sys.argv[2]
-has_builds = any("build" in service for service in config["services"].values())
 for name, service in config["services"].items():
-    if has_builds and "build" not in service:
-        continue
     if "build" not in service and not service.get("image"):
         continue
     explicit_image = "1" if service.get("image") else "0"
@@ -391,7 +378,16 @@ if [[ "$skip_build" != true && "$dry_run" != true ]]; then
     build_services+=("$service")
   done
   for row in "${sync_services[@]}"; do
-    IFS=$'\t' read -r service source_image _ _ <<<"$row"
+    IFS=$'\t' read -r service source_image _ explicit_image <<<"$row"
+    if [[ "$explicit_image" == 1 ]]; then
+      if docker image inspect "$source_image" >/dev/null 2>&1; then
+        log "image already present for $service ($source_image)"
+      else
+        log "pulling image for service $service ($source_image)"
+        docker pull "$source_image" || die "docker pull failed for $source_image"
+      fi
+      continue
+    fi
     log "building service $service"
     compose_build_service "$service" "$source_image" || die "compose build failed for $service"
   done
