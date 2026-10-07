@@ -25,8 +25,9 @@ Environment:
   COMPOSE_K3S_SKIP_SMTP_DNS       Set to 1 to skip Maildev dnsConfig on the Deployment
   COMPOSE_K3S_STRICT_ROLLOUT      Set to 1 to fail when kubectl rollout status fails
   COMPOSE_BAKE                    Default 0 — avoid compose bake metadata-file races on build
+  COMPOSE_K3S_LOCK_WAIT           Seconds to wait for a concurrent deployment (default: 1800)
+  COMPOSE_K3S_TMPDIR              Parent of the private build TMPDIR (default: ~/.cache/compose-k3s-sync)
   BUILDX_NO_DEFAULT_ATTESTATIONS  Default 1 — skip provenance attestation (metadata-file flake)
-  TMPDIR                          Default /tmp for compose build temp files
 EOF
 }
 
@@ -211,7 +212,14 @@ fi
 cd "$project_dir"
 config_json=$(mktemp)
 config_yaml=$(mktemp)
-trap 'rm -f "$config_json" "$config_yaml"' EXIT
+# Private TMPDIR for compose/buildx: shared /tmp may be cleaned mid-build,
+# deleting the build metadata file compose reads back after the build
+# ("open /tmp/.tmp-compose-build-metadataFile-*.json: no such file").
+# Any canonical copy of this script must keep this block.
+tmp_root=${COMPOSE_K3S_TMPDIR:-${HOME:-/tmp}/.cache/compose-k3s-sync}
+mkdir -p "$tmp_root"
+compose_tmpdir=$(mktemp -d "${tmp_root}/build.XXXXXX")
+trap 'rm -f "$config_json" "$config_yaml"; rm -rf "$compose_tmpdir"' EXIT
 config_ready=false
 if [[ "$image_separator" == "-" ]] &&
   "${compose[@]}" config --format json >"$config_json" 2>/dev/null; then
@@ -280,7 +288,11 @@ PY
 lock_dir=${COMPOSE_K3S_LOCK_DIR:-${XDG_RUNTIME_DIR:-/tmp}}
 mkdir -p "$lock_dir"
 exec 9>"${lock_dir}/compose-k3s-sync-${kube_project}.lock"
-flock -n 9 || die "another deployment of $kube_project is already running"
+lock_wait=${COMPOSE_K3S_LOCK_WAIT:-1800}
+if ! flock -n 9; then
+  log "another deployment of $kube_project is running; waiting up to ${lock_wait}s for it to finish"
+  flock -w "$lock_wait" 9 || die "another deployment of $kube_project is still running after ${lock_wait}s"
+fi
 
 mapfile -t sync_services < <(
   python3 - "$config_json" "$image_separator" <<'PY'
@@ -329,10 +341,9 @@ if [[ "$skip_build" != true && "$dry_run" != true ]]; then
   log "building Compose project $project_name"
   build_args=()
   [[ "$no_cache" == true ]] && build_args+=(--no-cache)
-  export TMPDIR="${TMPDIR:-/tmp}"
+  export TMPDIR="$compose_tmpdir"
   export COMPOSE_BAKE="${COMPOSE_BAKE:-0}"
   export BUILDX_NO_DEFAULT_ATTESTATIONS="${BUILDX_NO_DEFAULT_ATTESTATIONS:-1}"
-  mkdir -p "$TMPDIR"
   build_services=()
   for row in "${sync_services[@]}"; do
     IFS=$'\t' read -r service _ _ _ <<<"$row"
