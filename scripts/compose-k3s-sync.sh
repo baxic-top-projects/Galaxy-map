@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Bash reads scripts incrementally, so a concurrent deploy overwriting this file
+# (scp overwrite: true) corrupts a running sync. Re-exec from a private snapshot.
+if [[ -z "${COMPOSE_K3S_SYNC_SNAPSHOT:-}" ]]; then
+  snapshot=$(mktemp "${TMPDIR:-/tmp}/compose-k3s-sync.XXXXXX")
+  cp -- "${BASH_SOURCE[0]}" "$snapshot"
+  COMPOSE_K3S_SYNC_SNAPSHOT=$snapshot exec bash "$snapshot" "$@"
+fi
+# The open file descriptor keeps the snapshot readable after unlinking.
+rm -f -- "$COMPOSE_K3S_SYNC_SNAPSHOT"
+
 usage() {
   cat <<'EOF'
 Usage: compose-k3s-sync --project-dir DIR [options]
