@@ -145,3 +145,13 @@ jobs:
             export COMPOSE_K3S_CLEAR_ORPHAN_LOCK=1
             stdbuf -oL -eL bash "$DEPLOY_PATH/scripts/compose-k3s-sync.sh" \
               --project-dir "$DEPLOY_PATH"
+            model_url="$(sed -n 's/^STORM_MODEL_URL=//p' "$DEPLOY_PATH/server/services/storm-service/.env" | tail -n 1 | tr -d '\r')"
+            if [ -z "$model_url" ]; then
+              echo "STORM_MODEL_URL is missing in STORM_ENV" >&2
+              exit 1
+            fi
+            k3s kubectl --kubeconfig "$HOME/.kube/config" set env \
+              deployment/galaxy-map-storm-service -n galaxy-map \
+              "STORM_MODEL_URL=$model_url"
+            k3s kubectl --kubeconfig "$HOME/.kube/config" rollout status \
+              deployment/galaxy-map-storm-service -n galaxy-map --timeout=5m
