@@ -54,6 +54,7 @@ curl \
   -X PUT \
   -H "Content-Type: application/json" \
   --data-binary @/tmp/storm-s3-sink.json \
+  --output /dev/null \
   "${KAFKA_CONNECT_URL}/connectors/storm-s3-sink/config"
 
 printf '\nS3 connector registered successfully.\n'
