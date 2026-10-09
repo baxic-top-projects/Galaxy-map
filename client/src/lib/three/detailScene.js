@@ -718,6 +718,104 @@ function collectBodies(detail) {
   return bodies
 }
 
+/** Stable 0..1 unit from an id string (same body → same size). */
+function hashUnit(value) {
+  let hash = 0x811c9dc5
+  const text = String(value || '')
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0) / 0x100000000
+}
+
+function lerp(min, max, t) {
+  return min + (max - min) * t
+}
+
+/**
+ * Display radius for a main planet as a share of the host star / hole.
+ * Bigger host → bigger planets; type only picks the share band + id jitter.
+ * Always strictly smaller than the host.
+ */
+function planetDisplayRadius(planet, hostRadius = 0) {
+  const key = resolvePlanetTypeKey(planet.planetTypeKey)
+  const t = hashUnit(planet.id || planet.nameEn || key)
+  const host = hostRadius > 0 ? hostRadius : 1.35
+
+  let shareMin
+  let shareMax
+  if (key === 'gas_giant') {
+    shareMin = 0.32
+    shareMax = 0.55
+  } else if (
+    key === 'moon' ||
+    /moon/i.test(planet.role || '') ||
+    /moon/i.test(planet.planetType || '')
+  ) {
+    shareMin = 0.08
+    shareMax = 0.14
+  } else if (planet.inhabited) {
+    shareMin = 0.18
+    shareMax = 0.38
+  } else {
+    shareMin = 0.12
+    shareMax = 0.3
+  }
+
+  const radius = host * lerp(shareMin, shareMax, t)
+  return Math.min(Math.max(0.08, radius), host * 0.95)
+}
+
+/** Satellite/moon radius: always strictly smaller than its planet. */
+function satelliteDisplayRadius(parentRadius, satellite, satelliteIndex = 0) {
+  if (!(parentRadius > 0)) return 0.07
+  const key = resolvePlanetTypeKey(satellite.planetTypeKey || 'moon')
+  const t = hashUnit(
+    `${satellite.nameEn || satellite.nameRu || satelliteIndex}:${key}:${parentRadius.toFixed(3)}`,
+  )
+  // Moons stay well below the planet (≈14–34% of parent, hard cap 42%).
+  const share = key === 'gas_giant' ? lerp(0.22, 0.34, t) : lerp(0.14, 0.26, t)
+  const radius = Math.min(Math.max(0.06, parentRadius * share), parentRadius * 0.42)
+  return Math.min(radius, parentRadius * 0.95)
+}
+
+/**
+ * Display radius for system host (star / black hole / well).
+ * Type sets the band; system token jitters within it. Junctions have no host body.
+ */
+function hostDisplayRadius(detail, hostKind, hostTypeKey) {
+  if (hostKind === 'junction') return 0
+  const t = hashUnit(detail?.token || detail?.id || hostTypeKey || hostKind)
+  // Galactic-center well must always outsize every star / stellar black hole.
+  if (hostKind === 'well') return lerp(2.4, 3.0, t)
+  if (hostKind === 'black_hole') return lerp(1.25, 1.85, t)
+
+  const key = resolveStarTypeKey(hostTypeKey, hostKind)
+  switch (key) {
+    case 'class_m_giant':
+      return lerp(1.55, 2.05, t)
+    case 'class_b':
+    case 'class_a':
+      return lerp(1.35, 1.85, t)
+    case 'class_f':
+    case 'class_g':
+    case 'class_k':
+      return lerp(1.1, 1.55, t)
+    case 'class_m':
+      return lerp(0.9, 1.3, t)
+    case 'pulsar':
+    case 'neutron_star':
+      return lerp(0.7, 1.05, t)
+    case 'binary_class_g':
+    case 'triple_class_g':
+    case 'trinary_class_g':
+      return lerp(1.3, 1.8, t)
+    default:
+      return lerp(1.05, 1.6, t)
+  }
+}
+
 function isTypingTarget(target) {
   if (!target || !(target instanceof Element)) return false
   const tag = target.tagName
@@ -1201,7 +1299,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
     void mapPool(assetTasks, assetTasks.length || 1, (task) => task())
 
     let host
-    const hostRadius = hostKind === 'well' ? 2.1 : hostKind === 'black_hole' ? 1.55 : 1.35
+    const hostRadius = hostDisplayRadius(detail, hostKind, hostTypeKey)
     if (hostKind === 'junction') {
       // Intentionally empty center: a junction is a location where corridors
       // meet, not a hidden star or black hole.
@@ -1274,18 +1372,16 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
       return { beltOuter }
     }
 
-    const planetRadii = planets.map((planet) =>
-      planet.planetTypeKey === 'gas_giant' ? 0.62 : planet.inhabited ? 0.4 : 0.3,
-    )
+    const planetRadii = planets.map((planet) => planetDisplayRadius(planet, hostRadius))
     const satelliteExtents = planets.map((planet, index) => {
       const satellites = planet.satellites || []
       if (!satellites.length) return planetRadii[index]
       const outerIndex = satellites.length - 1
       const outerOrbit = planetRadii[index] * 1.65 + outerIndex * planetRadii[index] * 0.72
-      const outerRadius = Math.max(
-        0.075,
-        planetRadii[index] *
-          (satellites[outerIndex].planetTypeKey === 'gas_giant' ? 0.34 : 0.26),
+      const outerRadius = satelliteDisplayRadius(
+        planetRadii[index],
+        satellites[outerIndex],
+        outerIndex,
       )
       return outerOrbit + outerRadius
     })
@@ -1376,10 +1472,7 @@ export function createSystemDetailScene(canvas, detail, callbacks = {}) {
         planet.satellites || [],
         MESH_BUILD_CONCURRENCY,
         async (satellite, satelliteIndex) => {
-          const satelliteRadius = Math.max(
-            0.075,
-            radius * (satellite.planetTypeKey === 'gas_giant' ? 0.34 : 0.26),
-          )
+          const satelliteRadius = satelliteDisplayRadius(radius, satellite, satelliteIndex)
           const satelliteOrbit = radius * 1.65 + satelliteIndex * radius * 0.72
           const satelliteMesh = await createBodyMesh({
             kind: 'planet',

@@ -135,6 +135,18 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: worker-146
+      dnsConfig:
+        nameservers:
+          - 8.8.8.8
+          - 1.1.1.1
+        searches:
+          - galaxy-map.svc.cluster.local
+          - galaxy.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
+        options:
+          - name: ndots
+            value: "5"
       containers:
         - name: maildev
           image: maildev/maildev:3.0.0
