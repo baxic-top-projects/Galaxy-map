@@ -57,6 +57,9 @@ docker-compose stop \
 kubectl apply -f /tmp/k3s-galaxy/galaxy-infra.yaml
 kubectl apply -f /tmp/k3s-galaxy/galaxy-apps.yaml
 
+KAFKA_NAMESPACE="$NS" \
+  bash "$ROOT/scripts/ensure-kafka-connect-topics.sh"
+
 for d in redis kafka smtp-service-galaxy catalog-service auth-service asset-service storm-service kafka-connect api-gateway client; do
   kubectl -n "$NS" rollout status "deploy/$d" --timeout=300s || true
 done

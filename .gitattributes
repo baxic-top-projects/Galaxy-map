@@ -1,1 +1,4 @@
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
 # Binary assets are stored in S3 (galaxybucket), not in this repo.
