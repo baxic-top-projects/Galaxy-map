@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
 storage_patch_volume() {
-  local namespace=$1 deployment=$2 volume=$3 source_kind=$4 source_value=${5:-} mount_path=${6:-}
+  local namespace=$1 deployment=$2 volume=$3 source_kind=$4 source_value=${5:-} mount_path=${6:-} sub_path=${7:-}
   local current_file patch_file
   current_file=$(mktemp)
   patch_file=$(mktemp)
   "${kube[@]}" get deployment "$deployment" -n "$namespace" -o json >"$current_file"
-  python3 - "$current_file" "$volume" "$source_kind" "$source_value" "$mount_path" >"$patch_file" <<'PY'
+  python3 - "$current_file" "$volume" "$source_kind" "$source_value" "$mount_path" "$sub_path" >"$patch_file" <<'PY'
 import json
 import sys
 
-current_path, volume_name, source_kind, source_value, mount_path = sys.argv[1:]
+current_path, volume_name, source_kind, source_value, mount_path, sub_path = sys.argv[1:]
 with open(current_path, encoding="utf-8") as stream:
     deployment = json.load(stream)
 spec = deployment["spec"]["template"]["spec"]
@@ -26,6 +26,8 @@ if mount_path:
         if matching:
             replacement = dict(matching[0])
             replacement["mountPath"] = mount_path
+            if sub_path:
+                replacement["subPath"] = sub_path
             container["volumeMounts"] = [mount for mount in mounts if mount["name"] != volume_name]
             container["volumeMounts"].append(replacement)
 print(json.dumps({"spec": {"template": {"spec": {
@@ -44,7 +46,7 @@ apply_project_storage() {
     galaxy-map-kafka)
       storage_patch_volume "$namespace" "$deployment" m0 empty "" ""
       storage_patch_volume "$namespace" "$deployment" m1 empty "" ""
-      storage_patch_volume "$namespace" "$deployment" m2 pvc "galaxy-kafka-data" "/tmp/kraft-combined-logs"
+      storage_patch_volume "$namespace" "$deployment" m2 pvc "galaxy-kafka-data" "/tmp/kraft-combined-logs" "data"
       ;;
     galaxy-map-kafka-connect)
       storage_patch_volume "$namespace" "$deployment" m0 empty "" ""
