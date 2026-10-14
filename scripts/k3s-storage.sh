@@ -41,7 +41,7 @@ PY
 
 apply_project_storage() {
   local namespace=$1 deployment=$2
-  "${kube[@]}" apply -f "$project_dir/deploy/storage.yaml" >/dev/null
+  "${kube[@]}" apply -f "$project_dir/scripts/k3s-storage.yaml" >/dev/null
   case "$deployment" in
     galaxy-map-kafka)
       storage_patch_volume "$namespace" "$deployment" m0 empty "" ""
